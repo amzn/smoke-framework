@@ -1,6 +1,7 @@
 import XCTest
-@testable import SwiftActivityTests
+@testable import SmokeOperationsTests
 
 XCTMain([
-    testCase(SwiftActivityTests.allTests),
+    testCase(SmokeOperationsAsyncTests.allTests),
+    testCase(SmokeOperationsSyncTests.allTests),
 ])
