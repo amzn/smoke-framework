@@ -32,7 +32,7 @@ public extension OperationHandler {
           handling the operation
      */
     public init<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
-            operation: @escaping ((InputType, ContextType, (Swift.Error?) -> ()) throws -> ()),
+            operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType? = nil) {
         
@@ -110,7 +110,7 @@ public extension SmokeHTTP1HandlerSelector {
     public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, (Swift.Error?) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType? = nil) {
             let handler = OperationHandler(operation: operation,

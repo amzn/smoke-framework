@@ -33,7 +33,7 @@ public extension OperationHandler {
      */
     public init<InputType: ValidatableCodable, OutputType: ValidatableCodable,
             ErrorType: ErrorIdentifiableByDescription>(
-            operation: @escaping ((InputType, ContextType, (SmokeResult<OutputType>) -> ()) throws -> ()),
+            operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType? = nil) {
         
@@ -113,7 +113,7 @@ public extension SmokeHTTP1HandlerSelector {
             ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, (SmokeResult<OutputType>) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType? = nil) {
             let handler = OperationHandler(operation: operation,

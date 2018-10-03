@@ -32,6 +32,19 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
     
     func complete(status: HTTPResponseStatus,
                   body: (contentType: String, data: Data)?) {
+        // if we are currently on a thread that can complete the response
+        if context.eventLoop.inEventLoop {
+            completeInEventLoop(status: status, body: body)
+        } else {
+            // otherwise execute on a thread that can
+            context.eventLoop.execute {
+                self.completeInEventLoop(status: status, body: body)
+            }
+        }
+    }
+    
+    func completeInEventLoop(status: HTTPResponseStatus,
+                             body: (contentType: String, data: Data)?) {
         let bodySize = handleComplete(status: status, body: body)
         
         Log.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
