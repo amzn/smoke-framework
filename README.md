@@ -95,17 +95,17 @@ import SmokeHTTP1
 import SmokeOperations
 import LoggerAPI
 
-StandardErrorLogger.enableLogging()
+// Enable logging here
 
-let activitiesContext = ... 
+let operationContext = ... 
 
 do {
     try SmokeHTTP1Server.startAsOperationServer(
         withHandlerSelector: createHandlerSelector(),
-        andContext: activitiesContext,
+        andContext: operationContext,
         defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
 } catch {
-    Log.error("Unable to start Activity Server: '\(error)'")
+    Log.error("Unable to start Operation Server: '\(error)'")
 }
 ```
 
