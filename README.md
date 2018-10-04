@@ -25,7 +25,7 @@ logic and input values) and hence easily testible.
 The Smoke Framework uses the Swift Package Manager. To use the framework, add the following dependency
 to your Package.swift-
 
-```
+```swift
 dependencies: [
     .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "0.6.0"))
 ]
@@ -36,7 +36,7 @@ dependencies: [
 The next step to using the Smoke Framework is to define one or more functions that will perform the operations
 that your application requires. The following code shows an example of such a function-
 
-```
+```swift
 func handleTheOperation(input: OperationInput, context: MyApplicationContext) throws -> OperationOutput {
     return OperationOutput()
 }
@@ -59,7 +59,7 @@ of the request.
 The following code shows how to create a handler selector using the `StandardSmokeHTTP1HandlerSelector`-
 
 
-```
+```swift
 import SmokeOperations
 
 public typealias HandlerSelectorType =
@@ -89,7 +89,7 @@ public func createHandlerSelector() -> HandlerSelectorType {
 
 The final step is to setup an application as an operation server.
 
-```
+```swift
 import Foundation
 import SmokeHTTP1
 import SmokeOperations
@@ -155,7 +155,7 @@ The synchronous variants will return a response as soon as the function returns 
 the encoded return value. The asynchronous variants will return a response when the provided result handlers
 are called.
 
-```
+```swift
 public protocol Validatable {
     func validate() throws
 }
@@ -180,7 +180,7 @@ By default, any errors thrown from an operation handler will fail the operation 
 500 Internal Server Error to the caller (the framework also logs this event at *Error* level). This behaviour 
 prevents any unintentional leakage of internal error information.
 
-```
+```swift
 public typealias ErrorIdentifiableByDescription = Swift.Error & CustomStringConvertible
 public typealias SmokeReturnableError = ErrorIdentifiableByDescription & Encodable
 ```  
@@ -189,7 +189,7 @@ Errors can be explicitly encoded and returned to the caller by conforming to the
 and `Encodable` protocols **and** being specified under *allowedErrors* in the `addHandlerForUri` call setting up the
 operation handler. For example-
 
-```
+```swift
 public enum MyError: Swift.Error {
     case theError(reason: String)
     
