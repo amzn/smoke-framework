@@ -16,7 +16,7 @@ input. When the handler returns, its response (if any) will be encoded and sent 
 Each invocation of a handler is also passed an application-specific context, allowing application-scope
 entities such as other service clients to be passed to operation handlers. Using the context allows 
 operation handlers to remain *pure* functions (where its return value is determined by the function's 
-logic and input values) and hence easily testible.
+logic and input values) and hence easily testable.
 
 # Getting Started
 
@@ -53,7 +53,7 @@ and *Extension Points* sections for more information.
 After defining the required operation handlers, it is time to specify how they are selected for incoming requests.
 
 The Smoke Framework provides the `StandardSmokeHTTP1HandlerSelector` implementation of a Handler Selector
-suitible for a basic REST-like service where operation handlers are selected based on the HTTP uri and verb
+suitable for a basic REST-like service where operation handlers are selected based on the HTTP URI and verb
 of the request.
 
 The following code shows how to create a handler selector using the `StandardSmokeHTTP1HandlerSelector`-
@@ -80,7 +80,7 @@ public func createHandlerSelector() -> HandlerSelectorType {
  * The type of the context instance to use for the application.
  * The type of an operation delegate.
 * Each handler added requires the following parameters to be specified-
- * The operation uri that must be matched by the incoming request to select the handler.
+ * The operation URI that must be matched by the incoming request to select the handler.
  * The HTTP method that must be matched by the incoming request to select the handler.
  * The function to be invoked.
  * The errors that can be returned to the caller from this handler.
@@ -117,11 +117,11 @@ You can now run the application and the server will start up on port 8080. The a
 
 An instance of the application context type is created at application start-up and is passed
 to each invocation of an operation handler. The framework imposes no restrictions on this 
-type and simply passes it through to the operation handlers. It is *recommended* that is
+type and simply passes it through to the operation handlers. It is *recommended* that this
 context is immutable as it can potentially be passed to multiple handlers simultaneously. 
 Otherwise, the context type is responsible for handling its own thread safety.
 
-It is recommened that applications use a **strongly typed** context rather than a *bag of 
+It is recommended that applications use a **strongly typed** context rather than a *bag of 
 stuff* such as a Dictionary.
 
 ## The Operation Delegate
@@ -149,7 +149,7 @@ framework provides four function signatures that this function can conform to-
 * `((InputType, ContextType, (SmokeResult<OutputType>) -> ()) throws -> ())`: Asynchronous method with output.
 
 Due to Swift type inference, a handler can switch between these different signatures without changing the
-handler selector declaration - simply change the function signature is sufficient.
+handler selector declaration - simply changing the function signature is sufficient.
 
 The synchronous variants will return a response as soon as the function returns either with an empty body or 
 the encoded return value. The asynchronous variants will return a response when the provided result handlers
@@ -177,7 +177,7 @@ handler and operation outputs after receiving from the handler-
 ## Error Handling
 
 By default, any errors thrown from an operation handler will fail the operation and the framework will return a
-500 Internal Server Error to the caller (the framework also logs this event at *Error* level). This behaviour 
+500 Internal Server Error to the caller (the framework also logs this event at *Error* level). This behavior 
 prevents any unintentional leakage of internal error information.
 
 ```swift
@@ -217,7 +217,7 @@ extension MyError: CustomStringConvertible {
 ```
 
 When such an error is returned from an operation handler-
-* A response is returned to the caller with the http code specified in the *allowedErrors* entry with a payload 
+* A response is returned to the caller with the HTTP code specified in the *allowedErrors* entry with a payload 
   of the error encoded according to the *Encodable* protocol. 
 * In addition, the provided error identity of the error will be specified in the **__type** field of the 
   returned payload.
@@ -231,21 +231,21 @@ When such an error is returned from an operation handler-
 
 ## Testing
 
-The Smoke Framework has been designed to make testing of operation handlers straight forward. It is recommended that operation
+The Smoke Framework has been designed to make testing of operation handlers straightforward. It is recommended that operation
 handlers are *pure* functions (where its return value is determined by the function's logic and input values). In this case,
 the function can be called in unit tests with appropriately constructed input and context instances.
 
-It is recommended that the application-specific context be used to vary behaviour between release and testing executions - 
-such as mocking service clients, random number generators etc. In general this will create more maintainable tests by keeping
+It is recommended that the application-specific context be used to vary behavior between release and testing executions - 
+such as mocking service clients, random number generators, etc. In general this will create more maintainable tests by keeping
 all the testing logic in the testing function.
 
 # Extension Points
 
-The Smoke Framework is designed to be extensible its current functionality-
+The Smoke Framework is designed to be extensible beyond its current functionality-
 * `JSONPayloadHTTP1OperationDelegate` provides basic JSON payload encoding and decoding. Instead, the `OperationDelegate` can
   be used to create a delegate that provides alternative payload encoding and decoding. Instances of this protocol are given
   the entire HttpRequestHead and request body when decoding the input and encoding the output for situations when these are required.
-* `StandardSmokeHTTP1HandlerSelector` provides a handler selector that compares the HTTP uri and verb to select a
+* `StandardSmokeHTTP1HandlerSelector` provides a handler selector that compares the HTTP URI and verb to select a
   handler. Instead, the `SmokeHTTP1HandlerSelector` protocol can be used to create a selector that can use any property
   from the HTTPRequestHead (such as headers) to select a handler.
 * Even if `StandardSmokeHTTP1HandlerSelector` does fit your requirements, it can be extended to support additional function
