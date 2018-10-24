@@ -239,6 +239,8 @@ It is recommended that the application-specific context be used to vary behavior
 such as mocking service clients, random number generators, etc. In general this will create more maintainable tests by keeping
 all the testing logic in the testing function.
 
+If you want to run all test cases in Smoke Framework, please open command line and navigate to **smoke-framework/Tests**, type `swift test` and then you should be able to see test cases result. 
+
 # Extension Points
 
 The Smoke Framework is designed to be extensible beyond its current functionality-
