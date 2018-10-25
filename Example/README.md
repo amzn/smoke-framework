@@ -50,3 +50,5 @@ You can either test it in your own project with HTTP request or test it with som
 Here's the screenshot of testing it with postman
 
 
+![Postman test result](https://raw.githubusercontent.com/alexliubj/smoke-framework/Example/Example/TestResult.png)
+
