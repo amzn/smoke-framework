@@ -12,10 +12,11 @@
 // permissions and limitations under the License.
 //
 //  SmokeHTTP1HandlerSelector.swift
-//  SmokeOperations
+//  SmokeOperationsHTTP1
 //
 
 import Foundation
+import SmokeOperations
 import NIOHTTP1
 
 /**

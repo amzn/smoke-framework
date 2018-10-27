@@ -30,8 +30,12 @@ public enum SmokeOperationsError: Error {
 /**
  Error payload shape for SmokeOperationsErrors.
  */
-struct SmokeOperationsErrorPayload: Codable {
+public struct SmokeOperationsErrorPayload: Codable {
     let errorMessage: String?
+    
+    public init(errorMessage: String?) {
+        self.errorMessage = errorMessage
+    }
     
     enum CodingKeys: String, CodingKey {
         case errorMessage = "message"

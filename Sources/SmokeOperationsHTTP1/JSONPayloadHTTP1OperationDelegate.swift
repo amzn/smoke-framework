@@ -12,10 +12,11 @@
 // permissions and limitations under the License.
 //
 //  JSONPayloadHTTP1OperationDelegate.swift
-//  SmokeOperations
+//  SmokeOperationsHTTP1
 //
 
 import Foundation
+import SmokeOperations
 import SmokeHTTP1
 import LoggerAPI
 
