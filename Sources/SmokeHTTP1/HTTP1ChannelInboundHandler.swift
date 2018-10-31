@@ -53,14 +53,17 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
     }
     
     private let handler: HTTP1RequestHandler
+    private let invocationStrategy: InvocationStrategy
     private var requestHead: HTTPRequestHead?
     
     var bodyParts: [ByteBuffer] = []
     private var keepAliveStatus = KeepAliveStatus()
     private var state = State.idle
     
-    init(handler: HTTP1RequestHandler) {
+    init(handler: HTTP1RequestHandler,
+         invocationStrategy: InvocationStrategy) {
         self.handler = handler
+        self.invocationStrategy = invocationStrategy
     }
 
     private func reset() {
@@ -132,8 +135,14 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
             context: ctx,
             wrapOutboundOut: wrapOutboundOut)
     
+        let currentHandler = handler
+        
         // pass to the request handler to complete
-        handler.handle(requestHead: requestHead, body: requestBodyData, responseHandler: responseHandler)
+        invocationStrategy.invoke {
+            currentHandler.handle(requestHead: requestHead,
+                                  body: requestBodyData,
+                                  responseHandler: responseHandler)
+        }
     }
     
     /**
