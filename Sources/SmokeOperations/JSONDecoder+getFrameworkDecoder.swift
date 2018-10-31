@@ -30,7 +30,7 @@ private let jsonDecoder = createDecoder()
 
 extension JSONDecoder {
     /// Return a SmokeFramework compatible JSON Decoder
-    static func getFrameworkDecoder() -> JSONDecoder {
+    public static func getFrameworkDecoder() -> JSONDecoder {
         return jsonDecoder
     }
 }

@@ -60,7 +60,7 @@ The following code shows how to create a handler selector using the `StandardSmo
 
 
 ```swift
-import SmokeOperations
+import SmokeOperationsHTTP1
 
 public typealias HandlerSelectorType =
     StandardSmokeHTTP1HandlerSelector<MyApplicationContext, JSONPayloadHTTP1OperationDelegate>
@@ -92,7 +92,7 @@ The final step is to setup an application as an operation server.
 ```swift
 import Foundation
 import SmokeHTTP1
-import SmokeOperations
+import SmokeOperationsHTTP1
 import LoggerAPI
 
 // Enable logging here

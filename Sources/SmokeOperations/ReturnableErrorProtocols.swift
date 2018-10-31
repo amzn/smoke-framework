@@ -26,13 +26,13 @@ public typealias ErrorIdentifiableByDescription =
 public typealias SmokeReturnableError =
     ErrorIdentifiableByDescription & Encodable
 
-/// Internal helper protocol for encoding errors
-internal protocol ErrorEncoder {
+/// Helper protocol for encoding errors
+public protocol ErrorEncoder {
     func encode<InputType: SmokeReturnableError>(_ input: InputType) throws -> Data
 }
 
 extension Encodable where Self: SmokeReturnableError {
-    func encode(errorEncoder: ErrorEncoder) throws -> Data {
+    public func encode(errorEncoder: ErrorEncoder) throws -> Data {
         return try errorEncoder.encode(self)
     }
 }

@@ -17,7 +17,6 @@
 
 import Foundation
 import LoggerAPI
-import NIOHTTP1
 
 public extension OperationHandler {
     /**
@@ -67,31 +66,5 @@ public extension OperationHandler {
         }
         
         self.init(wrappedInputHandler)
-    }
-}
-
-public extension SmokeHTTP1HandlerSelector {
-    /**
-     Adds a handler for the specified uri and http method.
- 
-     - Parameters:
-        - uri: The uri to add the handler for.
-        - operation: the handler method for the operation.
-        - allowedErrors: the errors that can be serialized as responses
-          from the operation and their error codes.
-        - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
-     */
-    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
-        _ uri: String,
-        httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType) throws -> ()),
-        allowedErrors: [(ErrorType, Int)],
-        operationDelegate: OperationDelegateType? = nil) {
-            let handler = OperationHandler(operation: operation,
-                                           allowedErrors: allowedErrors,
-                                           operationDelegate: operationDelegate)
-        
-        addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }
 }
