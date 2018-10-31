@@ -36,6 +36,7 @@ public class SmokeHTTP1Server {
     let group: MultiThreadedEventLoopGroup
     let threadPool: BlockingIOThreadPool
     let handler: HTTP1RequestHandler
+    let invocationStrategy: InvocationStrategy
     var channel: Channel?
     
     /**
@@ -49,10 +50,12 @@ public class SmokeHTTP1Server {
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
-                serverThreads: Int = ServerDefaults.defaultServerThreads) {
+                serverThreads: Int = ServerDefaults.defaultServerThreads,
+                invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) {
         self.port = port
         self.serverThreads = serverThreads
         self.handler = handler
+        self.invocationStrategy = invocationStrategy
         
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         self.threadPool = BlockingIOThreadPool(numberOfThreads: serverThreads)
@@ -66,6 +69,7 @@ public class SmokeHTTP1Server {
         threadPool.start()
         
         let currentHandler = handler
+        let currentInvocationStrategy = invocationStrategy
         
         // create a ServerBootstrap with a HTTP Server pipeline that delegates
         // to a HTTPChannelInboundHandler
@@ -74,7 +78,9 @@ public class SmokeHTTP1Server {
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().then {
-                    channel.pipeline.add(handler: HTTP1ChannelInboundHandler(handler: currentHandler))
+                    channel.pipeline.add(handler: HTTP1ChannelInboundHandler(
+                        handler: currentHandler,
+                        invocationStrategy: currentInvocationStrategy))
                 }
             }
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
