@@ -17,7 +17,6 @@
 
 import XCTest
 @testable import SmokeAPI
-import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 
