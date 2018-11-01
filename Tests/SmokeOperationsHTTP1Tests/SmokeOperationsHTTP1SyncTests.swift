@@ -16,7 +16,8 @@
 //
 
 import XCTest
-@testable import SmokeOperations
+@testable import SmokeOperationsHTTP1
+import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 

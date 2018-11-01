@@ -40,7 +40,7 @@ private let encodedInternalError = try! jsonEncoder.encode(
 
 extension JSONEncoder {
     /// Return a SmokeFramework compatible JSON Encoder
-    static func getFrameworkEncoder() -> JSONEncoder {
+    public static func getFrameworkEncoder() -> JSONEncoder {
         return jsonEncoder
     }
     
