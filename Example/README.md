@@ -29,7 +29,7 @@ let package = Package(
 
 ### Build
 
-Back to terminal and type `swift build`. This command will fetch `Smoke-framework` for you into this folder as well as those dependencies `Smoke-framework` needs. 
+Back to terminal and type `swift build`. This command will fetch `Smoke-framework` for you into this folder as well as those dependencies required by `Smoke-framework`. 
 
 You will see `main.swift` file locates in `Sources/SmokeAPI` and if you open it there will be only one line of code:  `print("Hello, world!")`
 
