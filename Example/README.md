@@ -35,18 +35,20 @@ You will see `main.swift` file locates in `Sources/SmokeAPI` and if you open it 
 
 In this example, there are a few files which are abstracted from test cases in `Smoke-framework`.
 
-* `main` sets up the `post` call and it will start service 
+* `main` sets up the `post` API and starts service 
 * `ExampleInput` defines input data structure
 * `ExampleError` defines errors 
 * `ExampleOutput` defines output structure
 
 ### Run
 
-Type `swift run SmokeAPI` in terminal, it will run main file and start service.
+Type `swift run SmokeAPI` in terminal to run main file and start service.
 
 ### Test
 
 You can either test it in your own project with HTTP request or test it with some tools like postman.
 Here's the screenshot of testing it with postman
 
+
+![Postman test result](https://raw.githubusercontent.com/alexliubj/smoke-framework/Example/Example/TestResult.png)
 
