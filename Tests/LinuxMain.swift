@@ -1,7 +1,7 @@
 import XCTest
-@testable import SmokeOperationsTests
+@testable import SmokeOperationsHTTP1Tests
 
 XCTMain([
-    testCase(SmokeOperationsAsyncTests.allTests),
-    testCase(SmokeOperationsSyncTests.allTests),
+    testCase(SmokeOperationsHTTP1AsyncTests.allTests),
+    testCase(SmokeOperationsHTTP1SyncTests.allTests),
 ])

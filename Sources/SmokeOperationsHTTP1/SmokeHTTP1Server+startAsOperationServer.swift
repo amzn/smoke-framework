@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // SmokeHTTP1Server+startAsOperationServer.swift
-// SmokeOperations
+// SmokeOperationsHTTP1
 //
 
 import Foundation
@@ -34,7 +34,8 @@ public extension SmokeHTTP1Server {
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
         defaultOperationDelegate: OperationDelegateType,
-        andPort port: Int = ServerDefaults.defaultPort) throws
+        andPort port: Int = ServerDefaults.defaultPort,
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) throws
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SelectorType.OperationDelegateType == OperationDelegateType, OperationDelegateType.RequestType == SmokeHTTP1Request,
         OperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
@@ -42,7 +43,8 @@ public extension SmokeHTTP1Server {
                                                              context: context,
                                                              defaultOperationDelegate: defaultOperationDelegate)
             let server = SmokeHTTP1Server(handler: handler,
-                                          port: port)
+                                          port: port,
+                                          invocationStrategy: invocationStrategy)
             
             Log.info("Server starting on port \(port)...")
         

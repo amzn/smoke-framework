@@ -10,6 +10,9 @@ let package = Package(
             name: "SmokeOperations",
             targets: ["SmokeOperations"]),
         .library(
+            name: "SmokeOperationsHTTP1",
+            targets: ["SmokeOperationsHTTP1"]),
+        .library(
             name: "SmokeHTTP1",
             targets: ["SmokeHTTP1"]),
     ],
@@ -23,9 +26,12 @@ let package = Package(
             dependencies: ["NIO", "NIOHTTP1", "LoggerAPI"]),
         .target(
             name: "SmokeOperations",
-            dependencies: ["LoggerAPI", "SmokeHTTP1"]),
+            dependencies: ["LoggerAPI"]),
+        .target(
+            name: "SmokeOperationsHTTP1",
+            dependencies: ["SmokeOperations", "SmokeHTTP1"]),
         .testTarget(
-            name: "SmokeOperationsTests",
-            dependencies: ["SmokeOperations"]),
+            name: "SmokeOperationsHTTP1Tests",
+            dependencies: ["SmokeOperationsHTTP1"]),
     ]
 )

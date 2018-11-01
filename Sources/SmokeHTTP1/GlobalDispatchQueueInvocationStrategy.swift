@@ -11,26 +11,26 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// JSONDecoder+getFrameworkDecoder.swift
-// SmokeOperations
+//  GlobalDispatchQueueAsyncInvocationStrategy.swift
+//  SmokeHTTP1
 //
 
 import Foundation
 
-private func createDecoder() -> JSONDecoder {
-    let jsonDecoder = JSONDecoder()
-    if #available(OSX 10.12, *) {
-        jsonDecoder.dateDecodingStrategy = .iso8601
+/**
+ An AsyncInvocationStrategy that will invocate the handler on
+ DispatchQueue.global().
+ */
+public struct GlobalDispatchQueueInvocationStrategy: InvocationStrategy {
+    let queue = DispatchQueue.global()
+    
+    public init() {
+        
     }
     
-    return jsonDecoder
-}
-
-private let jsonDecoder = createDecoder()
-
-extension JSONDecoder {
-    /// Return a SmokeFramework compatible JSON Decoder
-    public static func getFrameworkDecoder() -> JSONDecoder {
-        return jsonDecoder
+    public func invoke(handler: @escaping () -> ()) {
+        queue.async {
+            handler()
+        }
     }
 }
