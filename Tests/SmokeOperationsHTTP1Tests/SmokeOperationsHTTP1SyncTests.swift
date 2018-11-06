@@ -92,7 +92,7 @@ private func verifyErrorResponse(uri: String) {
     XCTAssertEqual("TheError", output.type)
 }
 
-class SmokeOperationsSyncTests: XCTestCase {
+class SmokeOperationsHTTP1SyncTests: XCTestCase {
     
     func testExampleHandler() {
         let response = verifyPathOutput(uri: "exampleOperation",

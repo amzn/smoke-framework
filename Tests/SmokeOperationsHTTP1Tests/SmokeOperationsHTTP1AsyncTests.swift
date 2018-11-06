@@ -121,7 +121,7 @@ private func verifyErrorResponse(uri: String) {
     XCTAssertEqual("Is bad!", output.reason)
 }
 
-class SmokeOperationsAsyncTests: XCTestCase {
+class SmokeOperationsHTTP1AsyncTests: XCTestCase {
     
     func testExampleHandler() {
         let response = verifyPathOutput(uri: "exampleOperation",
