@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+swiftLintVersion=0.29.0
+
+USE_SWIFT_LINT=$1
+
+workspaceRoot=($PWD)
+srcRoot=$workspaceRoot/sources
+mkdir -p $srcRoot
+
+if [ "$USE_SWIFT_LINT" == 'yes' ]; then
+    # SwiftLint
+    cd $srcRoot
+    git clone --branch $swiftLintVersion https://github.com/realm/SwiftLint.git
+    cd SwiftLint
+    swift build -c release --build-path .build/native --disable-prefetching
+    cp .build/native/release/swiftlint /usr/bin
+fi
+
+cd $workspaceRoot/package
+swift build
+swift test
+
+if [ "$USE_SWIFT_LINT" == 'yes' ]; then
+    swiftlint
+fi
