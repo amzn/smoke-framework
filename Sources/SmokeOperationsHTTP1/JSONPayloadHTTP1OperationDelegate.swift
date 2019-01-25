@@ -68,12 +68,17 @@ public struct JSONPayloadHTTP1OperationDelegate: OperationDelegate {
         
         let body = (contentType: MimeTypes.json, data: encodedOutput)
         
-        responseHandler.complete(status: .ok, body: body)
+        let responseComponents = HTTP1ServerResponseComponents(
+            additionalHeaders: [],
+            body: body)
+        
+        responseHandler.complete(status: .ok, responseComponents: responseComponents)
     }
     
     public func handleResponseForOperationWithNoOutput(request: SmokeHTTP1Request,
                                                        responseHandler: HTTP1ResponseHandler) {
-        responseHandler.complete(status: .ok, body: nil)
+        let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: nil)
+        responseHandler.complete(status: .ok, responseComponents: responseComponents)
     }
     
     public func handleResponseForOperationFailure(request: SmokeHTTP1Request,
@@ -91,9 +96,10 @@ public struct JSONPayloadHTTP1OperationDelegate: OperationDelegate {
         }
         
         let body = (contentType: MimeTypes.json, data: encodedOutput)
+        let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
         responseHandler.complete(status: .custom(code: UInt(operationFailure.code), reasonPhrase: operationFailure.error.description),
-                                         body: body)
+                                         responseComponents: responseComponents)
     }
     
     public func handleResponseForInternalServerError(request: SmokeHTTP1Request,
@@ -125,8 +131,9 @@ public struct JSONPayloadHTTP1OperationDelegate: OperationDelegate {
                                                      reason: reason)
         
         let body = (contentType: MimeTypes.json, data: encodedError)
+        let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
         responseHandler.complete(status: .custom(code: UInt(code), reasonPhrase: reason),
-                                         body: body)
+                                         responseComponents: responseComponents)
     }
 }

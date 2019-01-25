@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/IBM-Swift/LoggerAPI.git",
         "state": {
           "branch": null,
-          "revision": "5041f2673aa75d6e973d9b6bd3956bc5068387c8",
-          "version": "1.7.3"
+          "revision": "d0ccb4158b83f8692531892a9c894bb757593c6f",
+          "version": "1.8.0"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/apple/swift-nio.git",
         "state": {
           "branch": null,
-          "revision": "176dd6e8564d60e936b76f3a896d667ae3acba31",
-          "version": "1.10.0"
+          "revision": "03c541a24dd0558c942b15d8464eb75d70a921c4",
+          "version": "1.12.1"
         }
       },
       {

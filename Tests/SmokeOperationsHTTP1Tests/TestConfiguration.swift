@@ -43,16 +43,16 @@ let serializedInvalidInput = """
 
 struct OperationResponse {
     let status: HTTPResponseStatus
-    let body: (contentType: String, data: Data)?
+    let responseComponents: HTTP1ServerResponseComponents
 }
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
     
     func complete(status: HTTPResponseStatus,
-                  body: (contentType: String, data: Data)?) {
+                  responseComponents: HTTP1ServerResponseComponents) {
         response = OperationResponse(status: status,
-                                    body: body)
+                                    responseComponents: responseComponents)
     }
 }
 
