@@ -30,30 +30,32 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation
      */
-    public init<InputType: ValidatableCodable, OutputType: ValidatableCodable,
-            ErrorType: ErrorIdentifiableByDescription>(
-            operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
+    public init<InputType: Validatable, OutputType: Validatable,
+            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
+            inputProvider: @escaping (RequestType) throws -> InputType,
+            outputProvider: @escaping ((InputType, ContextType, @escaping
+                (SmokeResult<OutputType>) -> Void) throws -> Void),
+            outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void),
             allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType? = nil) {
+            operationDelegate: OperationDelegateType)
+    where RequestType == OperationDelegateType.RequestType,
+    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
          * The wrapped input handler takes the provided operation handler and wraps it the responseHandler is
          * called with the result when the input handler's response handler is called. If the provided operation
          * provides an error, the responseHandler is called with that error.
          */
-        let wrappedInputHandler = { (input: InputType, request: OperationDelegateType.RequestType, context: ContextType,
-                                     defaultOperationDelegate: OperationDelegateType,
-                                     responseHandler: OperationDelegateType.ResponseHandlerType) in
-            let operationDelegateToUse = operationDelegate ?? defaultOperationDelegate
-            
+        let wrappedInputHandler = { (input: InputType, request: RequestType, context: ContextType,
+                                     responseHandler: ResponseHandlerType) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>?
             do {
-                try operation(input, context) { result in
+                try outputProvider(input, context) { result in
                     let asyncHandlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                     
                     switch result {
-                    case .response(let output):
-                        asyncHandlerResult = .success(output)
+                    case .response(let result):
+                        asyncHandlerResult = .success(result)
                     case .error(let error):
                         if let smokeReturnableError = error as? SmokeReturnableError {
                             asyncHandlerResult = .smokeReturnableError(smokeReturnableError,
@@ -67,9 +69,10 @@ public extension OperationHandler {
                     
                     OperationHandler.handleWithOutputOperationHandlerResult(
                         handlerResult: asyncHandlerResult,
-                        operationDelegate: operationDelegateToUse,
+                        operationDelegate: operationDelegate,
                         request: request,
-                        responseHandler: responseHandler)
+                        responseHandler: responseHandler,
+                        outputHandler: outputHandler)
                 }
                 
                 // no immediate result
@@ -86,12 +89,15 @@ public extension OperationHandler {
             if let handlerResult = handlerResult {
                 OperationHandler.handleWithOutputOperationHandlerResult(
                     handlerResult: handlerResult,
-                    operationDelegate: operationDelegateToUse,
+                    operationDelegate: operationDelegate,
                     request: request,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    outputHandler: outputHandler)
             }
         }
         
-        self.init(wrappedInputHandler)
+        self.init(inputHandler: wrappedInputHandler,
+                  inputProvider: inputProvider,
+                  operationDelegate: operationDelegate)
     }
 }

@@ -35,7 +35,7 @@ internal struct JSONErrorEncoder: ErrorEncoder {
  Struct conforming to the OperationDelegate protocol that handles operations from HTTP1 requests with JSON encoded
  request and response payloads.
  */
-public struct JSONPayloadHTTP1OperationDelegate: OperationDelegate {
+public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
     
     public init() {
         
@@ -47,10 +47,6 @@ public struct JSONPayloadHTTP1OperationDelegate: OperationDelegate {
         } else {
             throw SmokeOperationsError.validationError(reason: "Input body expected; none found.")
         }
-    }
-    
-    public func getOutputForOperation<OutputType: Encodable>(request: SmokeHTTP1Request, output: OutputType) throws -> Data? {
-        return try JSONEncoder.getFrameworkEncoder().encode(output)
     }
     
     public func handleResponseForOperation<OutputType>(request: SmokeHTTP1Request, output: OutputType,

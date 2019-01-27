@@ -14,40 +14,39 @@
 // SmokeHTTP1Server+startAsOperationServer.swift
 // SmokeOperationsHTTP1
 //
-
 import Foundation
 import SmokeHTTP1
 import NIOHTTP1
 import LoggerAPI
+import SmokeOperations
 
 public extension SmokeHTTP1Server {
     
     /**
      Start the Http Server to handle operations.
- 
+     
      - Parameters:
-        - handlerSelector: the selector that will provide an operation
-          handler for a operation request
-        - context: the context to pass to operation handlers.
+     - handlerSelector: the selector that will provide an operation
+     handler for a operation request
+     - context: the context to pass to operation handlers.
      */
-    public static func startAsOperationServer<ContextType, SelectorType, OperationDelegateType>(
+    public static func startAsOperationServer<ContextType, SelectorType>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
-        defaultOperationDelegate: OperationDelegateType,
         andPort port: Int = ServerDefaults.defaultPort,
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) throws
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
-        SelectorType.OperationDelegateType == OperationDelegateType, OperationDelegateType.RequestType == SmokeHTTP1Request,
-        OperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
-            let handler = OperationServerHTTP1RequestHandler(handlerSelector: handlerSelector,
-                                                             context: context,
-                                                             defaultOperationDelegate: defaultOperationDelegate)
+        SelectorType.DefaultOperationDelegateType.RequestType == SmokeHTTP1Request,
+        SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
+            let handler = OperationServerHTTP1RequestHandler(
+                handlerSelector: handlerSelector,
+                context: context)
             let server = SmokeHTTP1Server(handler: handler,
                                           port: port,
                                           invocationStrategy: invocationStrategy)
             
             Log.info("Server starting on port \(port)...")
-        
+            
             try server.start()
             
             Log.info("Server started on port \(port)...")
