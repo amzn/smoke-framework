@@ -86,8 +86,9 @@ private func verifyErrorResponse(uri: String) {
 
 
     XCTAssertEqual(response.status.code, 400)
+    let body = response.responseComponents.body!
     let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                          from: response.body!.data)
+                                                          from: body.data)
 
     XCTAssertEqual("TheError", output.type)
 }
@@ -100,8 +101,9 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 200)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(OutputAttributes.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         let expectedOutput = OutputAttributes(bodyColor: .blue, isGreat: true)
         XCTAssertEqual(expectedOutput, output)
     }
@@ -112,7 +114,8 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 200)
-        XCTAssertNil(response.body)
+        let body = response.responseComponents.body
+        XCTAssertNil(body)
     }
   
     func testInputValidationError() {
@@ -121,8 +124,9 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("ValidationError", output.type)
     }
@@ -133,8 +137,9 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 500)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InternalError", output.type)
     }
@@ -150,8 +155,9 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InvalidOperation", output.type)
     }
@@ -162,8 +168,9 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InvalidOperation", output.type)
     }

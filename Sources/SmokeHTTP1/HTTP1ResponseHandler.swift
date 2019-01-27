@@ -18,6 +18,7 @@
 import Foundation
 import NIO
 import NIOHTTP1
+import SmokeOperations
 
 /**
  A protocol that specifies a handler for a HTTP response.
@@ -29,9 +30,9 @@ public protocol HTTP1ResponseHandler {
  
      - Parameters:
         - status: the status to provide in the response.
-        - body: the content type and data to use for the response.
+        - responseComponents: the components to send in the response.
      */
-    func complete(status: HTTPResponseStatus, body: (contentType: String, data: Data)?)
+    func complete(status: HTTPResponseStatus, responseComponents: HTTP1ServerResponseComponents)
     
     /**
      Function used to provide a response to a HTTP request. The response will not be
@@ -42,12 +43,12 @@ public protocol HTTP1ResponseHandler {
         - body: the content type and data to use for the response.
      */
     func completeSilently(status: HTTPResponseStatus,
-                          body: (contentType: String, data: Data)?)
+                          responseComponents: HTTP1ServerResponseComponents)
 }
 
 public extension HTTP1ResponseHandler {
     func completeSilently(status: HTTPResponseStatus,
-                          body: (contentType: String, data: Data)?) {
-        complete(status: status, body: body)
+                          responseComponents: HTTP1ServerResponseComponents) {
+        complete(status: status, responseComponents: responseComponents)
     }
 }

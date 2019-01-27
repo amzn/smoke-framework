@@ -42,7 +42,8 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationDe
         // this is the ping url
         if requestHead.uri == PingParameters.uri {
             let body = (contentType: "text/plain", data: PingParameters.payload)
-            responseHandler.completeSilently(status: .ok, body: body)
+            let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
+            responseHandler.completeSilently(status: .ok, responseComponents: responseComponents)
             
             return
         }
