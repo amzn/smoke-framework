@@ -24,15 +24,16 @@ public extension OperationHandler {
        returns a result with an empty body.
      
      - Parameters:
+        - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
+          handling the operation.
      */
     public init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             inputProvider: @escaping (RequestType) throws -> InputType,
-            outputProvider: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
+            operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestType == OperationDelegateType.RequestType,
@@ -47,7 +48,7 @@ public extension OperationHandler {
                                      responseHandler: ResponseHandlerType) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>?
             do {
-                try outputProvider(input, context) { error in
+                try operation(input, context) { error in
                     let asyncHandlerResult: NoOutputOperationHandlerResult<ErrorType>
                     
                     if let error = error {

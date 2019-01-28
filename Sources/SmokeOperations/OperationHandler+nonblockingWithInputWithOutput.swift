@@ -24,16 +24,18 @@ public extension OperationHandler {
        returns a result body.
      
      - Parameters:
+        - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
+        - outputHandler: function that completes the response with the provided output.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
+          handling the operation.
      */
     public init<InputType: Validatable, OutputType: Validatable,
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             inputProvider: @escaping (RequestType) throws -> InputType,
-            outputProvider: @escaping ((InputType, ContextType, @escaping
+            operation: @escaping ((InputType, ContextType, @escaping
                 (SmokeResult<OutputType>) -> Void) throws -> Void),
             outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void),
             allowedErrors: [(ErrorType, Int)],
@@ -50,7 +52,7 @@ public extension OperationHandler {
                                      responseHandler: ResponseHandlerType) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>?
             do {
-                try outputProvider(input, context) { result in
+                try operation(input, context) { result in
                     let asyncHandlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                     
                     switch result {

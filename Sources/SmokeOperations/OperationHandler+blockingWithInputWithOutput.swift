@@ -24,16 +24,18 @@ public extension OperationHandler {
       a result body.
      
      - Parameters:
+        - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
+        - outputHandler: function that completes the response with the provided output.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
+          handling the operation.
      */
     public init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: OperationDelegate>(
             inputProvider: @escaping (RequestType) throws -> InputType,
-            outputProvider: @escaping (InputType, ContextType) throws -> OutputType,
+            operation: @escaping (InputType, ContextType) throws -> OutputType,
             outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
@@ -49,7 +51,7 @@ public extension OperationHandler {
                                      responseHandler: OperationDelegateType.ResponseHandlerType) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
             do {
-                let output = try outputProvider(input, context)
+                let output = try operation(input, context)
                 
                 handlerResult = .success(output)
             } catch let smokeReturnableError as SmokeReturnableError {

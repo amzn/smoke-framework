@@ -54,7 +54,7 @@ public extension SmokeHTTP1HandlerSelector {
         
         let handler = OperationHandler(
             inputProvider: inputProvider,
-            outputProvider: operation,
+            operation: operation,
             outputHandler: outputHandler,
             allowedErrors: allowedErrors,
             operationDelegate: defaultOperationDelegate)
@@ -98,7 +98,7 @@ public extension SmokeHTTP1HandlerSelector {
             
             let handler = OperationHandler(
                 inputProvider: inputProvider,
-                outputProvider: operation,
+                operation: operation,
                 outputHandler: outputHandler,
                 allowedErrors: allowedErrors,
                 operationDelegate: operationDelegate)
