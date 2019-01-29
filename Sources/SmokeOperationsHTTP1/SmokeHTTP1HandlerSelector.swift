@@ -14,7 +14,6 @@
 //  SmokeHTTP1HandlerSelector.swift
 //  SmokeOperationsHTTP1
 //
-
 import Foundation
 import SmokeOperations
 import NIOHTTP1
@@ -25,26 +24,34 @@ import NIOHTTP1
  */
 public protocol SmokeHTTP1HandlerSelector {
     associatedtype ContextType
-    associatedtype OperationDelegateType: OperationDelegate
+    associatedtype DefaultOperationDelegateType: HTTP1OperationDelegate
+    
+    /// Get the instance of the Default OperationDelegate type
+    var defaultOperationDelegate: DefaultOperationDelegateType { get }
     
     /**
      Gets the handler to use for an operation with the provided http request
      head.
- 
+     
      - Parameters
-        - requestHead: the request head of an incoming operation.
+     - requestHead: the request head of an incoming operation.
      */
-    func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> OperationHandler<ContextType, OperationDelegateType>
+    func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws
+        -> OperationHandler<ContextType,
+        DefaultOperationDelegateType.RequestType,
+        DefaultOperationDelegateType.ResponseHandlerType>
     
     /**
      Adds a handler for the specified uri and http method.
- 
+     
      - Parameters:
-        - uri: The uri to add the handler for.
-        - httpMethod: the http method to add the handler for.
-        - handler: the handler to add.
+     - uri: The uri to add the handler for.
+     - httpMethod: the http method to add the handler for.
+     - handler: the handler to add.
      */
     mutating func addHandlerForUri(_ uri: String,
                                    httpMethod: HTTPMethod,
-                                   handler: OperationHandler<ContextType, OperationDelegateType>)
+                                   handler: OperationHandler<ContextType,
+        DefaultOperationDelegateType.RequestType,
+        DefaultOperationDelegateType.ResponseHandlerType>)
 }

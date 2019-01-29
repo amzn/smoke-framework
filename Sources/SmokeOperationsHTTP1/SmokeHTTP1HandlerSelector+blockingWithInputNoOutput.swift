@@ -23,25 +23,67 @@ import NIOHTTP1
 public extension SmokeHTTP1HandlerSelector {
     /**
      Adds a handler for the specified uri and http method.
- 
+     
      - Parameters:
-        - uri: The uri to add the handler for.
-        - operation: the handler method for the operation.
-        - allowedErrors: the errors that can be serialized as responses
-          from the operation and their error codes.
-        - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
+     - uri: The uri to add the handler for.
+     - operation: the handler method for the operation.
+     - allowedErrors: the errors that can be serialized as responses
+     from the operation and their error codes.
      */
     public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType) throws -> ()),
-        allowedErrors: [(ErrorType, Int)],
-        operationDelegate: OperationDelegateType? = nil) {
-            let handler = OperationHandler(operation: operation,
-                                           allowedErrors: allowedErrors,
-                                           operationDelegate: operationDelegate)
+        allowedErrors: [(ErrorType, Int)]) {
+        
+        // don't capture self
+        let delegateToUse = defaultOperationDelegate
+        func inputProvider(request: DefaultOperationDelegateType.RequestType) throws -> InputType {
+            return try delegateToUse.getInputForOperation(
+                request: request)
+        }
+        
+        let handler = OperationHandler(
+            inputProvider: inputProvider,
+            operation: operation,
+            allowedErrors: allowedErrors,
+            operationDelegate: defaultOperationDelegate)
         
         addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
+    }
+    
+    /**
+     Adds a handler for the specified uri and http method.
+     
+     - Parameters:
+     - uri: The uri to add the handler for.
+     - operation: the handler method for the operation.
+     - allowedErrors: the errors that can be serialized as responses
+     from the operation and their error codes.
+     - operationDelegate: an operation-specific delegate to use when
+     handling the operation
+     */
+    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: HTTP1OperationDelegate>(
+        _ uri: String,
+        httpMethod: HTTPMethod,
+        operation: @escaping ((InputType, ContextType) throws -> ()),
+        allowedErrors: [(ErrorType, Int)],
+        operationDelegate: OperationDelegateType)
+        where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+        DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+            
+            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+                return try operationDelegate.getInputForOperation(
+                    request: request)
+            }
+            
+            let handler = OperationHandler(
+                inputProvider: inputProvider,
+                operation: operation,
+                allowedErrors: allowedErrors,
+                operationDelegate: operationDelegate)
+            
+            addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }
 }

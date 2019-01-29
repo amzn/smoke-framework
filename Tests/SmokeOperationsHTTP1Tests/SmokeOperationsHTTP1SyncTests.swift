@@ -39,34 +39,34 @@ func handleBadOperation(input: ExampleInput, context: ExampleContext) throws -> 
 }
 
 fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate> = {
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>()
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>(
+        defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
     newHandlerSelector.addHandlerForUri("exampleoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleExampleOperation,
-                                                                  allowedErrors: allowedErrors))
+                                        operation: handleExampleOperation,
+                                        allowedErrors: allowedErrors)
     
     newHandlerSelector.addHandlerForUri("examplegetoperation", httpMethod: .GET,
-                                        handler: OperationHandler(operation: handleExampleOperation,
-                                                                  allowedErrors: allowedErrors))
+                                        operation: handleExampleOperation,
+                                        allowedErrors: allowedErrors)
     
     newHandlerSelector.addHandlerForUri("examplenobodyoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleExampleOperationVoid,
-                                                                  allowedErrors: allowedErrors))
+                                        operation: handleExampleOperationVoid,
+                                        allowedErrors: allowedErrors)
     
     newHandlerSelector.addHandlerForUri("badoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperation,
-                                                                  allowedErrors: allowedErrors))
+                                        operation: handleBadOperation,
+                                        allowedErrors: allowedErrors)
     
     newHandlerSelector.addHandlerForUri("badoperationvoidresponse", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperationVoid,
-                                                                  allowedErrors: allowedErrors))
+                                        operation: handleBadOperationVoid,
+                                        allowedErrors: allowedErrors)
     
     return newHandlerSelector
 }()
 
 private func verifyPathOutput(uri: String, body: Data) -> OperationResponse {
     let handler = OperationServerHTTP1RequestHandler(handlerSelector: handlerSelector,
-                                                     context: ExampleContext(),
-                                                     defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+                                                     context: ExampleContext())
     
     let httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .POST,

@@ -24,27 +24,28 @@ public extension OperationHandler {
        a result with an empty body.
      
      - Parameters:
+        - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
+          handling the operation.
      */
-    public init<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
+    public init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
+            inputProvider: @escaping (OperationDelegateType.RequestType) throws -> InputType,
             operation: @escaping ((InputType, ContextType) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType? = nil) {
+            operationDelegate: OperationDelegateType)
+    where RequestType == OperationDelegateType.RequestType,
+    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
          * The wrapped input handler takes the provided operation handler and wraps it so that if it
          * returns, the responseHandler is called to indicate success. If the provided operation
          * throws an error, the responseHandler is called with that error.
          */
-        let wrappedInputHandler = { (input: InputType, request: OperationDelegateType.RequestType, context: ContextType,
-                                     defaultOperationDelegate: OperationDelegateType,
-                                     responseHandler: OperationDelegateType.ResponseHandlerType) in
-            let operationDelegateToUse = operationDelegate ?? defaultOperationDelegate
-
+        let wrappedInputHandler = { (input: InputType, request: RequestType, context: ContextType,
+                                     responseHandler: ResponseHandlerType) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>
             do {
                 try operation(input, context)
@@ -60,11 +61,13 @@ public extension OperationHandler {
             
             OperationHandler.handleNoOutputOperationHandlerResult(
                 handlerResult: handlerResult,
-                operationDelegate: operationDelegateToUse,
+                operationDelegate: operationDelegate,
                 request: request,
                 responseHandler: responseHandler)
         }
         
-        self.init(wrappedInputHandler)
+        self.init(inputHandler: wrappedInputHandler,
+                  inputProvider: inputProvider,
+                  operationDelegate: operationDelegate)
     }
 }

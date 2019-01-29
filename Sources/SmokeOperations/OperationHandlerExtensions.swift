@@ -31,7 +31,7 @@ public enum NoOutputOperationHandlerResult<ErrorType: ErrorIdentifiableByDescrip
 /**
  Possible results of an operation that has output.
  */
-public enum WithOutputOperationHandlerResult<OutputType: ValidatableCodable,
+public enum WithOutputOperationHandlerResult<OutputType: Validatable,
         ErrorType: ErrorIdentifiableByDescription> {
     case internalServerError(Swift.Error)
     case validationError(String)
@@ -81,11 +81,13 @@ public extension OperationHandler {
          - request: the current request.
          - responseHandler: the response handler to use.
      */
-    public static func handleNoOutputOperationHandlerResult<ErrorType>(
+    public static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: NoOutputOperationHandlerResult<ErrorType>,
         operationDelegate: OperationDelegateType,
         request: OperationDelegateType.RequestType,
-        responseHandler: OperationDelegateType.ResponseHandlerType) {
+        responseHandler: OperationDelegateType.ResponseHandlerType)
+    where RequestType == OperationDelegateType.RequestType,
+    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             switch handlerResult {
             case .internalServerError(let error):
                 Log.error("Unexpected failure: \(error)")
@@ -130,11 +132,14 @@ public extension OperationHandler {
          - request: the current request.
          - responseHandler: the response handler to use.
      */
-    public static func handleWithOutputOperationHandlerResult<OutputType, ErrorType>(
+    public static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
         operationDelegate: OperationDelegateType,
-        request: OperationDelegateType.RequestType,
-        responseHandler: OperationDelegateType.ResponseHandlerType) {
+        request: RequestType,
+        responseHandler: ResponseHandlerType,
+        outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void))
+    where RequestType == OperationDelegateType.RequestType,
+    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             switch handlerResult {
             case .internalServerError(let error):
                 Log.error("Unexpected failure: \(error)")
@@ -159,10 +164,7 @@ public extension OperationHandler {
                 do {
                     try output.validate()
                     
-                    operationDelegate.handleResponseForOperation(
-                        request: request,
-                        output: output,
-                        responseHandler: responseHandler)
+                    outputHandler(request, output, responseHandler)
                 } catch {
                     Log.error("Serialization error: unable to get response: \(error)")
                     

@@ -14,54 +14,62 @@
 //  StandardSmokeHTTP1HandlerSelector.swift
 //  SmokeOperationsHTTP1
 //
-
 import Foundation
 import SmokeOperations
 import NIOHTTP1
 import LoggerAPI
+import SmokeHTTP1
 
 /**
  Implementation of the SmokeHTTP1HandlerSelector protocol that selects a handler
  based on the case-insensitive uri and HTTP method of the incoming request.
  */
-public struct StandardSmokeHTTP1HandlerSelector<ContextType, OperationDelegateType: OperationDelegate>: SmokeHTTP1HandlerSelector {
-    private var handlerMapping: [String: [HTTPMethod: OperationHandler<ContextType, OperationDelegateType>]] = [:]
+public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDelegateType: HTTP1OperationDelegate>: SmokeHTTP1HandlerSelector {
+    public let defaultOperationDelegate: DefaultOperationDelegateType
     
-    public init() {
+    public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
+        DefaultOperationDelegateType.RequestType,
+        DefaultOperationDelegateType.ResponseHandlerType>
+    
+    private var handlerMapping: [String: [HTTPMethod: SelectorOperationHandlerType]] = [:]
+    
+    public init(defaultOperationDelegate: DefaultOperationDelegateType) {
+        self.defaultOperationDelegate = defaultOperationDelegate
     }
     
     /**
      Gets the handler to use for an operation with the provided http request
      head.
- 
+     
      - Parameters
-        - requestHead: the request head of an incoming operation.
+     - requestHead: the request head of an incoming operation.
      */
-    public func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> OperationHandler<ContextType, OperationDelegateType> {
-        let lowerCasedUri = requestHead.uri.lowercased()
-        let httpMethod = requestHead.method
+    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws -> SelectorOperationHandlerType {
+        let lowerCasedUri = uri.lowercased()
         
         guard let handler = handlerMapping[lowerCasedUri]?[httpMethod] else {
-            throw SmokeOperationsError.invalidOperation(reason: "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+            throw SmokeOperationsError.invalidOperation(reason:
+                "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
         }
         
         Log.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
-            
+        
         return handler
     }
     
     /**
      Adds a handler for the specified uri and http method.
- 
+     
      - Parameters:
-        - uri: The uri to add the handler for.
-        - httpMethod: the http method to add the handler for.
-        - handler: the handler to add.
+     - uri: The uri to add the handler for.
+     - httpMethod: the http method to add the handler for.
+     - handler: the handler to add.
      */
     public mutating func addHandlerForUri(_ uri: String,
                                           httpMethod: HTTPMethod,
-                                          handler: OperationHandler<ContextType, OperationDelegateType>) {
+                                          handler: SelectorOperationHandlerType) {
         let lowerCasedUri = uri.lowercased()
+        
         if var methodMapping = handlerMapping[lowerCasedUri] {
             methodMapping[httpMethod] = handler
             handlerMapping[lowerCasedUri] = methodMapping

@@ -22,13 +22,13 @@ import LoggerAPI
  Struct that handles serialization and de-serialization of request and response
  bodies from and to the shapes required by operation handlers.
  */
-public struct OperationHandler<ContextType, OperationDelegateType: OperationDelegate> {
-    public typealias OperationResultValidatableInputFunction<InputType: ValidatableCodable>
-        = (_ input: InputType, _ request: OperationDelegateType.RequestType, _ context: ContextType,
-           _ defaultOperationDelegate: OperationDelegateType, _ responseHandler: OperationDelegateType.ResponseHandlerType) -> ()
+public struct OperationHandler<ContextType, RequestType, ResponseHandlerType> {
+    public typealias OperationResultValidatableInputFunction<InputType: Validatable>
+        = (_ input: InputType, _ request: RequestType, _ context: ContextType,
+        _ responseHandler: ResponseHandlerType) -> ()
     public typealias OperationResultDataInputFunction
-        = (_ request: OperationDelegateType.RequestType, _ context: ContextType,
-           _ defaultOperationDelegate: OperationDelegateType, _ responseHandler: OperationDelegateType.ResponseHandlerType) -> ()
+        = (_ request: RequestType, _ context: ContextType,
+        _ responseHandler: ResponseHandlerType) -> ()
     
     private let operationFunction: OperationResultDataInputFunction
     
@@ -36,10 +36,9 @@ public struct OperationHandler<ContextType, OperationDelegateType: OperationDele
      * Handle for an operation handler delegates the input to the wrapped handling function
      * constructed at initialization time.
      */
-    public func handle(_ request: OperationDelegateType.RequestType, withContext context: ContextType,
-                       defaultOperationDelegate: OperationDelegateType,
-                       responseHandler: OperationDelegateType.ResponseHandlerType) {
-        return operationFunction(request, context, defaultOperationDelegate, responseHandler)
+    public func handle(_ request: RequestType, withContext context: ContextType,
+                       responseHandler: ResponseHandlerType) {
+        return operationFunction(request, context, responseHandler)
     }
     
     private enum InputDecodeResult<InputType> {
@@ -60,15 +59,16 @@ public struct OperationHandler<ContextType, OperationDelegateType: OperationDele
     /**
      * Convenience initializer that incorporates decoding and validating
      */
-    public init<InputType: ValidatableCodable>(
-        _ inputHandler: @escaping OperationResultValidatableInputFunction<InputType>,
-        operationDelegate: OperationDelegateType? = nil) {
-        let newFunction: OperationResultDataInputFunction = { (request, context, defaultOperationDelegate, responseHandler) in
-            let operationDelegateToUse = operationDelegate ?? defaultOperationDelegate
-            
+    public init<InputType: Validatable, OperationDelegateType: OperationDelegate>(
+        inputHandler: @escaping OperationResultValidatableInputFunction<InputType>,
+        inputProvider: @escaping (RequestType) throws -> InputType,
+        operationDelegate: OperationDelegateType)
+    where RequestType == OperationDelegateType.RequestType,
+    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        let newFunction: OperationResultDataInputFunction = { (request, context, responseHandler) in
             let inputDecodeResult: InputDecodeResult<InputType>
             do {
-                let input: InputType = try operationDelegateToUse.getInputForOperation(request: request)
+                let input: InputType = try inputProvider(request)
                 
                 inputDecodeResult = .ok(input: input)
             } catch DecodingError.keyNotFound(_, let context) {
@@ -92,9 +92,10 @@ public struct OperationHandler<ContextType, OperationDelegateType: OperationDele
                     Log.error("DecodingError: \(description)")
                 }
                 
-                operationDelegateToUse.handleResponseForDecodingError(request: request,
-                                                                      message: description,
-                                                                      responseHandler: responseHandler)
+                operationDelegate.handleResponseForDecodingError(
+                    request: request,
+                    message: description,
+                    responseHandler: responseHandler)
             case .ok(input: let input):
                 do {
                     // attempt to validate the input
@@ -102,20 +103,22 @@ public struct OperationHandler<ContextType, OperationDelegateType: OperationDele
                 } catch SmokeOperationsError.validationError(let reason) {
                     Log.info("ValidationError: \(reason)")
                     
-                    operationDelegateToUse.handleResponseForValidationError(request: request,
-                                                                            message: reason,
-                                                                            responseHandler: responseHandler)
+                    operationDelegate.handleResponseForValidationError(
+                        request: request,
+                        message: reason,
+                        responseHandler: responseHandler)
                     return
                 } catch {
                     Log.info("ValidationError: \(error)")
                     
-                    operationDelegateToUse.handleResponseForValidationError(request: request,
-                                                                            message: nil,
-                                                                            responseHandler: responseHandler)
+                    operationDelegate.handleResponseForValidationError(
+                        request: request,
+                        message: nil,
+                        responseHandler: responseHandler)
                     return
                 }
                 
-                inputHandler(input, request, context, defaultOperationDelegate, responseHandler)
+                inputHandler(input, request, context, responseHandler)
             }
         }
         
