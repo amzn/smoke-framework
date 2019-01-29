@@ -21,7 +21,7 @@ public struct AdditionalHeadersOperationHTTPOutput<AdditionalHeadersType: Encoda
     public let bodyEncodable: AdditionalHeadersType?
     public let additionalHeadersEncodable: AdditionalHeadersType?
     
-    public init(additionalHeadersEncodable: AdditionalHeadersType?) {
+    public init(additionalHeadersEncodable: AdditionalHeadersType) {
         self.bodyEncodable = nil
         self.additionalHeadersEncodable = additionalHeadersEncodable
     }

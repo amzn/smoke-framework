@@ -21,7 +21,7 @@ public struct BodyOperationHTTPOutput<BodyType: Encodable>: OperationHTTP1Output
     public let bodyEncodable: BodyType?
     public let additionalHeadersEncodable: BodyType?
     
-    public init(bodyEncodable: BodyType?) {
+    public init(bodyEncodable: BodyType) {
         self.bodyEncodable = bodyEncodable
         self.additionalHeadersEncodable = nil
     }

@@ -32,6 +32,8 @@ public protocol OperationHTTP1InputProtocol {
      May return one of its constituent parts if of a compatible type.
  
      - Parameters:
+        - queryDecodableProvider: provider for the decoded query for this instance.
+        - pathDecodableProvider: provider for the decoded http path for this instance.
         - bodyDecodableProvider: provider for the decoded body for this instance.
         - headersDecodableProvider: provider for the decoded headers for this instance.
      */
