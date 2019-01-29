@@ -19,6 +19,9 @@ import Foundation
 import SmokeOperations
 import SmokeHTTP1
 import LoggerAPI
+import HTTPPathCoding
+import HTTPHeadersCoding
+import QueryCoding
 
 internal struct MimeTypes {
     static let json = "application/json"
@@ -36,39 +39,144 @@ internal struct JSONErrorEncoder: ErrorEncoder {
  request and response payloads.
  */
 public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
-    
     public init() {
         
     }
     
-    public func getInputForOperation<InputType: Decodable>(request: SmokeHTTP1Request) throws -> InputType {
-        if let body = request.body {
-            return try JSONDecoder.getFrameworkDecoder().decode(InputType.self, from: body)
-        } else {
-            throw SmokeOperationsError.validationError(reason: "Input body expected; none found.")
+    public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: SmokeHTTP1Request) throws -> InputType {
+        
+        func queryDecodableProvider() throws -> InputType.QueryType {
+            return try QueryDecoder().decode(InputType.QueryType.self,
+                                             from: request.query)
         }
+        
+        func pathDecodableProvider() throws -> InputType.PathType {
+            return try HTTPPathDecoder().decode(InputType.PathType.self,
+                                                fromShape: request.pathShape)
+        }
+        
+        func bodyDecodableProvider() throws -> InputType.BodyType {
+            if let body = request.body {
+                return try JSONDecoder.getFrameworkDecoder().decode(InputType.BodyType.self, from: body)
+            } else {
+                throw SmokeOperationsError.validationError(reason: "Input body expected; none found.")
+            }
+        }
+        
+        func headersDecodableProvider() throws -> InputType.HeadersType {
+            let headers: [(String, String?)] =
+                request.httpRequestHead.headers.map { header in
+                    return (header.name, header.value)
+            }
+            return try HTTPHeadersDecoder().decode(InputType.HeadersType.self,
+                                                   from: headers)
+        }
+        
+        return try InputType.compose(queryDecodableProvider: queryDecodableProvider,
+                                     pathDecodableProvider: pathDecodableProvider,
+                                     bodyDecodableProvider: bodyDecodableProvider,
+                                     headersDecodableProvider: headersDecodableProvider)
+    }
+    
+    public func getInputForOperation<InputType>(request: SmokeHTTP1Request,
+                                                location: OperationInputHTTPLocation) throws
+        -> InputType where InputType: Decodable {
+        
+            switch location {
+            case .body:
+                let wrappedInput: BodyOperationHTTPInput<InputType> =
+                    try getInputForOperation(request: request)
+                
+                return wrappedInput.body
+            case .query:
+                let wrappedInput: QueryOperationHTTPInput<InputType> =
+                    try getInputForOperation(request: request)
+                
+                return wrappedInput.query
+            case .path:
+                let wrappedInput: PathOperationHTTPInput<InputType> =
+                    try getInputForOperation(request: request)
+                
+                return wrappedInput.path
+            case .headers:
+                let wrappedInput: HeadersOperationHTTPInput<InputType> =
+                    try getInputForOperation(request: request)
+                
+                return wrappedInput.headers
+            }
     }
     
     public func handleResponseForOperation<OutputType>(request: SmokeHTTP1Request, output: OutputType,
-                                                       responseHandler: HTTP1ResponseHandler) where OutputType: Encodable {
-        let encodedOutput: Data
+                                                       responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTP1OutputProtocol {
+        let body: (contentType: String, data: Data)?
         
-        do {
-            encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(output)
-        } catch {
-            Log.error("Serialization error: unable to encode response: \(error)")
+        if let bodyEncodable = output.bodyEncodable {
+            let encodedOutput: Data
+            do {
+                encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(bodyEncodable)
+            } catch {
+                Log.error("Serialization error: unable to encode response: \(error)")
+                
+                handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+                return
+            }
             
-            handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
-            return
+            body = (contentType: MimeTypes.json, data: encodedOutput)
+        } else {
+            body = nil
         }
         
-        let body = (contentType: MimeTypes.json, data: encodedOutput)
+        let additionalHeaders: [(String, String)]
+        if let additionalHeadersEncodable = output.additionalHeadersEncodable {
+            let headers: [(String, String?)]
+            do {
+                headers = try HTTPHeadersEncoder().encode(additionalHeadersEncodable)
+            } catch {
+                Log.error("Serialization error: unable to encode response: \(error)")
+                
+                handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+                return
+            }
+            
+            additionalHeaders = headers.compactMap { header in
+                guard let value = header.1 else {
+                    return nil
+                }
+                
+                return (header.0, value)
+            }
+        } else {
+            additionalHeaders = []
+        }
         
         let responseComponents = HTTP1ServerResponseComponents(
-            additionalHeaders: [],
+            additionalHeaders: additionalHeaders,
             body: body)
         
         responseHandler.complete(status: .ok, responseComponents: responseComponents)
+    }
+    
+    public func handleResponseForOperation<OutputType>(
+            request: SmokeHTTP1Request,
+            location: OperationOutputHTTPLocation,
+            output: OutputType,
+            responseHandler: HTTP1ResponseHandler) where OutputType: Encodable {
+        switch location {
+        case .body:
+            let wrappedOutput = BodyOperationHTTPOutput<OutputType>(
+                bodyEncodable: output)
+            
+            handleResponseForOperation(request: request,
+                                       output: wrappedOutput,
+                                       responseHandler: responseHandler)
+        case .headers:
+            let wrappedOutput = AdditionalHeadersOperationHTTPOutput<OutputType>(
+                additionalHeadersEncodable: output)
+            
+            handleResponseForOperation(request: request,
+                                       output: wrappedOutput,
+                                       responseHandler: responseHandler)
+        }
     }
     
     public func handleResponseForOperationWithNoOutput(request: SmokeHTTP1Request,
@@ -95,7 +203,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
         responseHandler.complete(status: .custom(code: UInt(operationFailure.code), reasonPhrase: operationFailure.error.description),
-                                         responseComponents: responseComponents)
+                                 responseComponents: responseComponents)
     }
     
     public func handleResponseForInternalServerError(request: SmokeHTTP1Request,
@@ -130,6 +238,6 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
         responseHandler.complete(status: .custom(code: UInt(code), reasonPhrase: reason),
-                                         responseComponents: responseComponents)
+                                 responseComponents: responseComponents)
     }
 }

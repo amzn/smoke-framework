@@ -11,21 +11,18 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeHTTP1Request.swift
+//  BodyOperationHTTPOutput.swift
 //  SmokeOperationsHTTP1
 //
 
 import Foundation
-import NIOHTTP1
-import SmokeHTTP1
-import ShapeCoding
 
-/**
- Structure representing an incoming HTTP1 request.
- */
-public struct SmokeHTTP1Request {
-    public let httpRequestHead: HTTPRequestHead
-    public let query: String
-    public let pathShape: Shape
-    public let body: Data?
+public struct BodyOperationHTTPOutput<BodyType: Encodable>: OperationHTTP1OutputProtocol {
+    public let bodyEncodable: BodyType?
+    public let additionalHeadersEncodable: BodyType?
+    
+    public init(bodyEncodable: BodyType?) {
+        self.bodyEncodable = bodyEncodable
+        self.additionalHeadersEncodable = nil
+    }
 }
