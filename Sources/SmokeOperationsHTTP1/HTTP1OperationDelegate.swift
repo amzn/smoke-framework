@@ -11,8 +11,8 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  OperationDelegate.swift
-//  SmokeOperations
+//  HTTP1OperationDelegate.swift
+//  SmokeOperationsHTTP1
 //
 import Foundation
 import SmokeOperations
