@@ -11,21 +11,25 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeHTTP1Request.swift
+//  OperationHTTP1OutputProtocol.swift
 //  SmokeOperationsHTTP1
 //
 
 import Foundation
-import NIOHTTP1
-import SmokeHTTP1
-import ShapeCoding
+import SmokeOperations
 
 /**
- Structure representing an incoming HTTP1 request.
+ A protocol that represents the output from an operation to be
+ send as a HTTP response.
  */
-public struct SmokeHTTP1Request {
-    public let httpRequestHead: HTTPRequestHead
-    public let query: String
-    public let pathShape: Shape
-    public let body: Data?
+public protocol OperationHTTP1OutputProtocol {
+    associatedtype BodyType: Encodable
+    associatedtype AdditionalHeadersType: Encodable
+
+    /// An instance of a type that is encodable to a body
+    var bodyEncodable: BodyType? { get }
+    /// An instance of a type that is encodable to additional headers
+    var additionalHeadersEncodable: AdditionalHeadersType? { get }
 }
+
+public typealias ValidatableOperationHTTP1OutputProtocol = Validatable & OperationHTTP1OutputProtocol

@@ -19,6 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/IBM-Swift/LoggerAPI.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/apple/swift-nio.git", from: "1.0.0"),
+        .package(url: "https://github.com/amzn/smoke-http.git", from: "0.6.2"),
     ],
     targets: [
         .target(
@@ -29,7 +30,8 @@ let package = Package(
             dependencies: ["LoggerAPI"]),
         .target(
             name: "SmokeOperationsHTTP1",
-            dependencies: ["SmokeOperations", "SmokeHTTP1"]),
+            dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",
+                           "HTTPPathCoding", "HTTPHeadersCoding"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),

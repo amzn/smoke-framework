@@ -14,11 +14,12 @@
 // TestConfiguration.swift
 // SmokeOperationsTests
 //
-
 import Foundation
-@testable import SmokeOperations
+import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
+@testable import SmokeOperationsHTTP1
+import XCTest
 
 struct ExampleContext {
 }
@@ -52,7 +53,7 @@ class TestHttpResponseHandler: HTTP1ResponseHandler {
     func complete(status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
         response = OperationResponse(status: status,
-                                    responseComponents: responseComponents)
+                                     responseComponents: responseComponents)
     }
 }
 
@@ -93,7 +94,7 @@ struct ErrorResponse: Codable {
     }
 }
 
-struct ExampleInput: Codable, Validatable {
+struct ExampleInput: Codable, Validatable, Equatable {
     let theID: String
     
     func validate() throws {
@@ -103,9 +104,56 @@ struct ExampleInput: Codable, Validatable {
     }
 }
 
-extension ExampleInput : Equatable {
-    static func ==(lhs: ExampleInput, rhs: ExampleInput) -> Bool {
-        return lhs.theID == rhs.theID
+struct ExampleQueryInput: Codable {
+    let theParameter: String
+}
+
+struct ExamplePathInput: Codable {
+    let theToken: String
+}
+
+struct ExampleBodyInput: Codable {
+    let theID: String
+}
+
+struct ExampleHeaderInput: Codable {
+    let theHeader: String
+}
+
+struct ExampleHTTP1Input: OperationHTTP1InputProtocol, Validatable, Equatable {
+    typealias QueryType = ExampleQueryInput
+    typealias PathType = ExamplePathInput
+    typealias BodyType = ExampleBodyInput
+    typealias HeadersType = ExampleHeaderInput
+    
+    let theID: String
+    let theToken: String
+    let theParameter: String
+    let theHeader: String
+    
+    func validate() throws {
+        if theID.count != 12 {
+            throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
+        }
+    }
+    
+    static func compose(
+            queryDecodableProvider: () throws -> ExampleQueryInput,
+            pathDecodableProvider: () throws -> ExamplePathInput,
+            bodyDecodableProvider: () throws -> ExampleBodyInput,
+            headersDecodableProvider: () throws -> ExampleHeaderInput) throws -> ExampleHTTP1Input {
+        return ExampleHTTP1Input(theID: try bodyDecodableProvider().theID,
+                                 theToken: try pathDecodableProvider().theToken,
+                                 theParameter: try queryDecodableProvider().theParameter,
+                                 theHeader: try headersDecodableProvider().theHeader)
+    }
+}
+
+extension ExampleHTTP1Input {
+    func validateForTest() {
+        XCTAssertEqual("headerValue", theHeader)
+        XCTAssertEqual("muchParameter", theParameter)
+        XCTAssertEqual("suchToken", theToken)
     }
 }
 
@@ -114,7 +162,7 @@ enum BodyColor: String, Codable {
     case blue = "BLUE"
 }
 
-struct OutputAttributes: Codable, Validatable {
+struct OutputAttributes: Codable, Validatable, Equatable {
     let bodyColor: BodyColor
     let isGreat: Bool
     
@@ -125,9 +173,79 @@ struct OutputAttributes: Codable, Validatable {
     }
 }
 
-extension OutputAttributes : Equatable {
-    static func ==(lhs: OutputAttributes, rhs: OutputAttributes) -> Bool {
-        return lhs.bodyColor == rhs.bodyColor
-            && lhs.isGreat == rhs.isGreat
+struct OutputBodyAttributes: Codable, Equatable {
+    let bodyColor: BodyColor
+    let isGreat: Bool
+}
+
+struct OutputHeaderAttributes: Codable {
+    let theHeader: String
+}
+
+struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatable {
+    typealias BodyType = OutputBodyAttributes
+    typealias AdditionalHeadersType = OutputHeaderAttributes
+    
+    let bodyColor: BodyColor
+    let isGreat: Bool
+    let theHeader: String
+    
+    var bodyEncodable: OutputBodyAttributes? {
+        return OutputBodyAttributes(bodyColor: bodyColor, isGreat: isGreat)
     }
+    
+    var additionalHeadersEncodable: OutputHeaderAttributes? {
+        return OutputHeaderAttributes(theHeader: theHeader)
+    }
+    
+    func validate() throws {
+        if case .yellow = bodyColor {
+            throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
+        }
+    }
+}
+
+func verifyPathOutput<SelectorType>(uri: String, body: Data,
+                                    handlerSelector: SelectorType,
+                                    additionalHeaders: [(String, String)] = []) -> OperationResponse
+where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
+    SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
+    let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType>(
+        handlerSelector: handlerSelector,
+        context: ExampleContext())
+    
+    var httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
+                                          method: .POST,
+                                          uri: uri)
+    additionalHeaders.forEach { header in
+        httpRequestHead.headers.add(name: header.0, value: header.1)
+    }
+    
+    let responseHandler = TestHttpResponseHandler()
+    
+    handler.handle(requestHead: httpRequestHead, body: body,
+                   responseHandler: responseHandler)
+    
+    return responseHandler.response!
+}
+
+func verifyErrorResponse<SelectorType>(uri: String,
+                                       handlerSelector: SelectorType,
+                                       additionalHeaders: [(String, String)] = []) throws
+where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
+    SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
+    let response = verifyPathOutput(uri: uri,
+                                    body: serializedAlternateInput.data(using: .utf8)!,
+                                    handlerSelector: handlerSelector,
+                                    additionalHeaders: additionalHeaders)
+    
+    
+    XCTAssertEqual(response.status.code, 400)
+    let body = response.responseComponents.body!
+    let output = try JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
+                                                              from: body.data)
+    
+    XCTAssertEqual("TheError", output.type)
 }

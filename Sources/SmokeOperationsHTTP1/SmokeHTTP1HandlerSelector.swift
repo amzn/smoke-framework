@@ -17,6 +17,7 @@
 import Foundation
 import SmokeOperations
 import NIOHTTP1
+import ShapeCoding
 
 /**
  Protocol that provides the handler to use for an operation using the
@@ -32,26 +33,26 @@ public protocol SmokeHTTP1HandlerSelector {
     /**
      Gets the handler to use for an operation with the provided http request
      head.
-     
+ 
      - Parameters
-     - requestHead: the request head of an incoming operation.
+        - requestHead: the request head of an incoming operation.
      */
     func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws
-        -> OperationHandler<ContextType,
-        DefaultOperationDelegateType.RequestType,
-        DefaultOperationDelegateType.ResponseHandlerType>
+        -> (OperationHandler<ContextType,
+            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.ResponseHandlerType>, Shape)
     
     /**
      Adds a handler for the specified uri and http method.
-     
+ 
      - Parameters:
-     - uri: The uri to add the handler for.
-     - httpMethod: the http method to add the handler for.
-     - handler: the handler to add.
+        - uri: The uri to add the handler for.
+        - httpMethod: the http method to add the handler for.
+        - handler: the handler to add.
      */
     mutating func addHandlerForUri(_ uri: String,
                                    httpMethod: HTTPMethod,
                                    handler: OperationHandler<ContextType,
-        DefaultOperationDelegateType.RequestType,
-        DefaultOperationDelegateType.ResponseHandlerType>)
+                                    DefaultOperationDelegateType.RequestType,
+                                    DefaultOperationDelegateType.ResponseHandlerType>)
 }

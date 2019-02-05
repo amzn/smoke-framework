@@ -19,6 +19,7 @@ import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 import LoggerAPI
+import ShapeCoding
 
 internal struct PingParameters {
     static let uri = "/ping"
@@ -30,12 +31,12 @@ internal struct PingParameters {
  incoming Http request as an operation.
  */
 struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1RequestHandler
-    where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
-    SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
-HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
+        where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
+        SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+        HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
     let handlerSelector: SelectorType
     let context: ContextType
-    
+
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler) {
         // this is the ping url
         if requestHead.uri == PingParameters.uri {
@@ -46,18 +47,23 @@ HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandle
             return
         }
         
-        let path = requestHead.uri
-        
+        let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
+        let path = String(uriComponents[0])
+        let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
+
         // get the handler to use
         let handler: OperationHandler<ContextType, SmokeHTTP1Request, HTTP1ResponseHandler>
+        let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
         
         do {
-            handler = try handlerSelector.getHandlerForOperation(
+            (handler, shape) = try handlerSelector.getHandlerForOperation(
                 path,
                 httpMethod: requestHead.method)
         } catch SmokeOperationsError.invalidOperation(reason: let reason) {
             let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                      query: query,
+                                                      pathShape: .null,
                                                       body: body)
             
             defaultOperationDelegate.handleResponseForInvalidOperation(
@@ -68,6 +74,8 @@ HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandle
         } catch {
             Log.error("Unexpected handler selection error: \(error))")
             let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                      query: query,
+                                                      pathShape: .null,
                                                       body: body)
             
             defaultOperationDelegate.handleResponseForInternalServerError(
@@ -77,6 +85,8 @@ HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandle
         }
         
         let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                  query: query,
+                                                  pathShape: shape,
                                                   body: body)
         
         // let it be handled

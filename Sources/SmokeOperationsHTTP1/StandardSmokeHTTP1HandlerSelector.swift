@@ -19,6 +19,8 @@ import SmokeOperations
 import NIOHTTP1
 import LoggerAPI
 import SmokeHTTP1
+import HTTPPathCoding
+import ShapeCoding
 
 /**
  Implementation of the SmokeHTTP1HandlerSelector protocol that selects a handler
@@ -28,10 +30,18 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     public let defaultOperationDelegate: DefaultOperationDelegateType
     
     public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
-        DefaultOperationDelegateType.RequestType,
-        DefaultOperationDelegateType.ResponseHandlerType>
+            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.ResponseHandlerType>
+    
+    private struct TokenizedHandler {
+        let template: String
+        let templateSegments: [HTTPPathSegment]
+        let httpMethod: HTTPMethod
+        let operationHandler: SelectorOperationHandlerType
+    }
     
     private var handlerMapping: [String: [HTTPMethod: SelectorOperationHandlerType]] = [:]
+    private var tokenizedHandlerMapping: [TokenizedHandler] = []
     
     public init(defaultOperationDelegate: DefaultOperationDelegateType) {
         self.defaultOperationDelegate = defaultOperationDelegate
@@ -40,34 +50,71 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     /**
      Gets the handler to use for an operation with the provided http request
      head.
-     
+ 
      - Parameters
-     - requestHead: the request head of an incoming operation.
+        - requestHead: the request head of an incoming operation.
      */
-    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws -> SelectorOperationHandlerType {
+    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws -> (SelectorOperationHandlerType, Shape) {
         let lowerCasedUri = uri.lowercased()
         
         guard let handler = handlerMapping[lowerCasedUri]?[httpMethod] else {
-            throw SmokeOperationsError.invalidOperation(reason:
-                "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+            guard let tokenizedHandler = getTokenizedHandler(uri: uri,
+                                                             httpMethod: httpMethod) else {
+                throw SmokeOperationsError.invalidOperation(reason:
+                    "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+                }
+            
+                return tokenizedHandler
         }
         
         Log.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
         
-        return handler
+        return (handler, .null)
+    }
+    
+    private func getTokenizedHandler(uri: String,
+                                     httpMethod: HTTPMethod) -> (SelectorOperationHandlerType, Shape)? {
+        let pathSegments = HTTPPathSegment.getPathSegmentsForPath(uri: uri)
+        
+        // iterate through each tokenized handler
+        for handler in tokenizedHandlerMapping {
+            // ignore if not the correct method
+            guard handler.httpMethod == httpMethod else {
+                continue
+            }
+            
+            let shape: Shape
+            do {
+                shape = try pathSegments.getShapeForTemplate(templateSegments: handler.templateSegments)
+            } catch HTTPPathDecoderErrors.pathDoesNotMatchTemplate(let reason) {
+                Log.verbose("Path '\(uri)' did not match template '\(handler.template)': \(reason)")
+                continue
+            } catch {
+                Log.verbose("Path '\(uri)' did not match template '\(handler.template)': \(error)")
+                continue
+            }
+            
+            return (handler.operationHandler, shape)
+        }
+        
+        return nil
     }
     
     /**
      Adds a handler for the specified uri and http method.
-     
+ 
      - Parameters:
-     - uri: The uri to add the handler for.
-     - httpMethod: the http method to add the handler for.
-     - handler: the handler to add.
+        - uri: The uri to add the handler for.
+        - httpMethod: the http method to add the handler for.
+        - handler: the handler to add.
      */
     public mutating func addHandlerForUri(_ uri: String,
                                           httpMethod: HTTPMethod,
                                           handler: SelectorOperationHandlerType) {
+        if addTokenizedUri(uri, httpMethod: httpMethod, handler: handler) {
+            return
+        }
+        
         let lowerCasedUri = uri.lowercased()
         
         if var methodMapping = handlerMapping[lowerCasedUri] {
@@ -76,6 +123,32 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
         } else {
             handlerMapping[lowerCasedUri] = [httpMethod: handler]
         }
+    }
+    
+    private mutating func addTokenizedUri(_ uri: String,
+                                          httpMethod: HTTPMethod,
+                                          handler: SelectorOperationHandlerType) -> Bool {
+        let tokenizedPath: [HTTPPathSegment]
+        do {
+            tokenizedPath = try HTTPPathSegment.tokenize(template: uri)
+        } catch {
+            return false
+        }
+        
+        // if this uri doesn't have any tokens (is a single string token)
+        if tokenizedPath.count == 1 && tokenizedPath[0].tokens.count == 1,
+            case .string = tokenizedPath[0].tokens[0] {
+                return false
+        }
+        
+        let tokenizedHandler = TokenizedHandler(
+            template: uri,
+            templateSegments: tokenizedPath,
+            httpMethod: httpMethod, operationHandler: handler)
+        
+        tokenizedHandlerMapping.append(tokenizedHandler)
+        
+        return true
     }
 }
 
