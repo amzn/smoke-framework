@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/swift-4.1-orange.svg?style=flat" alt="Swift 4.1 Compatible">
 </a>
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-4.2-orange.svg?style=flat" alt="Swift 4.1 Compatible">
+<img src="https://img.shields.io/badge/swift-4.2-orange.svg?style=flat" alt="Swift 4.2 Compatible">
 </a>
 <img src="https://img.shields.io/badge/license-Apache2-blue.svg?style=flat" alt="Apache 2">
 </p>
@@ -41,7 +41,7 @@ to your Package.swift-
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "0.6.0"))
+    .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "0.8.0"))
 ]
 ```
 
@@ -58,6 +58,11 @@ func handleTheOperation(input: OperationInput, context: MyApplicationContext) th
 
 This particular operation function accepts the input to the operation and the application-specific context while
 returning the output from the operation.
+
+For HTTP1, the operation input can conform to `OperationHTTP1InputProtocol`, which defines how the input type is constructed from
+the HTTP1 request. Similarly, the operation output can conform to `OperationHTTP1OutputProtocol`, which defines how to construct
+the HTTP1 response from the output type. As an alternative, both operation input and output can conform to the `Codable` protocol if
+they are constructed from only one part of the HTTP1 request and response.
 
 The Smoke Framework also supports additional built-in and custom operation function signatures. See the *The Operation Function*
 and *Extension Points* sections for more information.
@@ -80,7 +85,7 @@ public typealias HandlerSelectorType =
     StandardSmokeHTTP1HandlerSelector<MyApplicationContext, JSONPayloadHTTP1OperationDelegate>
 
 public func createHandlerSelector() -> HandlerSelectorType {
-    var newHandler = HandlerSelectorType()
+    var newHandler = HandlerSelectorType(defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
     
     newHandler.addHandlerForUri("/theOperationPath", httpMethod: .POST,
                                 operation: handleTheOperation,
@@ -92,12 +97,14 @@ public func createHandlerSelector() -> HandlerSelectorType {
 
 * `StandardSmokeHTTP1HandlerSelector` takes two generic parameters-
  * The type of the context instance to use for the application.
- * The type of an operation delegate.
+ * The type of the default operation delegate.
 * Each handler added requires the following parameters to be specified-
  * The operation URI that must be matched by the incoming request to select the handler.
  * The HTTP method that must be matched by the incoming request to select the handler.
  * The function to be invoked.
  * The errors that can be returned to the caller from this handler.
+ * The location in the HTTP1 request to construct the operation input type from (only required if the input type conforms to `Codable`)
+ * The location in the HTTP1 response that the output type represents (only required if the output type conforms to `Codable`)
 
 ## Step 3: Setting up the Application Server
 
@@ -116,8 +123,7 @@ let operationContext = ...
 do {
     try SmokeHTTP1Server.startAsOperationServer(
         withHandlerSelector: createHandlerSelector(),
-        andContext: operationContext,
-        defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+        andContext: operationContext)
 } catch {
     Log.error("Unable to start Operation Server: '\(error)'")
 }
@@ -173,12 +179,10 @@ are called.
 public protocol Validatable {
     func validate() throws
 }
-
-public typealias ValidatableCodable = Validatable & Codable
 ```
 
-In all cases, the InputType and OutputType types must conform to the `ValidatableCodable` protocol. The
-`Validatable` protocol gives a type the opportunity to verify its fields - such as for string length, numeric
+In all cases, the InputType and OutputType types must conform to the `Validatable` protocol. This
+protocol gives a type the opportunity to verify its fields - such as for string length, numeric
 range validation. The Smoke Framework will call validate on operation inputs before passing it to the
 handler and operation outputs after receiving from the handler-
 * If an operation input fails its validation call (by throwing an error), the framework will fail the operation
@@ -268,7 +272,12 @@ The Smoke Framework is designed to be extensible beyond its current functionalit
   signatures. See the built-in function signatures (one can be found in OperationHandler+nonblockingWithInputWithOutput.swift)
   for examples of this.
 * The Smoke Framework currently supports HTTP1 but can be extended to additional protocols while using the same operation handlers
-  if needed. 
+  if needed. The initializers of `OperationHandler` provide a protocol-agnostic layer - as an example [1] - which can be used by a
+  protocol-specific layer - such as [2] for HTTP1 - to abstract protocol-specific handling for the different operation types. 
+
+
+[1] https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperations/OperationHandler%2BblockingWithInputWithOutput.swift
+[2] https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/SmokeHTTP1HandlerSelector%2BblockingWithInputWithOutput.swift
 
 ## License
 
