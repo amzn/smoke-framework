@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
           "branch": null,
-          "revision": "01718910a341f2f53bdaa1cb3021ab98d598539d",
-          "version": "0.6.2"
+          "revision": "fdb9c0574e3fc404763b744e808100622f3a9ded",
+          "version": "0.7.0"
         }
       },
       {
@@ -24,8 +24,8 @@
         "repositoryURL": "https://github.com/apple/swift-nio.git",
         "state": {
           "branch": null,
-          "revision": "03c541a24dd0558c942b15d8464eb75d70a921c4",
-          "version": "1.12.1"
+          "revision": "98434c1f1d687ff5a24d2cabfbd19b5c7d2d7a2f",
+          "version": "1.13.0"
         }
       },
       {
