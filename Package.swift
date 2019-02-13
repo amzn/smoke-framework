@@ -31,12 +31,13 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/IBM-Swift/LoggerAPI.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/apple/swift-nio.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "0.1.3"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "0.6.2"),
     ],
     targets: [
         .target(
             name: "SmokeHTTP1",
-            dependencies: ["NIO", "NIOHTTP1", "LoggerAPI"]),
+            dependencies: ["NIO", "NIOHTTP1", "NIOExtras", "LoggerAPI"]),
         .target(
             name: "SmokeOperations",
             dependencies: ["LoggerAPI"]),

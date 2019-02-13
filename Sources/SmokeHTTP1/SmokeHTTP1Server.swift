@@ -18,11 +18,12 @@
 import Foundation
 import NIO
 import NIOHTTP1
+import NIOExtras
+import LoggerAPI
 
 public struct ServerDefaults {
     static let defaultHost = "0.0.0.0"
     public static let defaultPort = 8080
-    public static let defaultServerThreads = 6
 }
 
 /**
@@ -31,10 +32,11 @@ public struct ServerDefaults {
  */
 public class SmokeHTTP1Server {
     let port: Int
-    let serverThreads: Int
     
     let group: MultiThreadedEventLoopGroup
-    let threadPool: BlockingIOThreadPool
+    let quiesce: ServerQuiescingHelper
+    let signalSource: DispatchSourceSignal
+    let fullyShutdownPromise: EventLoopPromise<Void>
     let handler: HTTP1RequestHandler
     let invocationStrategy: InvocationStrategy
     var channel: Channel?
@@ -45,29 +47,39 @@ public class SmokeHTTP1Server {
     - Parameters:
         - handler: the HTTPRequestHandler to handle incoming requests.
         - port: Optionally the localhost port for the server to listen on.
-        - serverThreads: Optionally the number of threads to use for responding
-          to requests.
+        - invocationStrategy: Optionally the invocation strategy for incoming requests.
+                              If not specified, the handler for incoming requests will be invoked on DispatchQueue.global().
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
-                serverThreads: Int = ServerDefaults.defaultServerThreads,
                 invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) {
+        let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
+        
         self.port = port
-        self.serverThreads = serverThreads
         self.handler = handler
         self.invocationStrategy = invocationStrategy
         
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.threadPool = BlockingIOThreadPool(numberOfThreads: serverThreads)
+        self.quiesce = ServerQuiescingHelper(group: group)
+        self.fullyShutdownPromise = group.next().newPromise()
+        self.signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        
+        signalSource.setEventHandler { [unowned self] in
+            self.signalSource.cancel()
+            Log.verbose("Received signal, initiating shutdown which should complete after the last request finished.")
+
+            self.quiesce.initiateShutdown(promise: self.fullyShutdownPromise)
+        }
+        signal(SIGINT, SIG_IGN)
+        signalSource.resume()
     }
     
     /**
      Starts the server on the provided port. Function returns
-     when the server is started.
+     when the server is started. The server will continue running until
+     either shutdown() is called or the surrounding application is being terminated.
      */
     public func start() throws {
-        threadPool.start()
-        
         let currentHandler = handler
         let currentInvocationStrategy = invocationStrategy
         
@@ -76,6 +88,9 @@ public class SmokeHTTP1Server {
         let bootstrap = ServerBootstrap(group: group)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+            .serverChannelInitializer { [unowned self] channel in
+                channel.pipeline.add(handler: self.quiesce.makeServerChannelHandler(channel: channel))
+            }
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().then {
                     channel.pipeline.add(handler: HTTP1ChannelInboundHandler(
@@ -89,20 +104,36 @@ public class SmokeHTTP1Server {
             .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
         
         channel = try bootstrap.bind(host: ServerDefaults.defaultHost, port: port).wait()
+        
+        fullyShutdownPromise.futureResult.whenComplete { [unowned self] in
+            do {
+                try self.group.syncShutdownGracefully()
+            } catch {
+                Log.error("Server unable to shutdown cleanly following full shutdown.")
+            }
+        }
     }
     
     /**
-     Stops the server.
+     Starts the process of shutting down the server.
      */
-    public func stop() throws {
-        try group.syncShutdownGracefully()
-        try threadPool.syncShutdownGracefully()
+    public func shutdown() throws {
+        quiesce.initiateShutdown(promise: nil)
     }
     
     /**
      Blocks until the server has been shut down.
      */
-    public func wait() throws {
-        try channel?.closeFuture.wait()
+    public func waitUntilShutdown() throws {
+        try fullyShutdownPromise.futureResult.wait()
+    }
+    
+    /**
+     Blocks until the server has been shut down.
+     */
+    public func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
+        fullyShutdownPromise.futureResult.whenComplete(onShutdown)
+        
+        try fullyShutdownPromise.futureResult.wait()
     }
 }

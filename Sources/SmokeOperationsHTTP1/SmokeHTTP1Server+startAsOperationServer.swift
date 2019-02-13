@@ -34,7 +34,7 @@ public extension SmokeHTTP1Server {
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
         andPort port: Int = ServerDefaults.defaultPort,
-        invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) throws
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) throws -> SmokeHTTP1Server
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SelectorType.DefaultOperationDelegateType.RequestType == SmokeHTTP1Request,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
@@ -51,6 +51,6 @@ public extension SmokeHTTP1Server {
             
             Log.info("Server started on port \(port)...")
             
-            RunLoop.current.run()
+            return server
     }
 }
