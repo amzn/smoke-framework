@@ -24,7 +24,7 @@ public extension SmokeHTTP1Server {
     
     /**
      Creates and starts a SmokeHTTP1Server to handle operations using the
-     provided handlerSelector.
+     provided handlerSelector. This call will return once the server has started.
      
      - Parameters:
          - handlerSelector: the selector that will provide an operation

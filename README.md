@@ -121,18 +121,26 @@ import LoggerAPI
 
 // Enable logging here
 
-let operationContext = ... 
+let operationsContext = ... 
 
 do {
-    try SmokeHTTP1Server.startAsOperationServer(
+    let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
         withHandlerSelector: createHandlerSelector(),
-        andContext: operationContext)
+        andContext: operationsContext)
+        
+    try smokeHTTP1Server.waitUntilShutdownAndThen {
+        // TODO: Close/shutdown any clients or credentials that are part
+        //       of the operationsContext.
+    }
 } catch {
     Log.error("Unable to start Operation Server: '\(error)'")
 }
 ```
 
-You can now run the application and the server will start up on port 8080. The application will block in the `startAsOperationServer` call.
+You can now run the application and the server will start up on port 8080. The application will block in the
+`smokeHTTP1Server.waitUntilShutdownAndThen` call. When the server has been fully shutdown and has
+completed all requests, the closure provided to this call will be executed. In this closure you can close/shutdown
+any clients or credentials that were created on startup for the operations context.
 
 # Further Concepts
 
