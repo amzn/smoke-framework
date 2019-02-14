@@ -23,12 +23,19 @@ import SmokeOperations
 public extension SmokeHTTP1Server {
     
     /**
-     Start the Http Server to handle operations.
+     Creates and starts a SmokeHTTP1Server to handle operations using the
+     provided handlerSelector.
      
      - Parameters:
-     - handlerSelector: the selector that will provide an operation
-     handler for a operation request
-     - context: the context to pass to operation handlers.
+         - handlerSelector: the selector that will provide an operation
+                            handler for a operation request
+         - context: the context to pass to operation handlers.
+         - port: Optionally the localhost port for the server to listen on.
+                 If not specified, defaults to 8080.
+         - invocationStrategy: Optionally the invocation strategy for incoming requests.
+                               If not specified, the handler for incoming requests will
+                               be invoked on DispatchQueue.global().
+     - Returns: the SmokeHTTP1Server that was created and started.
      */
     public static func startAsOperationServer<ContextType, SelectorType>(
         withHandlerSelector handlerSelector: SelectorType,
@@ -45,11 +52,7 @@ public extension SmokeHTTP1Server {
                                           port: port,
                                           invocationStrategy: invocationStrategy)
             
-            Log.info("Server starting on port \(port)...")
-            
             try server.start()
-            
-            Log.info("Server started on port \(port)...")
             
             return server
     }

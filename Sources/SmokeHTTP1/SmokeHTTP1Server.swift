@@ -47,8 +47,10 @@ public class SmokeHTTP1Server {
     - Parameters:
         - handler: the HTTPRequestHandler to handle incoming requests.
         - port: Optionally the localhost port for the server to listen on.
+                If not specified, defaults to 8080.
         - invocationStrategy: Optionally the invocation strategy for incoming requests.
-                              If not specified, the handler for incoming requests will be invoked on DispatchQueue.global().
+                              If not specified, the handler for incoming requests will
+                              be invoked on DispatchQueue.global().
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
@@ -80,6 +82,8 @@ public class SmokeHTTP1Server {
      either shutdown() is called or the surrounding application is being terminated.
      */
     public func start() throws {
+        Log.info("SmokeHTTP1Server starting on port \(port).")
+        
         let currentHandler = handler
         let currentInvocationStrategy = invocationStrategy
         
@@ -111,7 +115,11 @@ public class SmokeHTTP1Server {
             } catch {
                 Log.error("Server unable to shutdown cleanly following full shutdown.")
             }
+            
+            Log.info("SmokeHTTP1Server shutdown.")
         }
+        
+        Log.info("SmokeHTTP1Server started on port \(port).")
     }
     
     /**
@@ -129,11 +137,27 @@ public class SmokeHTTP1Server {
     }
     
     /**
-     Blocks until the server has been shut down.
+     Blocks until the server has been shut down. After the server
+     has been fully shutdown, the provided closure will be executed.
+     
+     - Parameters:
+        - onShutdown: the closure to be executed after the server has been
+                      fully shutdown.
      */
     public func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
         fullyShutdownPromise.futureResult.whenComplete(onShutdown)
         
         try fullyShutdownPromise.futureResult.wait()
+    }
+    
+    /**
+     Provides a closure to be executed after the server has been fully shutdown.
+     
+     - Parameters:
+        - onShutdown: the closure to be executed after the server has been
+                      fully shutdown.
+     */
+    public func onShutdown(onShutdown: @escaping () -> Void) throws {
+        fullyShutdownPromise.futureResult.whenComplete(onShutdown)
     }
 }
