@@ -123,10 +123,10 @@ public class SmokeHTTP1Server {
     }
     
     /**
-     Starts the process of shutting down the server.
+     Initiates the process of shutting down the server.
      */
     public func shutdown() throws {
-        quiesce.initiateShutdown(promise: nil)
+        quiesce.initiateShutdown(promise: fullyShutdownPromise)
     }
     
     /**
