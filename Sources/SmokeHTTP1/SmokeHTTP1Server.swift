@@ -173,6 +173,7 @@ public class SmokeHTTP1Server {
     let invocationStrategy: InvocationStrategy
     var channel: Channel?
     let shutdownSemaphore: DispatchSemaphore
+    let shutdownCompletionHandlerInvocationStrategy: InvocationStrategy
     
     var lifecycleState: LifecycleState
     
@@ -186,15 +187,20 @@ public class SmokeHTTP1Server {
         - invocationStrategy: Optionally the invocation strategy for incoming requests.
                               If not specified, the handler for incoming requests will
                               be invoked on DispatchQueue.global().
+        - shutdownCompletionHandlerInvocationStrategy: Optionally the invocation strategy for shutdown completion handlers.
+                                                       If not specified, the shutdown completion handlers will
+                                                       be invoked on DispatchQueue.global().
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
-                invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) {
+                invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy(),
+                shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
         self.handler = handler
         self.invocationStrategy = invocationStrategy
+        self.shutdownCompletionHandlerInvocationStrategy = shutdownCompletionHandlerInvocationStrategy
         
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         self.quiesce = ServerQuiescingHelper(group: group)
@@ -257,10 +263,10 @@ public class SmokeHTTP1Server {
         
         fullyShutdownPromise.futureResult.whenComplete { [unowned self] in
             do {
-                let completionHandlers = self.lifecycleState.updateStateOnShutdownComplete()
+                let shutdownCompletionHandlers = self.lifecycleState.updateStateOnShutdownComplete()
                 
                 // execute all the completion handlers
-                completionHandlers.forEach { $0() }
+                shutdownCompletionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
                 
                 try self.group.syncShutdownGracefully()
                 
@@ -301,8 +307,7 @@ public class SmokeHTTP1Server {
      Blocks until the server has been shutdown and all completion handlers
      have been executed. The provided closure will be added to the list of
      completion handlers to be executed on shutdown. If the server is already
-     shutdown, the provided closure will be immediately executed on the calling
-     thread.
+     shutdown, the provided closure will be immediately executed.
      
      - Parameters:
         - onShutdown: the closure to be executed after the server has been
@@ -315,7 +320,7 @@ public class SmokeHTTP1Server {
             shutdownSemaphore.wait()
         } else {
             // the server is already shutdown, immediately call the handler
-            onShutdown()
+            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
         }
     }
     
@@ -331,7 +336,7 @@ public class SmokeHTTP1Server {
         
         if !handlerQueuedForFutureShutdownComplete {
             // the server is already shutdown, immediately call the handler
-            onShutdown()
+            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
         }
     }
 }
