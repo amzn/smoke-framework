@@ -35,134 +35,6 @@ public enum SmokeHTTP1ServerError: Error {
  optional body and returns a response with an optional body.
  */
 public class SmokeHTTP1Server {
-    struct LifecycleState {
-        enum State {
-            case initialized
-            case running
-            case shuttingDown
-            case shutDown
-        }
-        private var shutdownCompletionHandlers: [() -> Void] = []
-        private var serverState: State = .initialized
-        private var stateLock: NSLock = NSLock()
-        
-        /**
-         Updates the Lifecycle state on a start request.
- 
-         - Returns: if the start request should be acted upon (and the server started).
-                    Will be false if the server is already running, shutting down or has completed shutting down.
-         */
-        mutating func updateOnStart() -> Bool {
-            stateLock.lock()
-            defer {
-                stateLock.unlock()
-            }
-            
-            if case .initialized = serverState {
-                serverState = .running
-                
-                return true
-            }
-            
-            return false
-        }
-        
-        /**
-         Updates the Lifecycle state on a shutdown request.
- 
-         - Returns: if the shutdown request should be acted upon (and the server shutdown).
-                    Will be false if the server is already shutting down or has completed shutting down.
-         - Throws: if the server has never been started.
-         */
-        mutating func updateOnShutdownStart() throws -> Bool {
-            stateLock.lock()
-            defer {
-                stateLock.unlock()
-            }
-            
-            let doShutdownServer: Bool
-            switch serverState {
-            case .initialized:
-                throw SmokeHTTP1ServerError.shutdownAttemptOnUnstartedServer
-            case .running:
-                serverState = .shuttingDown
-                
-                doShutdownServer = true
-            case .shuttingDown, .shutDown:
-                // nothing to do; already shutting down or shutdown
-                doShutdownServer = false
-            }
-            
-            return doShutdownServer
-        }
-        
-        /**
-         Updates the Lifecycle state on shutdown completion.
- 
-         - Returns: the list of completion handlers to execute.
-         */
-        mutating func updateStateOnShutdownComplete() -> [() -> Void] {
-            stateLock.lock()
-            defer {
-                stateLock.unlock()
-            }
-            
-            guard case .shuttingDown = serverState else {
-                fatalError("SmokeHTTP1ServerError shutdown completed when in expected state: \(serverState)")
-            }
-            
-            let completionHandlers = shutdownCompletionHandlers
-            shutdownCompletionHandlers = []
-            serverState = .shutDown
-            
-            return completionHandlers
-        }
-        
-        /**
-         Adds a shutdown completion handler to be executed when server shutdown is complete.
- 
-         - Returns: if the handler has been queued for execution when server shutdown is
-                    complete in the future. Will be false if the server is already shutdown; in
-                    this case, the handler can be immediately executed.
-         */
-        mutating func addShutdownHandler(onShutdown: @escaping () -> Void) -> Bool {
-            stateLock.lock()
-            defer {
-                stateLock.unlock()
-            }
-            
-            let handlerQueuedForFutureShutdownComplete: Bool
-            switch serverState {
-            case .initialized, .running, .shuttingDown:
-                shutdownCompletionHandlers.append(onShutdown)
-                handlerQueuedForFutureShutdownComplete = true
-            case .shutDown:
-                // already shutdown; immediately call the handler
-                handlerQueuedForFutureShutdownComplete = false
-            }
-            
-            return handlerQueuedForFutureShutdownComplete
-        }
-        
-        /**
-         Indicates if the server is currently shutdown.
- 
-         - Returns: if the server is currently shutdown.
-         */
-        func isShutdown() -> Bool {
-            stateLock.lock()
-            defer {
-                stateLock.unlock()
-            }
-            
-            if case .shutDown = serverState {
-                return true
-            }
-            
-            return false
-        }
-    }
-    
     let port: Int
     
     let group: MultiThreadedEventLoopGroup
@@ -172,10 +44,18 @@ public class SmokeHTTP1Server {
     let handler: HTTP1RequestHandler
     let invocationStrategy: InvocationStrategy
     var channel: Channel?
-    let shutdownSemaphore: DispatchSemaphore
+    let shutdownDispatchGroup: DispatchGroup
     let shutdownCompletionHandlerInvocationStrategy: InvocationStrategy
     
-    var lifecycleState: LifecycleState
+    enum State {
+        case initialized
+        case running
+        case shuttingDown
+        case shutDown
+    }
+    private var shutdownCompletionHandlers: [() -> Void] = []
+    private var serverState: State = .initialized
+    private var stateLock: NSLock = NSLock()
     
     /**
      Initializer.
@@ -189,12 +69,14 @@ public class SmokeHTTP1Server {
                               be invoked on DispatchQueue.global().
         - shutdownCompletionHandlerInvocationStrategy: Optionally the invocation strategy for shutdown completion handlers.
                                                        If not specified, the shutdown completion handlers will
-                                                       be invoked on DispatchQueue.global().
+                                                       be invoked on DispatchQueue.global() synchronously so that callers
+                                                       to `waitUntilShutdown*` will not unblock until all completion handlers
+                                                       have finished.
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
-                invocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy(),
-                shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueInvocationStrategy()) {
+                invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+                shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy()) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
@@ -206,8 +88,10 @@ public class SmokeHTTP1Server {
         self.quiesce = ServerQuiescingHelper(group: group)
         self.fullyShutdownPromise = group.next().newPromise()
         self.signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
-        self.lifecycleState = LifecycleState()
-        self.shutdownSemaphore = DispatchSemaphore(value: 0)
+        self.shutdownDispatchGroup = DispatchGroup()
+        // enter the DispatchGroup and initialization so waiting for
+        // shutdown of an initalized for started server will wait
+        shutdownDispatchGroup.enter()
         
         signalSource.setEventHandler { [unowned self] in
             self.signalSource.cancel()
@@ -231,7 +115,7 @@ public class SmokeHTTP1Server {
     public func start() throws {
         Log.info("SmokeHTTP1Server starting on port \(port).")
         
-        guard lifecycleState.updateOnStart() else {
+        guard updateOnStart() else {
             // nothing to do; already started
             return
         }
@@ -263,7 +147,7 @@ public class SmokeHTTP1Server {
         
         fullyShutdownPromise.futureResult.whenComplete { [unowned self] in
             do {
-                let shutdownCompletionHandlers = self.lifecycleState.updateStateOnShutdownComplete()
+                let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
                 
                 // execute all the completion handlers
                 shutdownCompletionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
@@ -271,7 +155,7 @@ public class SmokeHTTP1Server {
                 try self.group.syncShutdownGracefully()
                 
                 // release any waiters for shutdown
-                self.shutdownSemaphore.signal()
+                self.shutdownDispatchGroup.leave()
             } catch {
                 Log.error("Server unable to shutdown cleanly following full shutdown.")
             }
@@ -286,7 +170,7 @@ public class SmokeHTTP1Server {
      Initiates the process of shutting down the server.
      */
     public func shutdown() throws {
-        let doShutdownServer = try lifecycleState.updateOnShutdownStart()
+        let doShutdownServer = try updateOnShutdownStart()
         
         if doShutdownServer {
             quiesce.initiateShutdown(promise: fullyShutdownPromise)
@@ -298,8 +182,8 @@ public class SmokeHTTP1Server {
      have been executed.
      */
     public func waitUntilShutdown() throws {
-        if !lifecycleState.isShutdown() {
-            shutdownSemaphore.wait()
+        if !isShutdown() {
+            shutdownDispatchGroup.wait()
         }
     }
     
@@ -314,10 +198,10 @@ public class SmokeHTTP1Server {
                       fully shutdown.
      */
     public func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
-        let handlerQueuedForFutureShutdownComplete = lifecycleState.addShutdownHandler(onShutdown: onShutdown)
+        let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
         
         if handlerQueuedForFutureShutdownComplete {
-            shutdownSemaphore.wait()
+            shutdownDispatchGroup.wait()
         } else {
             // the server is already shutdown, immediately call the handler
             shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
@@ -332,11 +216,127 @@ public class SmokeHTTP1Server {
                       fully shutdown.
      */
     public func onShutdown(onShutdown: @escaping () -> Void) throws {
-        let handlerQueuedForFutureShutdownComplete = lifecycleState.addShutdownHandler(onShutdown: onShutdown)
+        let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
         
         if !handlerQueuedForFutureShutdownComplete {
             // the server is already shutdown, immediately call the handler
             shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
         }
+    }
+    
+    /**
+     Updates the Lifecycle state on a start request.
+
+     - Returns: if the start request should be acted upon (and the server started).
+                Will be false if the server is already running, shutting down or has completed shutting down.
+     */
+    private func updateOnStart() -> Bool {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        if case .initialized = serverState {
+            serverState = .running
+            
+            return true
+        }
+        
+        return false
+    }
+    
+    /**
+     Updates the Lifecycle state on a shutdown request.
+
+     - Returns: if the shutdown request should be acted upon (and the server shutdown).
+                Will be false if the server is already shutting down or has completed shutting down.
+     - Throws: if the server has never been started.
+     */
+    private func updateOnShutdownStart() throws -> Bool {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        let doShutdownServer: Bool
+        switch serverState {
+        case .initialized:
+            throw SmokeHTTP1ServerError.shutdownAttemptOnUnstartedServer
+        case .running:
+            serverState = .shuttingDown
+            
+            doShutdownServer = true
+        case .shuttingDown, .shutDown:
+            // nothing to do; already shutting down or shutdown
+            doShutdownServer = false
+        }
+        
+        return doShutdownServer
+    }
+    
+    /**
+     Updates the Lifecycle state on shutdown completion.
+
+     - Returns: the list of completion handlers to execute.
+     */
+    private func updateStateOnShutdownComplete() -> [() -> Void] {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        guard case .shuttingDown = serverState else {
+            fatalError("SmokeHTTP1ServerError shutdown completed when in expected state: \(serverState)")
+        }
+        
+        let completionHandlers = shutdownCompletionHandlers
+        shutdownCompletionHandlers = []
+        serverState = .shutDown
+        
+        return completionHandlers
+    }
+    
+    /**
+     Adds a shutdown completion handler to be executed when server shutdown is complete.
+
+     - Returns: if the handler has been queued for execution when server shutdown is
+                complete in the future. Will be false if the server is already shutdown; in
+                this case, the handler can be immediately executed.
+     */
+    private func addShutdownHandler(onShutdown: @escaping () -> Void) -> Bool {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        let handlerQueuedForFutureShutdownComplete: Bool
+        switch serverState {
+        case .initialized, .running, .shuttingDown:
+            shutdownCompletionHandlers.append(onShutdown)
+            handlerQueuedForFutureShutdownComplete = true
+        case .shutDown:
+            // already shutdown; immediately call the handler
+            handlerQueuedForFutureShutdownComplete = false
+        }
+        
+        return handlerQueuedForFutureShutdownComplete
+    }
+    
+    /**
+     Indicates if the server is currently shutdown.
+
+     - Returns: if the server is currently shutdown.
+     */
+    private func isShutdown() -> Bool {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        if case .shutDown = serverState {
+            return true
+        }
+        
+        return false
     }
 }
