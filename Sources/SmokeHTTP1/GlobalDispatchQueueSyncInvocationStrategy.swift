@@ -18,10 +18,10 @@
 import Foundation
 
 /**
- An AsyncInvocationStrategy that will invocate the handler on
- DispatchQueue.global().
+ An InvocationStrategy that will invocate the handler on
+ DispatchQueue.global(), waiting for it to complete.
  */
-public struct GlobalDispatchQueueInvocationStrategy: InvocationStrategy {
+public struct GlobalDispatchQueueSyncInvocationStrategy: InvocationStrategy {
     let queue = DispatchQueue.global()
     
     public init() {
@@ -29,7 +29,7 @@ public struct GlobalDispatchQueueInvocationStrategy: InvocationStrategy {
     }
     
     public func invoke(handler: @escaping () -> ()) {
-        queue.async {
+        queue.sync {
             handler()
         }
     }
