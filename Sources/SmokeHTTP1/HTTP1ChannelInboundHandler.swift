@@ -18,7 +18,9 @@
 import Foundation
 import NIO
 import NIOHTTP1
+import NIOFoundationCompat
 import LoggerAPI
+import SmokeOperations
 
 /**
  Handler that manages the inbound channel for a HTTP Request.
@@ -56,7 +58,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
     private let invocationStrategy: InvocationStrategy
     private var requestHead: HTTPRequestHead?
     
-    var bodyParts: [ByteBuffer] = []
+    var partialBody: Data?
     private var keepAliveStatus = KeepAliveStatus()
     private var state = State.idle
     
@@ -68,7 +70,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
 
     private func reset() {
         requestHead = nil
-        bodyParts.removeAll()
+        partialBody = nil
         keepAliveStatus = KeepAliveStatus()
         state = State.idle
     }
@@ -84,15 +86,27 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
             reset()
             // if this is the request head, store it and the keep alive status
             requestHead = request
+            Log.verbose("Request head received.")
             keepAliveStatus.state = request.isKeepAlive
             self.state.requestReceived()
-        case .body(let byteBuffer):
-            // store this part of the body
-            bodyParts.append(byteBuffer)
+        case .body(var byteBuffer):
+            let byteBufferSize = byteBuffer.readableBytes
+            let newData = byteBuffer.readData(length: byteBufferSize)
+            
+            if var newPartialBody = partialBody,
+                let newData = newData {
+                newPartialBody += newData
+                partialBody = newPartialBody
+            } else if let newData = newData {
+                partialBody = newData
+            }
+            
+            Log.verbose("Request body part of \(byteBufferSize) bytes received.")
         case .end:
+            Log.verbose("Request end received.")
             // this signals that the head and all possible body parts have been received
             self.state.requestComplete()
-            handleCompleteRequest(context: ctx)
+            handleCompleteRequest(context: ctx, bodyData: partialBody)
             reset()
         }
     }
@@ -101,21 +115,10 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
      Is called when the request has been completed received
      and can be passed to the request hander.
      */
-    func handleCompleteRequest(context ctx: ChannelHandlerContext) {
+    func handleCompleteRequest(context ctx: ChannelHandlerContext, bodyData: Data?) {
         self.state.responseComplete()
         
-        // concatenate any parts into a single byte array
-        let bodyBytes: [UInt8] = bodyParts.reduce([]) { (partialBytes, part) in
-            let partBytes = part.getBytes(at: 0, length: part.readableBytes)
-            
-            if let partBytes = partBytes {
-                return partialBytes + partBytes
-            } else {
-                return partialBytes
-            }
-        }
-        
-        let requestBodyData = !bodyBytes.isEmpty ? Data(bytes: bodyBytes) : nil
+        Log.verbose("Handling request body with \(bodyData?.count ?? 0) size.")
         
         // make sure we have received the head
         guard let requestHead = requestHead else {
@@ -140,7 +143,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         // pass to the request handler to complete
         invocationStrategy.invoke {
             currentHandler.handle(requestHead: requestHead,
-                                  body: requestBodyData,
+                                  body: bodyData,
                                   responseHandler: responseHandler)
         }
     }

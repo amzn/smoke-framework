@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  GlobalDispatchQueueAsyncInvocationStrategy.swift
-//  SmokeHTTP1
+//  SmokeOperations
 //
 
 import Foundation

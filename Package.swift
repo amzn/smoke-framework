@@ -37,7 +37,7 @@ let package = Package(
     targets: [
         .target(
             name: "SmokeHTTP1",
-            dependencies: ["NIO", "NIOHTTP1", "NIOExtras", "LoggerAPI"]),
+            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "SmokeOperations", "LoggerAPI"]),
         .target(
             name: "SmokeOperations",
             dependencies: ["LoggerAPI"]),
