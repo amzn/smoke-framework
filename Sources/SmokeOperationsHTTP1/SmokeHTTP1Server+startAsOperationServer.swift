@@ -35,13 +35,17 @@ public extension SmokeHTTP1Server {
          - invocationStrategy: Optionally the invocation strategy for incoming requests.
                                If not specified, the handler for incoming requests will
                                be invoked on DispatchQueue.global().
+         - eventLoopProvider: Provides the event loop to be used by the server.
+                              If not specified, the server will create a new multi-threaded event loop
+                              with the number of threads specified by `System.coreCount`.
      - Returns: the SmokeHTTP1Server that was created and started.
      */
     public static func startAsOperationServer<ContextType, SelectorType>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
         andPort port: Int = ServerDefaults.defaultPort,
-        invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy()) throws -> SmokeHTTP1Server
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads) throws -> SmokeHTTP1Server
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SelectorType.DefaultOperationDelegateType.RequestType == SmokeHTTP1Request,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
@@ -50,7 +54,8 @@ public extension SmokeHTTP1Server {
                 context: context)
             let server = SmokeHTTP1Server(handler: handler,
                                           port: port,
-                                          invocationStrategy: invocationStrategy)
+                                          invocationStrategy: invocationStrategy,
+                                          eventLoopProvider: eventLoopProvider)
             
             try server.start()
             

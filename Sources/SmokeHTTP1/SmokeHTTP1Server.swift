@@ -20,6 +20,7 @@ import NIO
 import NIOHTTP1
 import NIOExtras
 import LoggerAPI
+import SmokeOperations
 
 public struct ServerDefaults {
     static let defaultHost = "0.0.0.0"
@@ -37,7 +38,6 @@ public enum SmokeHTTP1ServerError: Error {
 public class SmokeHTTP1Server {
     let port: Int
     
-    let group: MultiThreadedEventLoopGroup
     let quiesce: ServerQuiescingHelper
     let signalSource: DispatchSourceSignal
     let fullyShutdownPromise: EventLoopPromise<Void>
@@ -58,6 +58,21 @@ public class SmokeHTTP1Server {
     private var stateLock: NSLock = NSLock()
     
     /**
+     Enumeration specifying how the event loop is provided for a channel established by this client.
+     */
+    public enum EventLoopProvider {
+        /// The client will create a new EventLoopGroup to be used for channels created from
+        /// this client. The EventLoopGroup will be closed when this client is closed.
+        case spawnNewThreads
+        /// The client will use the provided EventLoopGroup for channels created from
+        /// this client. This EventLoopGroup will not be closed when this client is closed.
+        case use(EventLoopGroup)
+    }
+    
+    let eventLoopGroup: EventLoopGroup
+    let ownEventLoopGroup: Bool
+    
+    /**
      Initializer.
  
     - Parameters:
@@ -72,11 +87,15 @@ public class SmokeHTTP1Server {
                                                        be invoked on DispatchQueue.global() synchronously so that callers
                                                        to `waitUntilShutdown*` will not unblock until all completion handlers
                                                        have finished.
+        - eventLoopProvider: Provides the event loop to be used by the server.
+                             If not specified, the server will create a new multi-threaded event loop
+                             with the number of threads specified by `System.coreCount`.
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
                 invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
-                shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy()) {
+                shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
+                eventLoopProvider: EventLoopProvider = .spawnNewThreads) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
@@ -84,13 +103,21 @@ public class SmokeHTTP1Server {
         self.invocationStrategy = invocationStrategy
         self.shutdownCompletionHandlerInvocationStrategy = shutdownCompletionHandlerInvocationStrategy
         
-        self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.quiesce = ServerQuiescingHelper(group: group)
-        self.fullyShutdownPromise = group.next().newPromise()
+        switch eventLoopProvider {
+        case .spawnNewThreads:
+            self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            self.ownEventLoopGroup = true
+        case .use(let existingEventLoopGroup):
+            self.eventLoopGroup = existingEventLoopGroup
+            self.ownEventLoopGroup = false
+        }
+        
+        self.quiesce = ServerQuiescingHelper(group: eventLoopGroup)
+        self.fullyShutdownPromise = eventLoopGroup.next().newPromise()
         self.signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
         self.shutdownDispatchGroup = DispatchGroup()
-        // enter the DispatchGroup and initialization so waiting for
-        // shutdown of an initalized for started server will wait
+        // enter the DispatchGroup during initialization so waiting for the
+        // shutdown of an initalized or started server will wait
         shutdownDispatchGroup.enter()
         
         signalSource.setEventHandler { [unowned self] in
@@ -125,7 +152,7 @@ public class SmokeHTTP1Server {
         
         // create a ServerBootstrap with a HTTP Server pipeline that delegates
         // to a HTTPChannelInboundHandler
-        let bootstrap = ServerBootstrap(group: group)
+        let bootstrap = ServerBootstrap(group: eventLoopGroup)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .serverChannelInitializer { [unowned self] channel in
@@ -152,7 +179,9 @@ public class SmokeHTTP1Server {
                 // execute all the completion handlers
                 shutdownCompletionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
                 
-                try self.group.syncShutdownGracefully()
+                if self.ownEventLoopGroup {
+                    try self.eventLoopGroup.syncShutdownGracefully()
+                }
                 
                 // release any waiters for shutdown
                 self.shutdownDispatchGroup.leave()

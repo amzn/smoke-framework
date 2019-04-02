@@ -29,11 +29,9 @@ private func createEncoder() -> JSONEncoder {
     return jsonEncoder
 }
 
-private let jsonEncoder = createEncoder()
-
 // swiftlint:disable force_try
 // If all else fails, an error payload to use.
-private let encodedInternalError = try! jsonEncoder.encode(
+private let encodedInternalError = try! createEncoder().encode(
     ErrorWithType(type: "InternalError",
                   payload: SmokeOperationsErrorPayload(errorMessage: nil)))
 // swiftlint:enable force_try
@@ -41,7 +39,7 @@ private let encodedInternalError = try! jsonEncoder.encode(
 extension JSONEncoder {
     /// Return a SmokeFramework compatible JSON Encoder
     public static func getFrameworkEncoder() -> JSONEncoder {
-        return jsonEncoder
+        return createEncoder()
     }
     
     /**
@@ -60,9 +58,9 @@ extension JSONEncoder {
                 if let reason = reason {
                     let errorWithReason = ErrorWithType(type: reason,
                                                         payload: payload)
-                    encodedError = try jsonEncoder.encode(errorWithReason)
+                    encodedError = try createEncoder().encode(errorWithReason)
                 } else {
-                    encodedError = try jsonEncoder.encode(payload)
+                    encodedError = try createEncoder().encode(payload)
                 }
             } catch {
                 Log.error("Unable to encode error message: \(error)")

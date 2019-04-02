@@ -11,22 +11,26 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  AsyncInvocationStrategy.swift
-//  SmokeHTTP1
+//  GlobalDispatchQueueAsyncInvocationStrategy.swift
+//  SmokeOperations
 //
 
 import Foundation
 
 /**
- A strategy protocol that manages how to invocate a handler.
+ An InvocationStrategy that will invocate the handler on
+ DispatchQueue.global(), not waiting for it to complete.
  */
-public protocol InvocationStrategy {
+public struct GlobalDispatchQueueAsyncInvocationStrategy: InvocationStrategy {
+    let queue = DispatchQueue.global()
     
-    /**
-     Function to handle the invocation of the handler.
- 
-     - Parameters:
-        - handler: The handler to invocate.
-     */
-    func invoke(handler: @escaping () -> ())
+    public init() {
+        
+    }
+    
+    public func invoke(handler: @escaping () -> ()) {
+        queue.async {
+            handler()
+        }
+    }
 }
