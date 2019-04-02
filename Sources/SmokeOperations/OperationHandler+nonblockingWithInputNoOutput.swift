@@ -32,11 +32,11 @@ public extension OperationHandler {
           handling the operation.
      */
     public init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            inputProvider: @escaping (RequestType) throws -> InputType,
+            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
-    where RequestType == OperationDelegateType.RequestType,
+    where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -44,7 +44,7 @@ public extension OperationHandler {
          * called to indicate success when the input handler's response handler is called. If the provided operation
          * provides an error, the responseHandler is called with that error.
          */
-        let wrappedInputHandler = { (input: InputType, request: RequestType, context: ContextType,
+        let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: ResponseHandlerType) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>?
             do {
@@ -67,7 +67,7 @@ public extension OperationHandler {
                     OperationHandler.handleNoOutputOperationHandlerResult(
                         handlerResult: asyncHandlerResult,
                         operationDelegate: operationDelegate,
-                        request: request,
+                        requestHead: requestHead,
                         responseHandler: responseHandler)
                 }
                 
@@ -86,7 +86,7 @@ public extension OperationHandler {
                 OperationHandler.handleNoOutputOperationHandlerResult(
                     handlerResult: handlerResult,
                     operationDelegate: operationDelegate,
-                    request: request,
+                    requestHead: requestHead,
                     responseHandler: responseHandler)
             }
         }

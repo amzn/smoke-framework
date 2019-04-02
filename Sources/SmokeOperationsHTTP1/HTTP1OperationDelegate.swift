@@ -39,26 +39,27 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
      Function to retrieve an instance of the InputType from the request. Will throw an error
      if an instance of InputType cannot be constructed from the request.
      */
-    func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: RequestType) throws -> InputType
+    func getInputForOperation<InputType: OperationHTTP1InputProtocol>(requestHead: RequestHeadType, body: Data?) throws -> InputType
     
     /**
      Function to retrieve an instance of the InputType from the request. Will throw an error
      if an instance of InputType cannot be constructed from the request.
      */
-    func getInputForOperation<InputType: Decodable>(request: RequestType,
+    func getInputForOperation<InputType: Decodable>(requestHead: RequestHeadType,
+                                                    body: Data?,
                                                     location: OperationInputHTTPLocation) throws -> InputType
     
     /**
      Function to handle a successful response from an operation.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
     func handleResponseForOperation<OutputType: OperationHTTP1OutputProtocol>(
-        request: RequestType,
+        requestHead: RequestHeadType,
         output: OutputType,
         responseHandler: ResponseHandlerType)
     
@@ -66,12 +67,12 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
      Function to handle a successful response from an operation.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForOperation<OutputType: Encodable>(request: RequestType,
+    func handleResponseForOperation<OutputType: Encodable>(requestHead: RequestHeadType,
                                                            location: OperationOutputHTTPLocation,
                                                            output: OutputType,
                                                            responseHandler: ResponseHandlerType)

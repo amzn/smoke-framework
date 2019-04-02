@@ -43,20 +43,21 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         
     }
     
-    public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: SmokeHTTP1Request) throws -> InputType {
+    public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(requestHead: SmokeHTTP1RequestHead,
+                                                                             body: Data?) throws -> InputType {
         
         func queryDecodableProvider() throws -> InputType.QueryType {
             return try QueryDecoder().decode(InputType.QueryType.self,
-                                             from: request.query)
+                                             from: requestHead.query)
         }
         
         func pathDecodableProvider() throws -> InputType.PathType {
             return try HTTPPathDecoder().decode(InputType.PathType.self,
-                                                fromShape: request.pathShape)
+                                                fromShape: requestHead.pathShape)
         }
         
         func bodyDecodableProvider() throws -> InputType.BodyType {
-            if let body = request.body {
+            if let body = body {
                 return try JSONDecoder.getFrameworkDecoder().decode(InputType.BodyType.self, from: body)
             } else {
                 throw SmokeOperationsError.validationError(reason: "Input body expected; none found.")
@@ -65,7 +66,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         
         func headersDecodableProvider() throws -> InputType.HeadersType {
             let headers: [(String, String?)] =
-                request.httpRequestHead.headers.map { header in
+                requestHead.httpRequestHead.headers.map { header in
                     return (header.name, header.value)
             }
             return try HTTPHeadersDecoder().decode(InputType.HeadersType.self,
@@ -78,36 +79,48 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
                                      headersDecodableProvider: headersDecodableProvider)
     }
     
-    public func getInputForOperation<InputType>(request: SmokeHTTP1Request,
+    public func getInputForOperation<InputType>(requestHead: SmokeHTTP1RequestHead,
+                                                body: Data?,
                                                 location: OperationInputHTTPLocation) throws
         -> InputType where InputType: Decodable {
         
             switch location {
             case .body:
                 let wrappedInput: BodyOperationHTTPInput<InputType> =
-                    try getInputForOperation(request: request)
+                    try getInputForOperation(requestHead: requestHead, body: body)
                 
                 return wrappedInput.body
             case .query:
                 let wrappedInput: QueryOperationHTTPInput<InputType> =
-                    try getInputForOperation(request: request)
+                    try getInputForOperation(requestHead: requestHead, body: body)
                 
                 return wrappedInput.query
             case .path:
                 let wrappedInput: PathOperationHTTPInput<InputType> =
-                    try getInputForOperation(request: request)
+                    try getInputForOperation(requestHead: requestHead, body: body)
                 
                 return wrappedInput.path
             case .headers:
                 let wrappedInput: HeadersOperationHTTPInput<InputType> =
-                    try getInputForOperation(request: request)
+                    try getInputForOperation(requestHead: requestHead, body: body)
                 
                 return wrappedInput.headers
             }
     }
     
-    public func handleResponseForOperation<OutputType>(request: SmokeHTTP1Request, output: OutputType,
-                                                       responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTP1OutputProtocol {
+    public func handleResponseForOperation<OutputType>(
+            requestHead: SmokeHTTP1RequestHead, output: OutputType,
+            responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTP1OutputProtocol {
+        // encode the response within the event loop of the server to limit the number of response
+        // `Data` objects that exist at single time to the number of threads in the event loop
+        responseHandler.executeInEventLoop {
+            self.handleResponseForOperationInEventLoop(requestHead: requestHead, output: output, responseHandler: responseHandler)
+        }
+    }
+    
+    private func handleResponseForOperationInEventLoop<OutputType>(
+            requestHead: SmokeHTTP1RequestHead, output: OutputType,
+            responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTP1OutputProtocol {
         let body: (contentType: String, data: Data)?
         
         if let bodyEncodable = output.bodyEncodable {
@@ -117,7 +130,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             } catch {
                 Log.error("Serialization error: unable to encode response: \(error)")
                 
-                handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+                handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler)
                 return
             }
             
@@ -134,7 +147,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             } catch {
                 Log.error("Serialization error: unable to encode response: \(error)")
                 
-                handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+                handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler)
                 return
             }
             
@@ -157,7 +170,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
     }
     
     public func handleResponseForOperation<OutputType>(
-            request: SmokeHTTP1Request,
+            requestHead: SmokeHTTP1RequestHead,
             location: OperationOutputHTTPLocation,
             output: OutputType,
             responseHandler: HTTP1ResponseHandler) where OutputType: Encodable {
@@ -166,28 +179,42 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             let wrappedOutput = BodyOperationHTTPOutput<OutputType>(
                 bodyEncodable: output)
             
-            handleResponseForOperation(request: request,
+            handleResponseForOperation(requestHead: requestHead,
                                        output: wrappedOutput,
                                        responseHandler: responseHandler)
         case .headers:
             let wrappedOutput = AdditionalHeadersOperationHTTPOutput<OutputType>(
                 additionalHeadersEncodable: output)
             
-            handleResponseForOperation(request: request,
+            handleResponseForOperation(requestHead: requestHead,
                                        output: wrappedOutput,
                                        responseHandler: responseHandler)
         }
     }
     
-    public func handleResponseForOperationWithNoOutput(request: SmokeHTTP1Request,
+    public func handleResponseForOperationWithNoOutput(requestHead: SmokeHTTP1RequestHead,
                                                        responseHandler: HTTP1ResponseHandler) {
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: nil)
-        responseHandler.complete(status: .ok, responseComponents: responseComponents)
+        responseHandler.completeInEventLoop(status: .ok, responseComponents: responseComponents)
     }
     
-    public func handleResponseForOperationFailure(request: SmokeHTTP1Request,
-                                                  operationFailure: OperationFailure,
-                                                  responseHandler: HTTP1ResponseHandler) {
+    public func handleResponseForOperationFailure(
+            requestHead: SmokeHTTP1RequestHead,
+            operationFailure: OperationFailure,
+            responseHandler: HTTP1ResponseHandler) {
+        // encode the response within the event loop of the server to limit the number of response
+        // `Data` objects that exist at single time to the number of threads in the event loop
+        responseHandler.executeInEventLoop {
+            self.handleResponseForOperationFailureInEventLoop(requestHead: requestHead,
+                                                              operationFailure: operationFailure,
+                                                              responseHandler: responseHandler)
+        }
+    }
+    
+    private func handleResponseForOperationFailureInEventLoop(
+            requestHead: SmokeHTTP1RequestHead,
+            operationFailure: OperationFailure,
+            responseHandler: HTTP1ResponseHandler) {
         let encodedOutput: Data
         
         do {
@@ -195,7 +222,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         } catch {
             Log.error("Serialization error: unable to encode response: \(error)")
             
-            handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+            handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler)
             return
         }
         
@@ -206,22 +233,22 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
                                  responseComponents: responseComponents)
     }
     
-    public func handleResponseForInternalServerError(request: SmokeHTTP1Request,
+    public func handleResponseForInternalServerError(requestHead: SmokeHTTP1RequestHead,
                                                      responseHandler: HTTP1ResponseHandler) {
         handleError(code: 500, reason: "InternalError", message: nil, responseHandler: responseHandler)
     }
     
-    public func handleResponseForInvalidOperation(request: SmokeHTTP1Request,
+    public func handleResponseForInvalidOperation(requestHead: SmokeHTTP1RequestHead,
                                                   message: String, responseHandler: HTTP1ResponseHandler) {
         handleError(code: 400, reason: "InvalidOperation", message: message, responseHandler: responseHandler)
     }
     
-    public func handleResponseForDecodingError(request: SmokeHTTP1Request,
+    public func handleResponseForDecodingError(requestHead: SmokeHTTP1RequestHead,
                                                message: String, responseHandler: HTTP1ResponseHandler) {
         handleError(code: 400, reason: "DecodingError", message: message, responseHandler: responseHandler)
     }
     
-    public func handleResponseForValidationError(request: SmokeHTTP1Request,
+    public func handleResponseForValidationError(requestHead: SmokeHTTP1RequestHead,
                                                  message: String?, responseHandler: HTTP1ResponseHandler) {
         handleError(code: 400, reason: "ValidationError", message: message, responseHandler: responseHandler)
     }
@@ -230,6 +257,17 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
                               reason: String,
                               message: String?,
                               responseHandler: HTTP1ResponseHandler) {
+        // encode the response within the event loop of the server to limit the number of response
+        // `Data` objects that exist at single time to the number of threads in the event loop
+        responseHandler.executeInEventLoop {
+            self.handleErrorInEventLoop(code: code, reason: reason, message: message, responseHandler: responseHandler)
+        }
+    }
+    
+    internal func handleErrorInEventLoop(code: Int,
+                                         reason: String,
+                                         message: String?,
+                                         responseHandler: HTTP1ResponseHandler) {
         let errorResult = SmokeOperationsErrorPayload(errorMessage: message)
         let encodedError = JSONEncoder.encodePayload(payload: errorResult,
                                                      reason: reason)

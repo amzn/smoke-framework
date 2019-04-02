@@ -55,6 +55,20 @@ class TestHttpResponseHandler: HTTP1ResponseHandler {
         response = OperationResponse(status: status,
                                      responseComponents: responseComponents)
     }
+    
+    func completeInEventLoop(status: HTTPResponseStatus,
+                             responseComponents: HTTP1ServerResponseComponents) {
+        complete(status: status, responseComponents: responseComponents)
+    }
+    
+    func completeSilentlyInEventLoop(status: HTTPResponseStatus,
+                                     responseComponents: HTTP1ServerResponseComponents) {
+        complete(status: status, responseComponents: responseComponents)
+    }
+    
+    func executeInEventLoop(execute: @escaping () -> ()) {
+        execute()
+    }
 }
 
 public enum MyError: Swift.Error {
@@ -162,6 +176,12 @@ enum BodyColor: String, Codable {
     case blue = "BLUE"
 }
 
+struct TestInvocationStrategy: InvocationStrategy {
+    func invoke(handler: @escaping () -> ()) {
+        handler()
+    }
+}
+
 struct OutputAttributes: Codable, Validatable, Equatable {
     let bodyColor: BodyColor
     let isGreat: Bool
@@ -209,7 +229,7 @@ func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     handlerSelector: SelectorType,
                                     additionalHeaders: [(String, String)] = []) -> OperationResponse
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
-    SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+    SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
     let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType>(
         handlerSelector: handlerSelector,
@@ -225,7 +245,8 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     let responseHandler = TestHttpResponseHandler()
     
     handler.handle(requestHead: httpRequestHead, body: body,
-                   responseHandler: responseHandler)
+                   responseHandler: responseHandler,
+                   invocationStrategy: TestInvocationStrategy())
     
     return responseHandler.response!
 }
@@ -234,7 +255,7 @@ func verifyErrorResponse<SelectorType>(uri: String,
                                        handlerSelector: SelectorType,
                                        additionalHeaders: [(String, String)] = []) throws
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
-    SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+    SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
     let response = verifyPathOutput(uri: uri,
                                     body: serializedAlternateInput.data(using: .utf8)!,

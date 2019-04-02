@@ -39,7 +39,7 @@ public protocol SmokeHTTP1HandlerSelector {
      */
     func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws
         -> (OperationHandler<ContextType,
-            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.RequestHeadType,
             DefaultOperationDelegateType.ResponseHandlerType>, Shape)
     
     /**
@@ -53,6 +53,6 @@ public protocol SmokeHTTP1HandlerSelector {
     mutating func addHandlerForUri(_ uri: String,
                                    httpMethod: HTTPMethod,
                                    handler: OperationHandler<ContextType,
-                                    DefaultOperationDelegateType.RequestType,
+                                    DefaultOperationDelegateType.RequestHeadType,
                                     DefaultOperationDelegateType.ResponseHandlerType>)
 }

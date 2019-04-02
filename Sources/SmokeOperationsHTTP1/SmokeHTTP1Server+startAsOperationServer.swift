@@ -47,7 +47,7 @@ public extension SmokeHTTP1Server {
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
         eventLoopProvider: EventLoopProvider = .spawnNewThreads) throws -> SmokeHTTP1Server
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
-        SelectorType.DefaultOperationDelegateType.RequestType == SmokeHTTP1Request,
+        SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
             let handler = OperationServerHTTP1RequestHandler(
                 handlerSelector: handlerSelector,

@@ -21,11 +21,10 @@ import SmokeHTTP1
 import ShapeCoding
 
 /**
- Structure representing an incoming HTTP1 request.
+ Structure representing an incoming HTTP1 request head.
  */
-public struct SmokeHTTP1Request {
+public struct SmokeHTTP1RequestHead {
     public let httpRequestHead: HTTPRequestHead
     public let query: String
     public let pathShape: Shape
-    public let body: Data?
 }
