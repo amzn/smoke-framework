@@ -34,12 +34,12 @@ public extension OperationHandler {
      */
     public init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: OperationDelegate>(
-            inputProvider: @escaping (RequestType) throws -> InputType,
+            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping (InputType, ContextType) throws -> OutputType,
-            outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void),
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
-    where RequestType == OperationDelegateType.RequestType,
+    where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -47,7 +47,7 @@ public extension OperationHandler {
          * returns, the responseHandler is called with the result. If the provided operation
          * throws an error, the responseHandler is called with that error.
          */
-        let wrappedInputHandler = { (input: InputType, request: RequestType, context: ContextType,
+        let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: OperationDelegateType.ResponseHandlerType) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
             do {
@@ -65,7 +65,7 @@ public extension OperationHandler {
             OperationHandler.handleWithOutputOperationHandlerResult(
                 handlerResult: handlerResult,
                 operationDelegate: operationDelegate,
-                request: request,
+                requestHead: requestHead,
                 responseHandler: responseHandler,
                 outputHandler: outputHandler)
         }

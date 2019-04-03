@@ -30,24 +30,30 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
     let context: ChannelHandlerContext
     let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
     
-    func complete(status: HTTPResponseStatus,
-                  responseComponents: HTTP1ServerResponseComponents) {
+    func executeInEventLoop(execute: @escaping () -> ()) {
         // if we are currently on a thread that can complete the response
         if context.eventLoop.inEventLoop {
-            completeInEventLoop(status: status, responseComponents: responseComponents)
+            execute()
         } else {
             // otherwise execute on a thread that can
             context.eventLoop.execute {
-                self.completeInEventLoop(status: status, responseComponents: responseComponents)
+                execute()
             }
         }
     }
     
-    func completeInEventLoop(status: HTTPResponseStatus,
-                             responseComponents: HTTP1ServerResponseComponents) {
+    func complete(status: HTTPResponseStatus,
+                  responseComponents: HTTP1ServerResponseComponents) {
         let bodySize = handleComplete(status: status, responseComponents: responseComponents)
         
         Log.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
+    }
+    
+    func completeInEventLoop(status: HTTPResponseStatus,
+                             responseComponents: HTTP1ServerResponseComponents) {
+        executeInEventLoop {
+            self.complete(status: status, responseComponents: responseComponents)
+        }
     }
     
     func completeSilently(status: HTTPResponseStatus,
@@ -55,6 +61,13 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
         let bodySize = handleComplete(status: status, responseComponents: responseComponents)
         
         Log.verbose("Http response send: status '\(status.code)', body size '\(bodySize)'")
+    }
+    
+    func completeSilentlyInEventLoop(status: HTTPResponseStatus,
+                                     responseComponents: HTTP1ServerResponseComponents) {
+        executeInEventLoop {
+            self.completeSilently(status: status, responseComponents: responseComponents)
+        }
     }
     
     private func handleComplete(status: HTTPResponseStatus,
@@ -70,8 +83,7 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
             let data = body.data
             // create a buffer for the body and copy the body into it
             var newBuffer = ctx.channel.allocator.buffer(capacity: data.count)
-            let array = [UInt8](data)
-            newBuffer.write(bytes: array)
+            newBuffer.write(bytes: data)
             
             buffer = newBuffer
             bodySize = data.count

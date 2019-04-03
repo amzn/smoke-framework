@@ -39,9 +39,10 @@ public extension SmokeHTTP1HandlerSelector {
         
         // don't capture self
         let delegateToUse = defaultOperationDelegate
-        func inputProvider(request: DefaultOperationDelegateType.RequestType) throws -> InputType {
+        func inputProvider(requestHead: DefaultOperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
             return try delegateToUse.getInputForOperation(
-                request: request,
+                requestHead: requestHead,
+                body: body,
                 location: inputLocation)
         }
         
@@ -73,12 +74,13 @@ public extension SmokeHTTP1HandlerSelector {
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         operationDelegate: OperationDelegateType)
-        where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+        where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
-            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+            func inputProvider(requestHead: OperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
                 return try operationDelegate.getInputForOperation(
-                    request: request,
+                    requestHead: requestHead,
+                    body: body,
                     location: inputLocation)
             }
             
@@ -135,7 +137,7 @@ public extension SmokeHTTP1HandlerSelector {
         operation: @escaping ((InputType, ContextType) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
-    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         let handler = OperationHandler(

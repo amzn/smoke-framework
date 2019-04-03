@@ -30,7 +30,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     public let defaultOperationDelegate: DefaultOperationDelegateType
     
     public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
-            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.RequestHeadType,
             DefaultOperationDelegateType.ResponseHandlerType>
     
     private struct TokenizedHandler {

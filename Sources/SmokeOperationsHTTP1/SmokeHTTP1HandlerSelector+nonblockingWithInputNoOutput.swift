@@ -43,9 +43,10 @@ public extension SmokeHTTP1HandlerSelector {
         
         // don't capture self
         let delegateToUse = defaultOperationDelegate
-        func inputProvider(request: DefaultOperationDelegateType.RequestType) throws -> InputType {
+        func inputProvider(requestHead: DefaultOperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
             return try delegateToUse.getInputForOperation(
-                request: request,
+                requestHead: requestHead,
+                body: body,
                 location: inputLocation)
         }
         
@@ -77,16 +78,17 @@ public extension SmokeHTTP1HandlerSelector {
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         operationDelegate: OperationDelegateType)
-        where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+        where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
             func outputProvider(input: InputType, context: ContextType, completion: @escaping (Swift.Error?) -> ()) throws {
                 try operation(input, context, completion)
             }
             
-            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+            func inputProvider(requestHead: OperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
                 return try operationDelegate.getInputForOperation(
-                    request: request,
+                    requestHead: requestHead,
+                    body: body,
                     location: inputLocation)
             }
             
@@ -147,7 +149,7 @@ public extension SmokeHTTP1HandlerSelector {
         operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
-    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         func outputProvider(input: InputType, context: ContextType, completion: @escaping (Swift.Error?) -> ()) throws {

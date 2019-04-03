@@ -84,38 +84,38 @@ public extension OperationHandler {
     public static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: NoOutputOperationHandlerResult<ErrorType>,
         operationDelegate: OperationDelegateType,
-        request: OperationDelegateType.RequestType,
+        requestHead: OperationDelegateType.RequestHeadType,
         responseHandler: OperationDelegateType.ResponseHandlerType)
-    where RequestType == OperationDelegateType.RequestType,
+    where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             switch handlerResult {
             case .internalServerError(let error):
                 Log.error("Unexpected failure: \(error)")
                 operationDelegate.handleResponseForInternalServerError(
-                    request: request,
+                    requestHead: requestHead,
                     responseHandler: responseHandler)
             case .smokeReturnableError(let error, let allowedErrors):
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
                         operationDelegate.handleResponseForOperationFailure(
-                            request: request,
+                            requestHead: requestHead,
                             operationFailure: operationFailure,
                             responseHandler: responseHandler)
                 } else {
                     Log.error("Unexpected error type returned: \(error)")
                     operationDelegate.handleResponseForInternalServerError(
-                        request: request,
+                        requestHead: requestHead,
                         responseHandler: responseHandler)
                 }
             case .success:
                 operationDelegate.handleResponseForOperationWithNoOutput(
-                    request: request,
+                    requestHead: requestHead,
                     responseHandler: responseHandler)
             case .validationError(let reason):
                 Log.info("ValidationError: \(reason)")
                 operationDelegate.handleResponseForValidationError(
-                    request: request,
+                    requestHead: requestHead,
                     message: reason,
                     responseHandler: responseHandler)
             }
@@ -135,47 +135,47 @@ public extension OperationHandler {
     public static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
         operationDelegate: OperationDelegateType,
-        request: RequestType,
+        requestHead: RequestHeadType,
         responseHandler: ResponseHandlerType,
-        outputHandler: @escaping ((RequestType, OutputType, ResponseHandlerType) -> Void))
-    where RequestType == OperationDelegateType.RequestType,
+        outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void))
+    where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             switch handlerResult {
             case .internalServerError(let error):
                 Log.error("Unexpected failure: \(error)")
                 operationDelegate.handleResponseForInternalServerError(
-                    request: request,
+                    requestHead: requestHead,
                     responseHandler: responseHandler)
             case .smokeReturnableError(let error, let allowedErrors):
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
                         operationDelegate.handleResponseForOperationFailure(
-                            request: request,
+                            requestHead: requestHead,
                             operationFailure: operationFailure,
                             responseHandler: responseHandler)
                 } else {
                     Log.error("Unexpected error type returned: \(error)")
                     operationDelegate.handleResponseForInternalServerError(
-                        request: request,
+                        requestHead: requestHead,
                         responseHandler: responseHandler)
                 }
             case .success(let output):
                 do {
                     try output.validate()
                     
-                    outputHandler(request, output, responseHandler)
+                    outputHandler(requestHead, output, responseHandler)
                 } catch {
                     Log.error("Serialization error: unable to get response: \(error)")
                     
                     operationDelegate.handleResponseForInternalServerError(
-                        request: request,
+                        requestHead: requestHead,
                         responseHandler: responseHandler)
                 }
             case .validationError(let reason):
                 Log.info("ValidationError: \(reason)")
                 operationDelegate.handleResponseForValidationError(
-                    request: request,
+                    requestHead: requestHead,
                     message: reason,
                     responseHandler: responseHandler)
             }

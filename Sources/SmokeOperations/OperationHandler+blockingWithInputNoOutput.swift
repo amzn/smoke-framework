@@ -32,11 +32,11 @@ public extension OperationHandler {
           handling the operation.
      */
     public init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            inputProvider: @escaping (OperationDelegateType.RequestType) throws -> InputType,
+            inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
-    where RequestType == OperationDelegateType.RequestType,
+    where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -44,7 +44,7 @@ public extension OperationHandler {
          * returns, the responseHandler is called to indicate success. If the provided operation
          * throws an error, the responseHandler is called with that error.
          */
-        let wrappedInputHandler = { (input: InputType, request: RequestType, context: ContextType,
+        let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: ResponseHandlerType) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>
             do {
@@ -62,7 +62,7 @@ public extension OperationHandler {
             OperationHandler.handleNoOutputOperationHandlerResult(
                 handlerResult: handlerResult,
                 operationDelegate: operationDelegate,
-                request: request,
+                requestHead: requestHead,
                 responseHandler: responseHandler)
         }
         

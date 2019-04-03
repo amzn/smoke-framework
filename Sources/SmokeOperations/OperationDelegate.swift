@@ -22,8 +22,8 @@ import Foundation
  a transport protocol.
  */
 public protocol OperationDelegate {
-    /// The type of the request used with this delegate.
-    associatedtype RequestType
+    /// The type of the request head used with this delegate.
+    associatedtype RequestHeadType
     /// The type of response handler used with this delegate.
     associatedtype ResponseHandlerType
     
@@ -31,67 +31,67 @@ public protocol OperationDelegate {
      Function to handle a successful operation with no response.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForOperationWithNoOutput(request: RequestType, responseHandler: ResponseHandlerType)
+    func handleResponseForOperationWithNoOutput(requestHead: RequestHeadType, responseHandler: ResponseHandlerType)
     
     /**
      Function to handle an operation failure.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - operationFailure: The cause of the operation failure.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForOperationFailure(request: RequestType, operationFailure: OperationFailure,
+    func handleResponseForOperationFailure(requestHead: RequestHeadType, operationFailure: OperationFailure,
                                            responseHandler: ResponseHandlerType)
     
     /**
      Function to handle an internal server error.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForInternalServerError(request: RequestType, responseHandler: ResponseHandlerType)
+    func handleResponseForInternalServerError(requestHead: RequestHeadType, responseHandler: ResponseHandlerType)
     
     /**
      Function to handle an invalid operation being requested.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - message: A message corressponding to the failure.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForInvalidOperation(request: RequestType, message: String,
+    func handleResponseForInvalidOperation(requestHead: RequestHeadType, message: String,
                                            responseHandler: ResponseHandlerType)
     
     /**
      Function to handle a decoding error.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - message: A message corressponding to the failure.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForDecodingError(request: RequestType, message: String,
+    func handleResponseForDecodingError(requestHead: RequestHeadType, message: String,
                                         responseHandler: ResponseHandlerType)
     
     /**
      Function to handle a validation error.
  
      - Parameters:
-        - request: The original request corresponding to the operation. Can be used to determine how to
+        - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
         - message: A message corressponding to the failure.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForValidationError(request: RequestType, message: String?,
+    func handleResponseForValidationError(requestHead: RequestHeadType, message: String?,
                                           responseHandler: ResponseHandlerType)
 }

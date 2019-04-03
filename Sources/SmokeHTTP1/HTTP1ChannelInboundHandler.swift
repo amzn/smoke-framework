@@ -141,11 +141,10 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         let currentHandler = handler
         
         // pass to the request handler to complete
-        invocationStrategy.invoke {
-            currentHandler.handle(requestHead: requestHead,
-                                  body: bodyData,
-                                  responseHandler: responseHandler)
-        }
+        currentHandler.handle(requestHead: requestHead,
+                              body: bodyData,
+                              responseHandler: responseHandler,
+                              invocationStrategy: invocationStrategy)
     }
     
     /**

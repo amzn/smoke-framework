@@ -18,6 +18,7 @@
 import Foundation
 import NIO
 import NIOHTTP1
+import SmokeOperations
 
 /**
  Protocol that specifies a handler for a HttpRequest.
@@ -30,6 +31,8 @@ public protocol HTTP1RequestHandler {
         - requestHead: the parameters specified in the head of the HTTP request.
         - body: the body of the request, if any.
         - responseHandler: a handler that can be used to respond to the request.
+        - invocationStrategy: the invocationStrategy to use for this request.
      */
-    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler)
+    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler,
+                invocationStrategy: InvocationStrategy)
 }
