@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/IBM-Swift/LoggerAPI.git",
         "state": {
           "branch": null,
-          "revision": "d0ccb4158b83f8692531892a9c894bb757593c6f",
-          "version": "1.8.0"
+          "revision": "e29073bb7cecf3673e56bcb16180e8fd0cb091f6",
+          "version": "1.8.1"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
           "branch": null,
-          "revision": "c41a262b43baf9f93b79bdffbeb3b41435f8a14e",
-          "version": "0.8.0"
+          "revision": "60bc2c4c88700ff46f2cfd1f766c4ac8319488a9",
+          "version": "1.0.0"
         }
       },
       {
