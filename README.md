@@ -35,7 +35,19 @@ entities such as other service clients to be passed to operation handlers. Using
 operation handlers to remain *pure* functions (where its return value is determined by the function's 
 logic and input values) and hence easily testable.
 
-# Getting Started
+# SmokeFrameworkExamples
+
+See [this repository](https://github.com/amzn/smoke-framework-examples) for examples of the Smoke Framework and
+the related Smoke* repositories in action.
+
+# Getting Started using Code Generation
+
+The Smoke Framework provides a [code generator](https://github.com/amzn/smoke-framework-application-generate) that will
+generate a complete Swift Package Manager repository for a SmokeFrammework-based service from a Swagger 2.0 specification file.
+
+See the instructions in the code generator repository on how to get started.
+
+# Getting Started without Code Generation
 
 ## Step 1: Add the Smoke Framework dependency
 
@@ -44,7 +56,7 @@ to your Package.swift-
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "0.8.0"))
+    .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "1.0.0"))
 ]
 ```
 
