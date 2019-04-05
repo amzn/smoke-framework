@@ -58,6 +58,10 @@ to your Package.swift-
 dependencies: [
     .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "1.0.0"))
 ]
+
+.target(
+    name: ...,
+    dependencies: [..., "SmokeOperations", "SmokeOperationsHTTP1"]),
 ```
 
 ## Step 2: Add an Operation Function
