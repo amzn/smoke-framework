@@ -40,7 +40,7 @@ public extension SmokeHTTP1Server {
                               with the number of threads specified by `System.coreCount`.
      - Returns: the SmokeHTTP1Server that was created and started.
      */
-    public static func startAsOperationServer<ContextType, SelectorType>(
+    static func startAsOperationServer<ContextType, SelectorType>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
         andPort port: Int = ServerDefaults.defaultPort,

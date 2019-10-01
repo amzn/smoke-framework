@@ -32,7 +32,7 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
-    public init<InputType: Validatable, OutputType: Validatable,
+    init<InputType: Validatable, OutputType: Validatable,
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping
