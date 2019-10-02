@@ -38,6 +38,8 @@ public extension SmokeHTTP1Server {
          - eventLoopProvider: Provides the event loop to be used by the server.
                               If not specified, the server will create a new multi-threaded event loop
                               with the number of threads specified by `System.coreCount`.
+         - shutdownOnSignal: Specifies if the server should be shutdown when a signal is received.
+                             If not specified, the server will be shutdown if a SIGINT is received.
      - Returns: the SmokeHTTP1Server that was created and started.
      */
     static func startAsOperationServer<ContextType, SelectorType>(
@@ -45,7 +47,8 @@ public extension SmokeHTTP1Server {
         andContext context: ContextType,
         andPort port: Int = ServerDefaults.defaultPort,
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
-        eventLoopProvider: EventLoopProvider = .spawnNewThreads) throws -> SmokeHTTP1Server
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+        shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
@@ -55,7 +58,8 @@ public extension SmokeHTTP1Server {
             let server = SmokeHTTP1Server(handler: handler,
                                           port: port,
                                           invocationStrategy: invocationStrategy,
-                                          eventLoopProvider: eventLoopProvider)
+                                          eventLoopProvider: eventLoopProvider,
+                                          shutdownOnSignal: shutdownOnSignal)
             
             try server.start()
             
