@@ -39,7 +39,7 @@ public class SmokeHTTP1Server {
     let port: Int
     
     let quiesce: ServerQuiescingHelper
-    let signalSource: DispatchSourceSignal
+    let signalSource: DispatchSourceSignal?
     let fullyShutdownPromise: EventLoopPromise<Void>
     let handler: HTTP1RequestHandler
     let invocationStrategy: InvocationStrategy
@@ -69,13 +69,25 @@ public class SmokeHTTP1Server {
         case use(EventLoopGroup)
     }
     
+    /**
+     Enumeration specifying if the server should be shutdown on any signals received.
+     */
+    public enum ShutdownOnSignal {
+        // do not shut down the server on any signals
+        case none
+        // shutdown the server if a SIGINT is received
+        case sigint
+        // shutdown the server if a SIGTERM is received
+        case sigterm
+    }
+    
     let eventLoopGroup: EventLoopGroup
     let ownEventLoopGroup: Bool
     
     /**
      Initializer.
  
-    - Parameters:
+     - Parameters:
         - handler: the HTTPRequestHandler to handle incoming requests.
         - port: Optionally the localhost port for the server to listen on.
                 If not specified, defaults to 8080.
@@ -90,12 +102,15 @@ public class SmokeHTTP1Server {
         - eventLoopProvider: Provides the event loop to be used by the server.
                              If not specified, the server will create a new multi-threaded event loop
                              with the number of threads specified by `System.coreCount`.
+        - shutdownOnSignal: Specifies if the server should be shutdown when a signal is received.
+                            If not specified, the server will be shutdown if a SIGINT is received.
      */
     public init(handler: HTTP1RequestHandler,
                 port: Int = ServerDefaults.defaultPort,
                 invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
                 shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
-                eventLoopProvider: EventLoopProvider = .spawnNewThreads) {
+                eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+                shutdownOnSignal: ShutdownOnSignal = .sigint) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
@@ -112,26 +127,38 @@ public class SmokeHTTP1Server {
             self.ownEventLoopGroup = false
         }
         
+        let newSignalSource: (DispatchSourceSignal, Int32)?
+        switch shutdownOnSignal {
+        case .none:
+           newSignalSource = nil
+        case .sigint:
+            newSignalSource = (DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue), SIGINT)
+        case .sigterm:
+            newSignalSource = (DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue), SIGTERM)
+        }
+        
         self.quiesce = ServerQuiescingHelper(group: eventLoopGroup)
         self.fullyShutdownPromise = eventLoopGroup.next().newPromise()
-        self.signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        self.signalSource = newSignalSource?.0
         self.shutdownDispatchGroup = DispatchGroup()
         // enter the DispatchGroup during initialization so waiting for the
         // shutdown of an initalized or started server will wait
         shutdownDispatchGroup.enter()
         
-        signalSource.setEventHandler { [unowned self] in
-            self.signalSource.cancel()
-            Log.verbose("Received signal, initiating shutdown which should complete after the last request finished.")
+        if let (newSignalSource, signalValue) = newSignalSource {
+            newSignalSource.setEventHandler { [unowned self] in
+                self.signalSource?.cancel()
+                Log.verbose("Received signal, initiating shutdown which should complete after the last request finished.")
 
-            do {
-                try self.shutdown()
-            } catch {
-                Log.error("Unable to shutdown server on signalSource: \(error)")
+                do {
+                    try self.shutdown()
+                } catch {
+                    Log.error("Unable to shutdown server on signalSource: \(error)")
+                }
             }
+            signal(signalValue, SIG_IGN)
+            newSignalSource.resume()
         }
-        signal(SIGINT, SIG_IGN)
-        signalSource.resume()
     }
     
     /**
