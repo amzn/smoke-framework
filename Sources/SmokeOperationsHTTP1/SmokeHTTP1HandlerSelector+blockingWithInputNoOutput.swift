@@ -30,7 +30,7 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
      */
-    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
+    mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType) throws -> ()),
@@ -66,7 +66,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
-    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
+    mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: HTTP1OperationDelegate>(
         _ uri: String,
         httpMethod: HTTPMethod,
@@ -102,7 +102,7 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
      */
-    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol,
+    mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol,
         ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
@@ -129,7 +129,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
-    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol,
+    mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol,
         ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: HTTP1OperationDelegate>(
         _ uri: String,

@@ -50,7 +50,7 @@ public extension OperationHandler {
           entry is a tuple specifying the error shape and the response code to use for
           returning that error.
      */
-    public static func fromSmokeReturnableError<ShapeType>(
+    static func fromSmokeReturnableError<ShapeType>(
         error: SmokeReturnableError,
         allowedErrors: [(ShapeType, Int)])
         -> OperationFailure? where ShapeType: ErrorIdentifiableByDescription {
@@ -81,7 +81,7 @@ public extension OperationHandler {
          - request: the current request.
          - responseHandler: the response handler to use.
      */
-    public static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
+    static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: NoOutputOperationHandlerResult<ErrorType>,
         operationDelegate: OperationDelegateType,
         requestHead: OperationDelegateType.RequestHeadType,
@@ -132,7 +132,7 @@ public extension OperationHandler {
          - request: the current request.
          - responseHandler: the response handler to use.
      */
-    public static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
+    static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
         operationDelegate: OperationDelegateType,
         requestHead: RequestHeadType,

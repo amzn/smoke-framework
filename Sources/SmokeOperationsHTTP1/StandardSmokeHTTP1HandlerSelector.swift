@@ -229,7 +229,13 @@ extension HTTPMethod {
 }
 
 extension HTTPMethod: Hashable {
+    #if swift(>=5.0) || (swift(>=4.1.50) && !swift(>=4.2)) || (swift(>=3.5) && !swift(>=4.0))
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rawValue)
+    }
+    #else
     public var hashValue: Int {
         return rawValue.hashValue
     }
+    #endif
 }
