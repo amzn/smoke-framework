@@ -1,4 +1,4 @@
-// swift-tools-version:4.1
+// swift-tools-version:5.0
 //
 // Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
