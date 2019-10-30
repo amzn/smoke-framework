@@ -58,44 +58,44 @@ func handleBadHTTP1OperationVoidAsyncWithThrow(input: ExampleHTTP1Input, context
 }
 
 func handleExampleOperationAsync(input: ExampleInput, context: ExampleContext,
-                                 responseHandler: (SmokeResult<OutputAttributes>) -> ()) throws {
+                                 responseHandler: (Swift.Result<OutputAttributes, Swift.Error>) -> ()) throws {
     let attributes = OutputAttributes(bodyColor: input.theID == "123456789012" ? .blue : .yellow,
                                        isGreat: true)
     
-    responseHandler(.response(attributes))
+    responseHandler(.success(attributes))
 }
 
 func handleExampleHTTP1OperationAsync(input: ExampleHTTP1Input, context: ExampleContext,
-                                      responseHandler: (SmokeResult<OutputHTTP1Attributes>) -> ()) throws {
+                                      responseHandler: (Swift.Result<OutputHTTP1Attributes, Swift.Error>) -> ()) throws {
     input.validateForTest()
     let attributes = OutputHTTP1Attributes(bodyColor: input.theID == "123456789012" ? .blue : .yellow,
                                            isGreat: true, theHeader: input.theHeader)
     
-    responseHandler(.response(attributes))
+    responseHandler(.success(attributes))
 }
 
 func handleBadOperationAsync(input: ExampleInput, context: ExampleContext,
-                             responseHandler: (SmokeResult<OutputAttributes>) -> ()) throws {
+                             responseHandler: (Swift.Result<OutputAttributes, Swift.Error>) -> ()) throws {
     let error = MyError.theError(reason: "Is bad!")
     
-    responseHandler(.error(error))
+    responseHandler(.failure(error))
 }
 
 func handleBadHTTP1OperationAsync(input: ExampleHTTP1Input, context: ExampleContext,
-                                  responseHandler: (SmokeResult<OutputHTTP1Attributes>) -> ()) throws {
+                                  responseHandler: (Swift.Result<OutputHTTP1Attributes, Swift.Error>) -> ()) throws {
     input.validateForTest()
     let error = MyError.theError(reason: "Is bad!")
     
-    responseHandler(.error(error))
+    responseHandler(.failure(error))
 }
 
 func handleBadOperationAsyncWithThrow(input: ExampleInput, context: ExampleContext,
-                                      responseHandler: (SmokeResult<OutputAttributes>) -> ()) throws {
+                                      responseHandler: (Swift.Result<OutputAttributes, Swift.Error>) -> ()) throws {
     throw MyError.theError(reason: "Is bad!")
 }
 
 func handleBadHTTP1OperationAsyncWithThrow(input: ExampleHTTP1Input, context: ExampleContext,
-                                           responseHandler: (SmokeResult<OutputHTTP1Attributes>) -> ()) throws {
+                                           responseHandler: (Swift.Result<OutputHTTP1Attributes, Swift.Error>) -> ()) throws {
     input.validateForTest()
     throw MyError.theError(reason: "Is bad!")
 }
