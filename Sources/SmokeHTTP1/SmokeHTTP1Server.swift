@@ -138,7 +138,7 @@ public class SmokeHTTP1Server {
         }
         
         self.quiesce = ServerQuiescingHelper(group: eventLoopGroup)
-        self.fullyShutdownPromise = eventLoopGroup.next().newPromise()
+        self.fullyShutdownPromise = eventLoopGroup.next().makePromise()
         self.signalSource = newSignalSource?.0
         self.shutdownDispatchGroup = DispatchGroup()
         // enter the DispatchGroup during initialization so waiting for the
@@ -183,11 +183,11 @@ public class SmokeHTTP1Server {
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .serverChannelInitializer { [unowned self] channel in
-                channel.pipeline.add(handler: self.quiesce.makeServerChannelHandler(channel: channel))
+                channel.pipeline.addHandler(self.quiesce.makeServerChannelHandler(channel: channel))
             }
             .childChannelInitializer { channel in
-                channel.pipeline.configureHTTPServerPipeline().then {
-                    channel.pipeline.add(handler: HTTP1ChannelInboundHandler(
+                channel.pipeline.configureHTTPServerPipeline().flatMap {
+                    channel.pipeline.addHandler(HTTP1ChannelInboundHandler(
                         handler: currentHandler,
                         invocationStrategy: currentInvocationStrategy))
                 }
@@ -199,7 +199,7 @@ public class SmokeHTTP1Server {
         
         channel = try bootstrap.bind(host: ServerDefaults.defaultHost, port: port).wait()
         
-        fullyShutdownPromise.futureResult.whenComplete { [unowned self] in
+        fullyShutdownPromise.futureResult.whenComplete { [unowned self] _ in
             do {
                 let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
                 

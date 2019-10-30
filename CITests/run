@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-swiftLintVersion=0.33.0
+swiftLintVersion=0.36.0
 
 USE_SWIFT_LINT=$1
 
