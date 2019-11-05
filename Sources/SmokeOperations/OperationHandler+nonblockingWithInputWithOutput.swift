@@ -36,7 +36,7 @@ public extension OperationHandler {
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping
-                (SmokeResult<OutputType>) -> Void) throws -> Void),
+                (Swift.Result<OutputType, Swift.Error>) -> Void) throws -> Void),
             outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
@@ -56,9 +56,9 @@ public extension OperationHandler {
                     let asyncHandlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                     
                     switch result {
-                    case .response(let result):
+                    case .success(let result):
                         asyncHandlerResult = .success(result)
-                    case .error(let error):
+                    case .failure(let error):
                         if let smokeReturnableError = error as? SmokeReturnableError {
                             asyncHandlerResult = .smokeReturnableError(smokeReturnableError,
                                                                        allowedErrors)
