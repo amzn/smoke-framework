@@ -22,7 +22,7 @@ import LoggerAPI
  Struct that handles serialization and de-serialization of request and response
  bodies from and to the shapes required by operation handlers.
  */
-public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType> {
+public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType, OperationIdentifer: OperationIdentity> {
     public typealias OperationResultValidatableInputFunction<InputType: Validatable>
         = (_ input: InputType, _ requestHead: RequestHeadType, _ context: ContextType,
         _ responseHandler: ResponseHandlerType) -> ()
@@ -95,7 +95,8 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
      - Parameters:
         - operationFunction: the function to use to handle this operation.
      */
-    public init(operationFunction: @escaping OperationResultDataInputFunction) {
+    public init(operationIdentifer: OperationIdentifer,
+                operationFunction: @escaping OperationResultDataInputFunction) {
         self.operationFunction = operationFunction
     }
     
@@ -103,6 +104,7 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
      * Convenience initializer that incorporates decoding and validating
      */
     public init<InputType: Validatable, OperationDelegateType: OperationDelegate>(
+        operationIdentifer: OperationIdentifer,
         inputHandler: @escaping OperationResultValidatableInputFunction<InputType>,
         inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
         operationDelegate: OperationDelegateType)

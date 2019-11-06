@@ -100,89 +100,89 @@ func handleBadHTTP1OperationAsyncWithThrow(input: ExampleHTTP1Input, context: Ex
     throw MyError.theError(reason: "Is bad!")
 }
 
-fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate> = {
+fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations> = {
     let defaultOperationDelegate = JSONPayloadHTTP1OperationDelegate()
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>(
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations>(
         defaultOperationDelegate: defaultOperationDelegate)
     
-    newHandlerSelector.addHandlerForUri(
-        "exampleoperation", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleOperation, httpMethod: .POST,
         operation: handleExampleOperationAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body,
         outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "exampleoperation/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleOperationWithToken, httpMethod: .POST,
         operation: handleExampleHTTP1OperationAsync,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "examplegetoperation", httpMethod: .GET,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleGetOperation, httpMethod: .GET,
         operation: handleExampleOperationAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body,
         outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "examplegetoperation/{theToken}", httpMethod: .GET,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleGetOperationWithToken, httpMethod: .GET,
         operation: handleExampleHTTP1OperationAsync,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "examplenobodyoperation", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleNoBodyOperation, httpMethod: .POST,
         operation: handleExampleOperationVoidAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "examplenobodyoperation/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .exampleNoBodyOperationWithToken, httpMethod: .POST,
         operation: handleExampleHTTP1OperationVoidAsync,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationvoidresponse", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationVoidResponse, httpMethod: .POST,
         operation: handleBadOperationVoidAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationvoidresponse/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationVoidResponseWithToken, httpMethod: .POST,
         operation: handleBadHTTP1OperationVoidAsync,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationvoidresponsewiththrow", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationVoidResponseWithThrow, httpMethod: .POST,
         operation: handleBadOperationVoidAsyncWithThrow,
         allowedErrors: allowedErrors,
         inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationvoidresponsewiththrow/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationVoidResponseWithThrowWithToken, httpMethod: .POST,
         operation: handleBadHTTP1OperationVoidAsyncWithThrow,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperation", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperation, httpMethod: .POST,
         operation: handleBadOperationAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body,
         outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperation/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationWithToken, httpMethod: .POST,
         operation: handleBadHTTP1OperationAsync,
         allowedErrors: allowedErrors)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationwiththrow", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationWithThrow, httpMethod: .POST,
         operation: handleBadOperationAsync,
         allowedErrors: allowedErrors,
         inputLocation: .body,
         outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri(
-        "badoperationwiththrow/{theToken}", httpMethod: .POST,
+    newHandlerSelector.addHandlerForOperation(
+        .badOperationWithThrowWithToken, httpMethod: .POST,
         operation: handleBadHTTP1OperationAsync,
         allowedErrors: allowedErrors)
     

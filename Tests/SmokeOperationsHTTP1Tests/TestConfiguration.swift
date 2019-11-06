@@ -230,8 +230,9 @@ func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     additionalHeaders: [(String, String)] = []) -> OperationResponse
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
-    let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType>(
+    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+    SelectorType.OperationIdentifer == TestOperations {
+    let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType, TestOperations>(
         handlerSelector: handlerSelector,
         context: ExampleContext())
     
@@ -256,7 +257,8 @@ func verifyErrorResponse<SelectorType>(uri: String,
                                        additionalHeaders: [(String, String)] = []) throws
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
+    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+    SelectorType.OperationIdentifer == TestOperations {
     let response = verifyPathOutput(uri: uri,
                                     body: serializedAlternateInput.data(using: .utf8)!,
                                     handlerSelector: handlerSelector,

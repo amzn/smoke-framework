@@ -42,7 +42,7 @@ public extension SmokeHTTP1Server {
                              If not specified, the server will be shutdown if a SIGINT is received.
      - Returns: the SmokeHTTP1Server that was created and started.
      */
-    static func startAsOperationServer<ContextType, SelectorType>(
+    static func startAsOperationServer<ContextType, SelectorType, OperationIdentifer>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
         andPort port: Int = ServerDefaults.defaultPort,
@@ -51,7 +51,8 @@ public extension SmokeHTTP1Server {
         shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
-        SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
+        SelectorType.DefaultOperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler,
+        SelectorType.OperationIdentifer == OperationIdentifer {
             let handler = OperationServerHTTP1RequestHandler(
                 handlerSelector: handlerSelector,
                 context: context)
