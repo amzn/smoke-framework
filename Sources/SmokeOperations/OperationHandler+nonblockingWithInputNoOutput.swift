@@ -32,6 +32,7 @@ public extension OperationHandler {
           handling the operation.
      */
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
+            operationIdentifer: OperationIdentifer,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
@@ -91,7 +92,8 @@ public extension OperationHandler {
             }
         }
         
-        self.init(inputHandler: wrappedInputHandler,
+        self.init(operationIdentifer: operationIdentifer,
+                  inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate)
     }

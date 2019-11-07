@@ -30,10 +30,11 @@ internal struct PingParameters {
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
  */
-struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1RequestHandler
+struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationIdentifer>: HTTP1RequestHandler
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-        HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
+        HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+        SelectorType.OperationIdentifer == OperationIdentifer {
     let handlerSelector: SelectorType
     let context: ContextType
 
@@ -53,7 +54,7 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1Reque
         let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
 
         // get the handler to use
-        let handler: OperationHandler<ContextType, SmokeHTTP1RequestHead, HTTP1ResponseHandler>
+        let handler: OperationHandler<ContextType, SmokeHTTP1RequestHead, HTTP1ResponseHandler, OperationIdentifer>
         let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
         

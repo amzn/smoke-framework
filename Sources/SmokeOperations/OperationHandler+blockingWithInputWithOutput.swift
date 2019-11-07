@@ -34,6 +34,7 @@ public extension OperationHandler {
      */
     init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: OperationDelegate>(
+            operationIdentifer: OperationIdentifer,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping (InputType, ContextType) throws -> OutputType,
             outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void),
@@ -70,7 +71,8 @@ public extension OperationHandler {
                 outputHandler: outputHandler)
         }
         
-        self.init(inputHandler: wrappedInputHandler,
+        self.init(operationIdentifer: operationIdentifer,
+                  inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate)
     }

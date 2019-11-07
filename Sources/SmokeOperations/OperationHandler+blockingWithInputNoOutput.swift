@@ -32,6 +32,7 @@ public extension OperationHandler {
           handling the operation.
      */
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
+            operationIdentifer: OperationIdentifer,
             inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
@@ -66,7 +67,8 @@ public extension OperationHandler {
                 responseHandler: responseHandler)
         }
         
-        self.init(inputHandler: wrappedInputHandler,
+        self.init(operationIdentifer: operationIdentifer,
+                  inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate)
     }
