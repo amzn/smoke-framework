@@ -114,16 +114,16 @@ public func createHandlerSelector() -> HandlerSelectorType {
 }
 ```
 
-* `StandardSmokeHTTP1HandlerSelector` takes two generic parameters-
- * The type of the context instance to use for the application.
- * The type of the default operation delegate.
-* Each handler added requires the following parameters to be specified-
- * The operation URI that must be matched by the incoming request to select the handler.
- * The HTTP method that must be matched by the incoming request to select the handler.
- * The function to be invoked.
- * The errors that can be returned to the caller from this handler.
- * The location in the HTTP1 request to construct the operation input type from (only required if the input type conforms to `Codable`)
- * The location in the HTTP1 response that the output type represents (only required if the output type conforms to `Codable`)
+* `StandardSmokeHTTP1HandlerSelector` takes two generic parameters:
+  * The type of the context instance to use for the application.
+  * The type of the default operation delegate.
+* Each handler added requires the following parameters to be specified:
+  * The operation URI that must be matched by the incoming request to select the handler.
+  * The HTTP method that must be matched by the incoming request to select the handler.
+  * The function to be invoked.
+  * The errors that can be returned to the caller from this handler.
+  * The location in the HTTP1 request to construct the operation input type from (only required if the input type conforms to `Codable`)
+  * The location in the HTTP1 response that the output type represents (only required if the output type conforms to `Codable`)
 
 ## Step 3: Setting up the Application Server
 
