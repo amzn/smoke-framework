@@ -19,8 +19,15 @@ import Foundation
 import NIO
 import NIOHTTP1
 import NIOFoundationCompat
-import LoggerAPI
 import SmokeOperations
+import Logging
+
+private protocol CommonStatePayload {
+    var logger: Logger { get }
+    var internalRequestId: String { get }
+    var requestHead: HTTPRequestHead { get }
+    var keepAliveStatus: KeepAliveStatus { get }
+}
 
 /**
  Handler that manages the inbound channel for a HTTP Request.
@@ -29,50 +36,181 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
     
+    private struct WaitingForRequestBody: CommonStatePayload {
+        let logger: Logger
+        let internalRequestId: String
+        let requestHead: HTTPRequestHead
+        let keepAliveStatus: KeepAliveStatus
+        
+        init(requestHead: HTTPRequestHead) {
+            self.internalRequestId = UUID().uuidString
+            var newLogger = Logger(label: "com.amazon.SmokeFramework.request.\(internalRequestId)")
+            newLogger[metadataKey: "internalRequestId"] = "\(internalRequestId)"
+            
+            self.logger = newLogger
+            self.requestHead = requestHead
+            self.keepAliveStatus = KeepAliveStatus(state: requestHead.isKeepAlive)
+        }
+    }
+    
+    private struct ReceivingRequestBody: CommonStatePayload {
+        let logger: Logger
+        let internalRequestId: String
+        let requestHead: HTTPRequestHead
+        let keepAliveStatus: KeepAliveStatus
+        let partialBody: Data
+        
+        init(waitingForRequestBody: WaitingForRequestBody, bodyPart: Data) {
+            self.logger = waitingForRequestBody.logger
+            self.internalRequestId = waitingForRequestBody.internalRequestId
+            self.requestHead = waitingForRequestBody.requestHead
+            self.keepAliveStatus = waitingForRequestBody.keepAliveStatus
+            self.partialBody = bodyPart
+        }
+        
+        init(receivingRequestBody: ReceivingRequestBody, bodyPart: Data) {
+            self.logger = receivingRequestBody.logger
+            self.internalRequestId = receivingRequestBody.internalRequestId
+            self.requestHead = receivingRequestBody.requestHead
+            self.keepAliveStatus = receivingRequestBody.keepAliveStatus
+            
+            var newPartialBody = receivingRequestBody.partialBody
+            newPartialBody += bodyPart
+            self.partialBody = newPartialBody
+        }
+    }
+    
+    private struct PendingResponse: CommonStatePayload {
+        let logger: Logger
+        let internalRequestId: String
+        let requestHead: HTTPRequestHead
+        let keepAliveStatus: KeepAliveStatus
+        let bodyData: Data?
+        
+        init(waitingForRequestBody: WaitingForRequestBody) {
+            self.logger = waitingForRequestBody.logger
+            self.internalRequestId = waitingForRequestBody.internalRequestId
+            self.requestHead = waitingForRequestBody.requestHead
+            self.keepAliveStatus = waitingForRequestBody.keepAliveStatus
+            self.bodyData = nil
+        }
+        
+        init(receivingRequestBody: ReceivingRequestBody) {
+            self.logger = receivingRequestBody.logger
+            self.internalRequestId = receivingRequestBody.internalRequestId
+            self.requestHead = receivingRequestBody.requestHead
+            self.keepAliveStatus = receivingRequestBody.keepAliveStatus
+            self.bodyData = receivingRequestBody.partialBody
+        }
+        
+        init(pendingResponse: PendingResponse, keepAliveStatus: Bool) {
+            self.internalRequestId = pendingResponse.internalRequestId
+            self.logger = pendingResponse.logger
+            self.requestHead = pendingResponse.requestHead
+            self.keepAliveStatus = pendingResponse.keepAliveStatus
+            self.bodyData = pendingResponse.bodyData
+            
+            self.keepAliveStatus.state = keepAliveStatus
+        }
+    }
+    
     /**
      Internal state variable that tracks the progress
      of the HTTP Request and Response.
      */
     private enum State {
         case idle
-        case waitingForRequestBody
-        case sendingResponse
+        case waitingForRequestBody(WaitingForRequestBody)
+        case receivingRequestBody(ReceivingRequestBody)
+        case pendingResponse(PendingResponse)
 
-        mutating func requestReceived() {
-            precondition(self == .idle, "Invalid state for request received: \(self)")
-            self = .waitingForRequestBody
+        mutating func requestReceived(requestHead: HTTPRequestHead) -> WaitingForRequestBody {
+            switch self {
+            case .idle:
+                let statePayload = WaitingForRequestBody(requestHead: requestHead)
+                self = .waitingForRequestBody(statePayload)
+                
+                return statePayload
+            case .waitingForRequestBody, .receivingRequestBody, .pendingResponse:
+                assertionFailure("Invalid state for request received: \(self)")
+                
+                fatalError()
+            }
+        }
+        
+        mutating func partialBodyReceived(bodyPart: Data?) -> CommonStatePayload {
+            switch self {
+            case .waitingForRequestBody(let waitingForRequestBody):
+                if let bodyPart = bodyPart {
+                    let statePayload = ReceivingRequestBody(waitingForRequestBody: waitingForRequestBody, bodyPart: bodyPart)
+                    self = .receivingRequestBody(statePayload)
+                    
+                    return statePayload
+                } else {
+                    // no additional body, no actual state change
+                    return waitingForRequestBody
+                }
+            case .receivingRequestBody(let receivingRequestBody):
+                if let bodyPart = bodyPart {
+                    let statePayload = ReceivingRequestBody(receivingRequestBody: receivingRequestBody, bodyPart: bodyPart)
+                    self = .receivingRequestBody(statePayload)
+                    
+                    return statePayload
+                } else {
+                    // no additional body, no actual state change
+                    return receivingRequestBody
+                }
+            case .idle, .pendingResponse:
+                assertionFailure("Invalid state for partial body received: \(self)")
+                    
+                fatalError()
+            }
         }
 
-        mutating func requestComplete() {
-            precondition(self == .waitingForRequestBody, "Invalid state for request complete: \(self)")
-            self = .sendingResponse
+        mutating func requestComplete() -> PendingResponse {
+            switch self {
+            case .waitingForRequestBody(let waitingForRequestBody):
+                self = .idle
+                
+                return PendingResponse(waitingForRequestBody: waitingForRequestBody)
+            case .receivingRequestBody(let receivingRequestBody):
+                self = .idle
+                
+                return PendingResponse(receivingRequestBody: receivingRequestBody)
+            case .idle, .pendingResponse:
+                assertionFailure("Invalid state for request complete: \(self)")
+                
+                fatalError()
+            }
         }
-
-        mutating func responseComplete() {
-            precondition(self == .sendingResponse, "Invalid state for response complete: \(self)")
-            self = .idle
+        
+        mutating func updateKeepAliveStatus(keepAliveStatus: Bool) -> Bool {
+            switch self {
+            case .waitingForRequestBody:
+                return true
+            case .receivingRequestBody:
+                return true
+            case .pendingResponse(let pendingResponse):
+                self = .pendingResponse(PendingResponse(pendingResponse: pendingResponse, keepAliveStatus: keepAliveStatus))
+                
+                return false
+            case .idle:
+                assertionFailure("Invalid state to update keep alive status: \(self)")
+                
+                fatalError()
+            }
         }
     }
     
     private let handler: HTTP1RequestHandler
     private let invocationStrategy: InvocationStrategy
-    private var requestHead: HTTPRequestHead?
     
-    var partialBody: Data?
-    private var keepAliveStatus = KeepAliveStatus()
     private var state = State.idle
     
     init(handler: HTTP1RequestHandler,
          invocationStrategy: InvocationStrategy) {
         self.handler = handler
         self.invocationStrategy = invocationStrategy
-    }
-
-    private func reset() {
-        requestHead = nil
-        partialBody = nil
-        keepAliveStatus = KeepAliveStatus()
-        state = State.idle
     }
     
     /**
@@ -82,32 +220,24 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         let requestPart = self.unwrapInboundIn(data)
         
         switch requestPart {
-        case .head(let request):
-            reset()
-            // if this is the request head, store it and the keep alive status
-            requestHead = request
-            Log.verbose("Request head received.")
-            keepAliveStatus.state = request.isKeepAlive
-            self.state.requestReceived()
+        case .head(let requestHead):
+            let statePayload = self.state.requestReceived(requestHead: requestHead)
+
+            statePayload.logger.debug("Request head received.")
         case .body(var byteBuffer):
             let byteBufferSize = byteBuffer.readableBytes
             let newData = byteBuffer.readData(length: byteBufferSize)
             
-            if var newPartialBody = partialBody,
-                let newData = newData {
-                newPartialBody += newData
-                partialBody = newPartialBody
-            } else if let newData = newData {
-                partialBody = newData
-            }
-            
-            Log.verbose("Request body part of \(byteBufferSize) bytes received.")
+            let statePayload = self.state.partialBodyReceived(bodyPart: newData)
+
+            statePayload.logger.debug("Request body part of \(byteBufferSize) bytes received.")
         case .end:
-            Log.verbose("Request end received.")
             // this signals that the head and all possible body parts have been received
-            self.state.requestComplete()
-            handleCompleteRequest(context: context, bodyData: partialBody)
-            reset()
+            let pendingResponse = self.state.requestComplete()
+            
+            pendingResponse.logger.debug("Request end received.")
+
+            handleCompleteRequest(context: context, pendingResponse: pendingResponse)
         }
     }
     
@@ -115,26 +245,17 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
      Is called when the request has been completed received
      and can be passed to the request hander.
      */
-    func handleCompleteRequest(context: ChannelHandlerContext, bodyData: Data?) {
-        self.state.responseComplete()
+    private func handleCompleteRequest(context: ChannelHandlerContext, pendingResponse: PendingResponse) {
+        let logger = pendingResponse.logger
+        let bodyData = pendingResponse.bodyData
+        let requestHead = pendingResponse.requestHead
         
-        Log.verbose("Handling request body with \(bodyData?.count ?? 0) size.")
-        
-        // make sure we have received the head
-        guard let requestHead = requestHead else {
-            Log.error("Unable to complete Http request as the head was not received")
-            
-            handleResponseAsError(context: context,
-                                  responseString: "Missing request head.",
-                                  status: .badRequest)
-            
-            return
-        }
+        logger.debug("Handling request body with \(bodyData?.count ?? 0) size.")
         
         // create a response handler for this request
         let responseHandler = StandardHTTP1ResponseHandler(
             requestHead: requestHead,
-            keepAliveStatus: keepAliveStatus,
+            keepAliveStatus: pendingResponse.keepAliveStatus,
             context: context,
             wrapOutboundOut: wrapOutboundOut)
     
@@ -165,7 +286,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         buffer.setString(responseString, at: 0)
         
         headers.add(name: HTTP1Headers.contentLength, value: "\(responseString.utf8.count)")
-        context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead!.version,
+        context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1),
                                                                   status: status,
                                                                   headers: headers))), promise: nil)
         context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
@@ -181,15 +302,10 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         switch event {
         // if the remote peer half-closed the channel.
         case let evt as ChannelEvent where evt == ChannelEvent.inputClosed:
-            switch self.state {
-            case .idle, .waitingForRequestBody:
+            if self.state.updateKeepAliveStatus(keepAliveStatus: false) {
                 // not waiting on anything else, channel can be closed
                 // immediately
                 context.close(promise: nil)
-            case .sendingResponse:
-                // waiting on sending the response, signal that the
-                // channel should be closed after sending the response.
-                self.keepAliveStatus.state = false
             }
         default:
             context.fireUserInboundEventTriggered(event)

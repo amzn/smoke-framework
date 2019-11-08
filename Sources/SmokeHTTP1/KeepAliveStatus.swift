@@ -22,5 +22,9 @@ import Foundation
  HTTPChannelInboundHandler and HttpResponseHandler.
  */
 class KeepAliveStatus {
-    var state = false
+    var state: Bool
+    
+    init(state: Bool) {
+        self.state = state
+    }
 }

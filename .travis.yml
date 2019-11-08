@@ -5,12 +5,12 @@ matrix:
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1-bionic USE_SWIFT_LINT=no
+      env: DOCKER_IMAGE_TAG=swift:5.1-bionic USE_SWIFT_LINT=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1-xenial USE_SWIFT_LINT=no
+      env: DOCKER_IMAGE_TAG=swift:5.1-xenial USE_SWIFT_LINT=yes
     - os: linux
       dist: xenial
       sudo: required
