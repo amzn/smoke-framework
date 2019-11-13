@@ -66,10 +66,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
             self.internalRequestId = receivingRequestBody.internalRequestId
             self.requestHead = receivingRequestBody.requestHead
             self.keepAliveStatus = receivingRequestBody.keepAliveStatus
-            
-            var newPartialBody = receivingRequestBody.partialBody
-            newPartialBody += bodyPart
-            self.partialBody = newPartialBody
+            self.partialBody = receivingRequestBody.partialBody + bodyPart
         }
     }
     
