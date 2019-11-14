@@ -16,6 +16,7 @@
 //
 
 import Foundation
+import Logging
 
 /// Type alias for an error that also can be identified by its description
 public typealias ErrorIdentifiableByDescription =
@@ -28,11 +29,11 @@ public typealias SmokeReturnableError =
 
 /// Helper protocol for encoding errors
 public protocol ErrorEncoder {
-    func encode<InputType: SmokeReturnableError>(_ input: InputType) throws -> Data
+    func encode<InputType: SmokeReturnableError>(_ input: InputType, logger: Logger) throws -> Data
 }
 
 extension Encodable where Self: SmokeReturnableError {
-    public func encode(errorEncoder: ErrorEncoder) throws -> Data {
-        return try errorEncoder.encode(self)
+    public func encode(errorEncoder: ErrorEncoder, logger: Logger) throws -> Data {
+        return try errorEncoder.encode(self, logger: logger)
     }
 }

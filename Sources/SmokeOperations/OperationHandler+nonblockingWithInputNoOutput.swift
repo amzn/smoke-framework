@@ -16,7 +16,7 @@
 //
 
 import Foundation
-import LoggerAPI
+import Logging
 
 public extension OperationHandler {
     /**
@@ -24,6 +24,9 @@ public extension OperationHandler {
        returns a result with an empty body.
      
      - Parameters:
+        - serverName: the name of the server this operation is part of.
+        - operationIdentifer: the identifer for the operation being handled.
+        - reportingConfiguration: the configuration for how operations on this server should be reported on.
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
@@ -32,7 +35,8 @@ public extension OperationHandler {
           handling the operation.
      */
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            operationIdentifer: OperationIdentifer,
+            serverName: String, operationIdentifer: OperationIdentifer,
+            reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
@@ -46,7 +50,7 @@ public extension OperationHandler {
          * provides an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-                                     responseHandler: ResponseHandlerType) in
+            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>?
             do {
                 try operation(input, context) { error in
@@ -69,7 +73,8 @@ public extension OperationHandler {
                         handlerResult: asyncHandlerResult,
                         operationDelegate: operationDelegate,
                         requestHead: requestHead,
-                        responseHandler: responseHandler)
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 }
                 
                 // no immediate result
@@ -88,11 +93,14 @@ public extension OperationHandler {
                     handlerResult: handlerResult,
                     operationDelegate: operationDelegate,
                     requestHead: requestHead,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             }
         }
         
-        self.init(operationIdentifer: operationIdentifer,
+        self.init(serverName: serverName,
+                  operationIdentifer: operationIdentifer,
+                  reportingConfiguration: reportingConfiguration,
                   inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate)

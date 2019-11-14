@@ -17,10 +17,10 @@
 import Foundation
 import SmokeOperations
 import NIOHTTP1
-import LoggerAPI
 import SmokeHTTP1
 import HTTPPathCoding
 import ShapeCoding
+import Logging
 
 /**
  Implementation of the SmokeHTTP1HandlerSelector protocol that selects a handler
@@ -28,6 +28,8 @@ import ShapeCoding
  */
 public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDelegateType: HTTP1OperationDelegate,
         OperationIdentifer: OperationIdentity>: SmokeHTTP1HandlerSelector {
+    public let serverName: String
+    public let reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>
     public let defaultOperationDelegate: DefaultOperationDelegateType
     
     public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
@@ -45,8 +47,11 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     private var handlerMapping: [String: [HTTPMethod: SelectorOperationHandlerType]] = [:]
     private var tokenizedHandlerMapping: [TokenizedHandler] = []
     
-    public init(defaultOperationDelegate: DefaultOperationDelegateType) {
+    public init(defaultOperationDelegate: DefaultOperationDelegateType, serverName: String = "Server",
+                reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer> = SmokeServerReportingConfiguration()) {
+        self.serverName = serverName
         self.defaultOperationDelegate = defaultOperationDelegate
+        self.reportingConfiguration = reportingConfiguration
     }
     
     /**
@@ -56,12 +61,12 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
      - Parameters
         - requestHead: the request head of an incoming operation.
      */
-    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws -> (SelectorOperationHandlerType, Shape) {
+    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod, requestLogger: Logger) throws -> (SelectorOperationHandlerType, Shape) {
         let lowerCasedUri = uri.lowercased()
         
         guard let handler = handlerMapping[lowerCasedUri]?[httpMethod] else {
             guard let tokenizedHandler = getTokenizedHandler(uri: uri,
-                                                             httpMethod: httpMethod) else {
+                                                             httpMethod: httpMethod, requestLogger: requestLogger) else {
                 throw SmokeOperationsError.invalidOperation(reason:
                     "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
                 }
@@ -69,13 +74,14 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
                 return tokenizedHandler
         }
         
-        Log.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+        requestLogger.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
         
         return (handler, .null)
     }
     
     private func getTokenizedHandler(uri: String,
-                                     httpMethod: HTTPMethod) -> (SelectorOperationHandlerType, Shape)? {
+                                     httpMethod: HTTPMethod,
+                                     requestLogger: Logger) -> (SelectorOperationHandlerType, Shape)? {
         let pathSegments = HTTPPathSegment.getPathSegmentsForPath(uri: uri)
         
         // iterate through each tokenized handler
@@ -89,10 +95,10 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
             do {
                 shape = try pathSegments.getShapeForTemplate(templateSegments: handler.templateSegments)
             } catch HTTPPathDecoderErrors.pathDoesNotMatchTemplate(let reason) {
-                Log.verbose("Path '\(uri)' did not match template '\(handler.template)': \(reason)")
+                requestLogger.error("Path '\(uri)' did not match template '\(handler.template)': \(reason)")
                 continue
             } catch {
-                Log.verbose("Path '\(uri)' did not match template '\(handler.template)': \(error)")
+                requestLogger.error("Path '\(uri)' did not match template '\(handler.template)': \(error)")
                 continue
             }
             

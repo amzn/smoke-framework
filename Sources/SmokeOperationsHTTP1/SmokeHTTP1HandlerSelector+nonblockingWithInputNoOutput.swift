@@ -16,9 +16,9 @@
 //
 
 import Foundation
-import LoggerAPI
 import SmokeOperations
 import NIOHTTP1
+import Logging
 
 public extension SmokeHTTP1HandlerSelector {
     /**
@@ -51,7 +51,8 @@ public extension SmokeHTTP1HandlerSelector {
         }
         
         let handler = OperationHandler(
-            operationIdentifer: operationIdentifer,
+            serverName: serverName, operationIdentifer: operationIdentifer,
+            reportingConfiguration: reportingConfiguration,
             inputProvider: inputProvider,
             operation: operation,
             allowedErrors: allowedErrors,
@@ -94,7 +95,8 @@ public extension SmokeHTTP1HandlerSelector {
             }
             
             let handler = OperationHandler(
-                operationIdentifer: operationIdentifer,
+                serverName: serverName, operationIdentifer: operationIdentifer,
+                reportingConfiguration: reportingConfiguration,
                 inputProvider: inputProvider,
                 operation: operation,
                 allowedErrors: allowedErrors,
@@ -124,7 +126,8 @@ public extension SmokeHTTP1HandlerSelector {
         }
         
         let handler = OperationHandler(
-            operationIdentifer: operationIdentifer,
+            serverName: serverName, operationIdentifer: operationIdentifer,
+            reportingConfiguration: reportingConfiguration,
             inputProvider: defaultOperationDelegate.getInputForOperation,
             operation: operation,
             allowedErrors: allowedErrors,
@@ -160,7 +163,8 @@ public extension SmokeHTTP1HandlerSelector {
         }
         
         let handler = OperationHandler(
-            operationIdentifer: operationIdentifer,
+            serverName: serverName, operationIdentifer: operationIdentifer,
+            reportingConfiguration: reportingConfiguration,
             inputProvider: operationDelegate.getInputForOperation,
             operation: operation,
             allowedErrors: allowedErrors,

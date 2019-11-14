@@ -57,11 +57,13 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
           handle the response (such as requested response type).
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
+        - invocationContext: the context for the current invocation.
      */
     func handleResponseForOperation<OutputType: OperationHTTP1OutputProtocol>(
         requestHead: RequestHeadType,
         output: OutputType,
-        responseHandler: ResponseHandlerType)
+        responseHandler: ResponseHandlerType,
+        invocationContext: SmokeServerInvocationContext)
     
     /**
      Function to handle a successful response from an operation.
@@ -71,9 +73,11 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
           handle the response (such as requested response type).
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
+        - invocationContext: the context for the current invocation.
      */
     func handleResponseForOperation<OutputType: Encodable>(requestHead: RequestHeadType,
                                                            location: OperationOutputHTTPLocation,
                                                            output: OutputType,
-                                                           responseHandler: ResponseHandlerType)
+                                                           responseHandler: ResponseHandlerType,
+                                                           invocationContext: SmokeServerInvocationContext)
 }

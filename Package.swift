@@ -29,18 +29,19 @@ let package = Package(
             targets: ["SmokeHTTP1"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/IBM-Swift/LoggerAPI.git", .upToNextMajor(from: "1.0.0")),
+        .package(url: "https://github.com/apple/swift-log.git", .upToNextMajor(from: "1.0.0")),
+        .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
-        .package(url: "https://github.com/amzn/smoke-http.git", .branch("master")),
+        .package(url: "https://github.com/amzn/smoke-http.git", .branch("2.0.0.alpha.1")),
     ],
     targets: [
         .target(
             name: "SmokeHTTP1",
-            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "SmokeOperations", "LoggerAPI"]),
+            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "SmokeOperations", "Logging"]),
         .target(
             name: "SmokeOperations",
-            dependencies: ["LoggerAPI"]),
+            dependencies: ["Logging", "Metrics"]),
         .target(
             name: "SmokeOperationsHTTP1",
             dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",

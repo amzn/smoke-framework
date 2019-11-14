@@ -18,8 +18,8 @@ import Foundation
 import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
-import LoggerAPI
 import ShapeCoding
+import Logging
 
 internal struct PingParameters {
     static let uri = "/ping"
@@ -37,14 +37,43 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
         SelectorType.OperationIdentifer == OperationIdentifer {
     let handlerSelector: SelectorType
     let context: ContextType
+    let pingRequestReporting: SmokeServerRequestReporting
+    let unknownOperationRequestReporting: SmokeServerRequestReporting
+    let errorDeterminingOperationRequestReporting: SmokeServerRequestReporting
+    
+    init(handlerSelector: SelectorType, context: ContextType, serverName: String,
+         reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>) {
+        self.handlerSelector = handlerSelector
+        self.context = context
+        
+        self.pingRequestReporting = SmokeServerRequestReporting(serverName: serverName, request: .ping,
+                                                                configuration: reportingConfiguration)
+        self.unknownOperationRequestReporting = SmokeServerRequestReporting(serverName: serverName, request: .unknownOperation,
+                                                                            configuration: reportingConfiguration)
+        self.errorDeterminingOperationRequestReporting = SmokeServerRequestReporting(serverName: serverName,
+                                                                                     request: .errorDeterminingOperation,
+                                                                                     configuration: reportingConfiguration)
+    }
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler,
-                       invocationStrategy: InvocationStrategy) {
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
+        func getInvocationContextForAnonymousRequest(requestReporting: SmokeServerRequestReporting) -> SmokeServerInvocationContext {
+            var decoratedRequestLogger: Logger = requestLogger
+            handlerSelector.defaultOperationDelegate.decorateLoggerForAnonymousRequest(requestLogger: &decoratedRequestLogger)
+            
+            let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
+                                                                     internalRequestId: internalRequestId)
+            return SmokeServerInvocationContext(invocationReporting: invocationReporting,
+                                                requestReporting: requestReporting)
+        }
+        
         // this is the ping url
         if requestHead.uri == PingParameters.uri {
             let body = (contentType: "text/plain", data: PingParameters.payload)
             let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
-            responseHandler.completeSilentlyInEventLoop(status: .ok, responseComponents: responseComponents)
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: pingRequestReporting)
+            responseHandler.completeSilentlyInEventLoop(invocationContext: invocationContext,
+                                                        status: .ok, responseComponents: responseComponents)
             
             return
         }
@@ -61,26 +90,30 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
         do {
             (handler, shape) = try handlerSelector.getHandlerForOperation(
                 path,
-                httpMethod: requestHead.method)
+                httpMethod: requestHead.method, requestLogger: requestLogger)
         } catch SmokeOperationsError.invalidOperation(reason: let reason) {
             let smokeHTTP1RequestHead = SmokeHTTP1RequestHead(httpRequestHead: requestHead,
                                                               query: query,
                                                               pathShape: .null)
             
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: unknownOperationRequestReporting)
             defaultOperationDelegate.handleResponseForInvalidOperation(
                 requestHead: smokeHTTP1RequestHead,
                 message: reason,
-                responseHandler: responseHandler)
+                responseHandler: responseHandler,
+                invocationContext: invocationContext)
             return
         } catch {
-            Log.error("Unexpected handler selection error: \(error))")
+            requestLogger.error("Unexpected handler selection error: \(error))")
             let smokeHTTP1RequestHead = SmokeHTTP1RequestHead(httpRequestHead: requestHead,
                                                               query: query,
                                                               pathShape: .null)
             
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: errorDeterminingOperationRequestReporting)
             defaultOperationDelegate.handleResponseForInternalServerError(
                 requestHead: smokeHTTP1RequestHead,
-                responseHandler: responseHandler)
+                responseHandler: responseHandler,
+                invocationContext: invocationContext)
             return
         }
         
@@ -90,6 +123,7 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
         
         // let it be handled
         handler.handle(smokeHTTP1RequestHead, body: body, withContext: context,
-                       responseHandler: responseHandler, invocationStrategy: invocationStrategy)
+                       responseHandler: responseHandler, invocationStrategy: invocationStrategy,
+                       requestLogger: requestLogger, internalRequestId: internalRequestId)
     }
 }

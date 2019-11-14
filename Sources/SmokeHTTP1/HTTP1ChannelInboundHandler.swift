@@ -256,7 +256,9 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         currentHandler.handle(requestHead: requestHead,
                               body: bodyData,
                               responseHandler: responseHandler,
-                              invocationStrategy: invocationStrategy)
+                              invocationStrategy: invocationStrategy,
+                              requestLogger: logger,
+                              internalRequestId: pendingResponse.internalRequestId)
     }
     
     /**

@@ -16,7 +16,7 @@
 //
 
 import Foundation
-import LoggerAPI
+import Logging
 
 /**
  Possible results of an operation that has no output.
@@ -77,23 +77,28 @@ public extension OperationHandler {
      - Parameters:
         - handlerResult: the operation result indicating how the response handler
           should be called.
-         - operationDelegate: the delegate for the current operation.
-         - request: the current request.
-         - responseHandler: the response handler to use.
+        - operationDelegate: the delegate for the current operation.
+        - request: the current request.
+        - responseHandler: the response handler to use.
+        - invocationContext: the context for the current invocation.
      */
     static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: NoOutputOperationHandlerResult<ErrorType>,
         operationDelegate: OperationDelegateType,
         requestHead: OperationDelegateType.RequestHeadType,
-        responseHandler: OperationDelegateType.ResponseHandlerType)
+        responseHandler: OperationDelegateType.ResponseHandlerType,
+        invocationContext: SmokeServerInvocationContext)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+            let logger = invocationContext.invocationReporting.logger
+        
             switch handlerResult {
             case .internalServerError(let error):
-                Log.error("Unexpected failure: \(error)")
+                logger.error("Unexpected failure: \(error)")
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             case .smokeReturnableError(let error, let allowedErrors):
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
@@ -101,23 +106,27 @@ public extension OperationHandler {
                         operationDelegate.handleResponseForOperationFailure(
                             requestHead: requestHead,
                             operationFailure: operationFailure,
-                            responseHandler: responseHandler)
+                            responseHandler: responseHandler,
+                            invocationContext: invocationContext)
                 } else {
-                    Log.error("Unexpected error type returned: \(error)")
+                    logger.error("Unexpected error type returned: \(error)")
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
-                        responseHandler: responseHandler)
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 }
             case .success:
                 operationDelegate.handleResponseForOperationWithNoOutput(
                     requestHead: requestHead,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             case .validationError(let reason):
-                Log.info("ValidationError: \(reason)")
+                logger.warning("ValidationError: \(reason)")
                 operationDelegate.handleResponseForValidationError(
                     requestHead: requestHead,
                     message: reason,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             }
     }
     
@@ -128,24 +137,29 @@ public extension OperationHandler {
      - Parameters:
         - handlerResult: the operation result indicating how the response handler
           should be called.
-         - operationDelegate: the delegate for the current operation.
-         - request: the current request.
-         - responseHandler: the response handler to use.
+        - operationDelegate: the delegate for the current operation.
+        - request: the current request.
+        - responseHandler: the response handler to use.
+        - invocationContext: the context for the current invocation.
      */
     static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
         handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
         operationDelegate: OperationDelegateType,
         requestHead: RequestHeadType,
         responseHandler: ResponseHandlerType,
-        outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void))
+        outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext) -> Void),
+        invocationContext: SmokeServerInvocationContext)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+            let logger = invocationContext.invocationReporting.logger
+        
             switch handlerResult {
             case .internalServerError(let error):
-                Log.error("Unexpected failure: \(error)")
+                logger.error("Unexpected failure: \(error)")
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             case .smokeReturnableError(let error, let allowedErrors):
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
@@ -153,31 +167,35 @@ public extension OperationHandler {
                         operationDelegate.handleResponseForOperationFailure(
                             requestHead: requestHead,
                             operationFailure: operationFailure,
-                            responseHandler: responseHandler)
+                            responseHandler: responseHandler,
+                            invocationContext: invocationContext)
                 } else {
-                    Log.error("Unexpected error type returned: \(error)")
+                    logger.error("Unexpected error type returned: \(error)")
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
-                        responseHandler: responseHandler)
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 }
             case .success(let output):
                 do {
                     try output.validate()
                     
-                    outputHandler(requestHead, output, responseHandler)
+                    outputHandler(requestHead, output, responseHandler, invocationContext)
                 } catch {
-                    Log.error("Serialization error: unable to get response: \(error)")
+                    logger.error("Serialization error: unable to get response: \(error)")
                     
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
-                        responseHandler: responseHandler)
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 }
             case .validationError(let reason):
-                Log.info("ValidationError: \(reason)")
+                logger.warning("ValidationError: \(reason)")
                 operationDelegate.handleResponseForValidationError(
                     requestHead: requestHead,
                     message: reason,
-                    responseHandler: responseHandler)
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
             }
     }
 }

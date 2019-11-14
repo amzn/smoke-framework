@@ -29,29 +29,34 @@ public protocol HTTP1ResponseHandler {
      Function used to provide a response to a HTTP request.
  
      - Parameters:
+        - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
         - responseComponents: the components to send in the response.
      */
-    func complete(status: HTTPResponseStatus, responseComponents: HTTP1ServerResponseComponents)
+    func complete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+                  responseComponents: HTTP1ServerResponseComponents)
     
     /**
      Function used to provide a response to a HTTP request on the server event loop.
      
      - Parameters:
+        - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
         - responseComponents: the components to send in the response.
      */
-    func completeInEventLoop(status: HTTPResponseStatus, responseComponents: HTTP1ServerResponseComponents)
+    func completeInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+                             responseComponents: HTTP1ServerResponseComponents)
     
     /**
      Function used to provide a response to a HTTP request. The response will not be
      reported at standard logging levels.
  
      - Parameters:
+        - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
         - body: the content type and data to use for the response.
      */
-    func completeSilently(status: HTTPResponseStatus,
+    func completeSilently(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents)
     
     /**
@@ -59,24 +64,26 @@ public protocol HTTP1ResponseHandler {
      response will not be reported at standard logging levels.
      
      - Parameters:
+        - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
         - body: the content type and data to use for the response.
      */
-    func completeSilentlyInEventLoop(status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents)
     
     /**
      Execute the provided closure in the event loop corresponding to the response.
  
      - Parameters:
+        - invocationContext: the context for the current invocation.
         - execute: the closure to execute.
      */
-    func executeInEventLoop(execute: @escaping () -> ())
+    func executeInEventLoop(invocationContext: SmokeServerInvocationContext, execute: @escaping () -> ())
 }
 
 public extension HTTP1ResponseHandler {
-    func completeSilently(status: HTTPResponseStatus,
+    func completeSilently(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents) {
-        complete(status: status, responseComponents: responseComponents)
+        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
 }

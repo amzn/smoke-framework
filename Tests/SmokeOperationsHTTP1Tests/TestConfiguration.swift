@@ -18,6 +18,7 @@ import Foundation
 import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
+import Logging
 @testable import SmokeOperationsHTTP1
 import XCTest
 
@@ -50,23 +51,23 @@ struct OperationResponse {
 class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
     
-    func complete(status: HTTPResponseStatus,
+    func complete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
         response = OperationResponse(status: status,
                                      responseComponents: responseComponents)
     }
     
-    func completeInEventLoop(status: HTTPResponseStatus,
+    func completeInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents) {
-        complete(status: status, responseComponents: responseComponents)
+        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func completeSilentlyInEventLoop(status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents) {
-        complete(status: status, responseComponents: responseComponents)
+        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func executeInEventLoop(execute: @escaping () -> ()) {
+    func executeInEventLoop(invocationContext: SmokeServerInvocationContext, execute: @escaping () -> ()) {
         execute()
     }
 }
@@ -234,7 +235,7 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     SelectorType.OperationIdentifer == TestOperations {
     let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType, TestOperations>(
         handlerSelector: handlerSelector,
-        context: ExampleContext())
+        context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeServerReportingConfiguration<TestOperations>())
     
     var httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .POST,
@@ -247,7 +248,8 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     
     handler.handle(requestHead: httpRequestHead, body: body,
                    responseHandler: responseHandler,
-                   invocationStrategy: TestInvocationStrategy())
+                   invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
+                   internalRequestId: "internalRequestId")
     
     return responseHandler.response!
 }
