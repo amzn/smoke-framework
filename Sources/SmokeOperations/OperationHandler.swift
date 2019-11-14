@@ -32,7 +32,6 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
         _ requestLogger: Logger, _ internalRequestId: String) -> ()
     
     private let operationFunction: OperationResultDataInputFunction
-    private let requestReporting: SmokeServerRequestReporting
     
     /**
      * Handle for an operation handler delegates the input to the wrapped handling function
@@ -112,8 +111,6 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
                 reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
                 operationFunction: @escaping OperationResultDataInputFunction) {
         self.operationFunction = operationFunction
-        self.requestReporting = SmokeServerRequestReporting(serverName: serverName, request: .serverOperation(operationIdentifer),
-                                                            configuration: reportingConfiguration)
     }
     
     /**
@@ -127,8 +124,8 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
         operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        let newRequestReporting = SmokeServerRequestReporting(serverName: serverName, request: .serverOperation(operationIdentifer),
-                                                              configuration: reportingConfiguration)
+        let operationReporting = SmokeServerOperationReporting(serverName: serverName, request: .serverOperation(operationIdentifer),
+                                                               configuration: reportingConfiguration)
         
         func getInvocationContextForAnonymousRequest(requestLogger: Logger,
                                                      internalRequestId: String) -> SmokeServerInvocationContext {
@@ -138,7 +135,7 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
             let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
                                                                      internalRequestId: internalRequestId)
             return SmokeServerInvocationContext(invocationReporting: invocationReporting,
-                                                requestReporting: newRequestReporting)
+                                                requestReporting: operationReporting)
         }
         
         let newFunction: OperationResultDataInputFunction = { (requestHead, body, context, responseHandler,
@@ -158,7 +155,7 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
                 let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
                                                                          internalRequestId: internalRequestId)
                 let invocationContext = SmokeServerInvocationContext(invocationReporting: invocationReporting,
-                                                                     requestReporting: newRequestReporting)
+                                                                     requestReporting: operationReporting)
                 
                 inputDecodeResult = .ok(input: input, inputHandler: inputHandler, invocationContext: invocationContext)
             } catch DecodingError.keyNotFound(_, let context) {
@@ -202,6 +199,5 @@ public struct OperationHandler<ContextType, RequestHeadType, ResponseHandlerType
         }
         
         self.operationFunction = newFunction
-        self.requestReporting = newRequestReporting
     }
 }

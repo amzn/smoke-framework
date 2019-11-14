@@ -19,9 +19,9 @@ import Logging
 import Metrics
 
 /**
- A context related to reporting on the invocation of a SmokeServer operation.
+  Stores the counters for reporting on a particular operation.
  */
-public struct SmokeServerRequestReporting {
+public struct SmokeServerOperationReporting {
     public let successCounter: Metrics.Counter?
     public let failure5XXCounter: Metrics.Counter?
     public let failure4XXCounter: Metrics.Counter?

@@ -18,10 +18,10 @@ import Foundation
 
 public struct SmokeServerInvocationContext {
     public let invocationReporting: SmokeServerInvocationReporting
-    public let requestReporting: SmokeServerRequestReporting
+    public let requestReporting: SmokeServerOperationReporting
     
     public init(invocationReporting: SmokeServerInvocationReporting,
-                requestReporting: SmokeServerRequestReporting) {
+                requestReporting: SmokeServerOperationReporting) {
         self.invocationReporting = invocationReporting
         self.requestReporting = requestReporting
     }
