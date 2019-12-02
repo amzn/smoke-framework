@@ -17,6 +17,9 @@ import PackageDescription
 
 let package = Package(
     name: "SmokeFramework",
+    platforms: [
+      .macOS(.v10_12), .iOS(.v10)
+    ],
     products: [
         .library(
             name: "SmokeOperations",
@@ -49,5 +52,6 @@ let package = Package(
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )
