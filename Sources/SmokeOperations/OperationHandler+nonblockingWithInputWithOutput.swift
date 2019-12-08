@@ -16,7 +16,7 @@
 //
 
 import Foundation
-import LoggerAPI
+import Logging
 
 public extension OperationHandler {
     /**
@@ -24,6 +24,9 @@ public extension OperationHandler {
        returns a result body.
      
      - Parameters:
+        - serverName: the name of the server this operation is part of.
+        - operationIdentifer: the identifer for the operation being handled.
+        - reportingConfiguration: the configuration for how operations on this server should be reported on.
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
         - outputHandler: function that completes the response with the provided output.
@@ -34,11 +37,12 @@ public extension OperationHandler {
      */
     init<InputType: Validatable, OutputType: Validatable,
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            operationIdentifer: OperationIdentifer,
+            serverName: String, operationIdentifer: OperationIdentifer,
+            reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping
-                (Swift.Result<OutputType, Swift.Error>) -> Void) throws -> Void),
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType) -> Void),
+                (Result<OutputType, Swift.Error>) -> Void) throws -> Void),
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
@@ -50,7 +54,7 @@ public extension OperationHandler {
          * provides an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-                                     responseHandler: ResponseHandlerType) in
+            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>?
             do {
                 try operation(input, context) { result in
@@ -75,7 +79,8 @@ public extension OperationHandler {
                         operationDelegate: operationDelegate,
                         requestHead: requestHead,
                         responseHandler: responseHandler,
-                        outputHandler: outputHandler)
+                        outputHandler: outputHandler,
+                        invocationContext: invocationContext)
                 }
                 
                 // no immediate result
@@ -95,11 +100,14 @@ public extension OperationHandler {
                     operationDelegate: operationDelegate,
                     requestHead: requestHead,
                     responseHandler: responseHandler,
-                    outputHandler: outputHandler)
+                    outputHandler: outputHandler,
+                    invocationContext: invocationContext)
             }
         }
         
-        self.init(operationIdentifer: operationIdentifer,
+        self.init(serverName: serverName,
+                  operationIdentifer: operationIdentifer,
+                  reportingConfiguration: reportingConfiguration,
                   inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate)

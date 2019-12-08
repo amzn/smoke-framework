@@ -2,19 +2,10 @@
   "object": {
     "pins": [
       {
-        "package": "LoggerAPI",
-        "repositoryURL": "https://github.com/IBM-Swift/LoggerAPI.git",
-        "state": {
-          "branch": null,
-          "revision": "3357dd9526cdf9436fa63bb792b669e6efdc43da",
-          "version": "1.9.0"
-        }
-      },
-      {
         "package": "SmokeHTTP",
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
-          "branch": "master",
+          "branch": "2.0.0.alpha.1",
           "revision": "b8126d7cea796292ded79bd748af37c58491dd26",
           "version": null
         }

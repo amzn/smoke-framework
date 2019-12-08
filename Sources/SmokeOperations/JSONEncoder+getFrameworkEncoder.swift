@@ -16,7 +16,7 @@
 //
 
 import Foundation
-import LoggerAPI
+import Logging
 
 private func createEncoder() -> JSONEncoder {
     let jsonEncoder = JSONEncoder()
@@ -51,6 +51,7 @@ extension JSONEncoder {
      */
     public static func encodePayload<EncodableType: Encodable>(
         payload: EncodableType,
+        logger: Logger,
         reason: String? = nil) -> Data {
             let encodedError: Data
             
@@ -63,7 +64,7 @@ extension JSONEncoder {
                     encodedError = try createEncoder().encode(payload)
                 }
             } catch {
-                Log.error("Unable to encode error message: \(error)")
+                logger.error("Unable to encode error message: \(error)")
                 
                 encodedError = encodedInternalError
             }

@@ -18,7 +18,8 @@
 import Foundation
 import NIO
 import NIOHTTP1
-import LoggerAPI
+import Logging
+import SmokeOperations
 
 /**
  Standard implementation of the HttpResponseHandler protocol to
@@ -30,7 +31,7 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
     let context: ChannelHandlerContext
     let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
     
-    func executeInEventLoop(execute: @escaping () -> ()) {
+    func executeInEventLoop(invocationContext: SmokeServerInvocationContext, execute: @escaping () -> ()) {
         // if we are currently on a thread that can complete the response
         if context.eventLoop.inEventLoop {
             execute()
@@ -42,35 +43,35 @@ struct StandardHTTP1ResponseHandler: HTTP1ResponseHandler {
         }
     }
     
-    func complete(status: HTTPResponseStatus,
+    func complete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(status: status, responseComponents: responseComponents)
+        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
         
-        Log.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.invocationReporting.logger.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
     
-    func completeInEventLoop(status: HTTPResponseStatus,
+    func completeInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents) {
-        executeInEventLoop {
-            self.complete(status: status, responseComponents: responseComponents)
+        executeInEventLoop(invocationContext: invocationContext) {
+            self.complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
         }
     }
     
-    func completeSilently(status: HTTPResponseStatus,
+    func completeSilently(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(status: status, responseComponents: responseComponents)
+        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
         
-        Log.verbose("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.invocationReporting.logger.debug("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
     
-    func completeSilentlyInEventLoop(status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents) {
-        executeInEventLoop {
-            self.completeSilently(status: status, responseComponents: responseComponents)
+        executeInEventLoop(invocationContext: invocationContext) {
+            self.completeSilently(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
         }
     }
     
-    private func handleComplete(status: HTTPResponseStatus,
+    private func handleComplete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
                                 responseComponents: HTTP1ServerResponseComponents) -> Int {
         var headers = HTTPHeaders()
         
