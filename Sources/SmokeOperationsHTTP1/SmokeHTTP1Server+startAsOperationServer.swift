@@ -21,13 +21,13 @@ import SmokeOperations
 import Logging
 import SmokeInvocation
 
-@available(swift 5.1)
-@available(OSX 10.15.0, *)
 public extension SmokeHTTP1Server {
     
     /**
      Creates and starts a SmokeHTTP1Server to handle operations using the
      provided handlerSelector. This call will return once the server has started.
+     
+     On Linux with Swift 5.1 the function returns an opaque return type.
      
      - Parameters:
          - handlerSelector: the selector that will provide an operation
@@ -45,6 +45,7 @@ public extension SmokeHTTP1Server {
                              If not specified, the server will be shutdown if a SIGINT is received.
      - Returns: the SmokeHTTP1Server that was created and started.
      */
+    #if os(Linux) && swift(>=5.1)
     static func startAsOperationServer<ContextType, SelectorType, OperationIdentifer>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
@@ -75,32 +76,7 @@ public extension SmokeHTTP1Server {
             
             return server
     }
-}
-
-@available(swift, obsoleted: 5.1)
-@available(OSX, obsoleted: 10.15.0)
-public extension SmokeHTTP1Server {
-    
-    /**
-     Creates and starts a SmokeHTTP1Server to handle operations using the
-     provided handlerSelector. This call will return once the server has started.
-     
-     - Parameters:
-         - handlerSelector: the selector that will provide an operation
-                            handler for a operation request
-         - context: the context to pass to operation handlers.
-         - port: Optionally the localhost port for the server to listen on.
-                 If not specified, defaults to 8080.
-         - invocationStrategy: Optionally the invocation strategy for incoming requests.
-                               If not specified, the handler for incoming requests will
-                               be invoked on DispatchQueue.global().
-         - eventLoopProvider: Provides the event loop to be used by the server.
-                              If not specified, the server will create a new multi-threaded event loop
-                              with the number of threads specified by `System.coreCount`.
-         - shutdownOnSignal: Specifies if the server should be shutdown when a signal is received.
-                             If not specified, the server will be shutdown if a SIGINT is received.
-     - Returns: the SmokeHTTP1Server that was created and started.
-     */
+    #else
     static func startAsOperationServer<ContextType, SelectorType, OperationIdentifer>(
         withHandlerSelector handlerSelector: SelectorType,
         andContext context: ContextType,
@@ -131,4 +107,5 @@ public extension SmokeHTTP1Server {
             
             return server
     }
+    #endif
 }
