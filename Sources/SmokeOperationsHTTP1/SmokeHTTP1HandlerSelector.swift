@@ -29,6 +29,10 @@ public protocol SmokeHTTP1HandlerSelector {
     associatedtype DefaultOperationDelegateType: HTTP1OperationDelegate
     associatedtype OperationIdentifer: OperationIdentity
     
+    typealias TraceContextType = DefaultOperationDelegateType.TraceContextType
+    typealias RequestHeadType = DefaultOperationDelegateType.RequestHeadType
+    typealias ResponseHandlerType = DefaultOperationDelegateType.ResponseHandlerType
+    
     /// Get the instance of the Default OperationDelegate type
     var defaultOperationDelegate: DefaultOperationDelegateType { get }
     
@@ -43,10 +47,7 @@ public protocol SmokeHTTP1HandlerSelector {
         - requestHead: the request head of an incoming operation.
      */
     func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod, requestLogger: Logger) throws
-        -> (OperationHandler<ContextType,
-            DefaultOperationDelegateType.RequestHeadType,
-            DefaultOperationDelegateType.ResponseHandlerType,
-            OperationIdentifer>, Shape)
+        -> (OperationHandler<ContextType, RequestHeadType, TraceContextType, ResponseHandlerType, OperationIdentifer>, Shape)
     
     /**
      Adds a handler for the specified uri and http method.
@@ -56,10 +57,8 @@ public protocol SmokeHTTP1HandlerSelector {
         - httpMethod: the http method to add the handler for.
         - handler: the handler to add.
      */
-    mutating func addHandlerForOperation(_ operationIdentifer: OperationIdentifer,
-                                         httpMethod: HTTPMethod,
-                                         handler: OperationHandler<ContextType,
-                                            DefaultOperationDelegateType.RequestHeadType,
-                                            DefaultOperationDelegateType.ResponseHandlerType,
-                                            OperationIdentifer>)
+    mutating func addHandlerForOperation(
+        _ operationIdentifer: OperationIdentifer,
+        httpMethod: HTTPMethod,
+        handler: OperationHandler<ContextType, RequestHeadType, TraceContextType, ResponseHandlerType, OperationIdentifer>)
 }

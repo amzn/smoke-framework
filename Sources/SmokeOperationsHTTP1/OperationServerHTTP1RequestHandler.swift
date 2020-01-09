@@ -20,6 +20,7 @@ import NIOHTTP1
 import SmokeHTTP1
 import ShapeCoding
 import Logging
+import SmokeInvocation
 
 internal struct PingParameters {
     static let uri = "/ping"
@@ -30,11 +31,18 @@ internal struct PingParameters {
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
  */
-struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationIdentifer>: HTTP1RequestHandler
+struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationIdentifer,
+                                          ResponseHandlerType: HTTP1ResponseHandler>: HTTP1RequestHandler
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-        HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
-        SelectorType.OperationIdentifer == OperationIdentifer {
+        HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
+        ResponseHandlerType == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+        SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType> == ResponseHandlerType.InvocationContext,
+SelectorType.OperationIdentifer == OperationIdentifer {
+    
+    typealias InvocationContext = ResponseHandlerType.InvocationContext
+    typealias TraceContextType = SelectorType.DefaultOperationDelegateType.TraceContextType
+        
     let handlerSelector: SelectorType
     let context: ContextType
     let pingOperationReporting: SmokeServerOperationReporting
@@ -55,14 +63,16 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
                                                                                 configuration: reportingConfiguration)
     }
 
-    public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler,
+    public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
-        func getInvocationContextForAnonymousRequest(requestReporting: SmokeServerOperationReporting) -> SmokeServerInvocationContext {
+        func getInvocationContextForAnonymousRequest(requestReporting: SmokeServerOperationReporting)
+                -> SmokeServerInvocationContext<TraceContextType> {
             var decoratedRequestLogger: Logger = requestLogger
             handlerSelector.defaultOperationDelegate.decorateLoggerForAnonymousRequest(requestLogger: &decoratedRequestLogger)
             
+            let traceContext = TraceContextType(requestHead: requestHead)
             let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
-                                                                     internalRequestId: internalRequestId)
+                                                                     internalRequestId: internalRequestId, traceContext: traceContext)
             return SmokeServerInvocationContext(invocationReporting: invocationReporting,
                                                 requestReporting: requestReporting)
         }
@@ -83,7 +93,8 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
         let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
 
         // get the handler to use
-        let handler: OperationHandler<ContextType, SmokeHTTP1RequestHead, HTTP1ResponseHandler, OperationIdentifer>
+        let handler: OperationHandler<ContextType, SmokeHTTP1RequestHead, TraceContextType,
+                                      ResponseHandlerType, OperationIdentifer>
         let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
         
@@ -121,9 +132,10 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationId
                                                           query: query,
                                                           pathShape: shape)
         
+        let traceContext = TraceContextType(requestHead: requestHead)
         // let it be handled
         handler.handle(smokeHTTP1RequestHead, body: body, withContext: context,
                        responseHandler: responseHandler, invocationStrategy: invocationStrategy,
-                       requestLogger: requestLogger, internalRequestId: internalRequestId)
+                       requestLogger: requestLogger, internalRequestId: internalRequestId, traceContext: traceContext)
     }
 }

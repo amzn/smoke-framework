@@ -33,7 +33,7 @@ public extension SmokeHTTP1HandlerSelector {
     mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation) {
         
@@ -71,11 +71,12 @@ public extension SmokeHTTP1HandlerSelector {
         OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         operationDelegate: OperationDelegateType)
         where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+        DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
             func inputProvider(requestHead: OperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
@@ -108,7 +109,7 @@ public extension SmokeHTTP1HandlerSelector {
         ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> ()),
         allowedErrors: [(ErrorType, Int)]) {
         
         let handler = OperationHandler(
@@ -137,10 +138,11 @@ public extension SmokeHTTP1HandlerSelector {
         OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+    DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         let handler = OperationHandler(

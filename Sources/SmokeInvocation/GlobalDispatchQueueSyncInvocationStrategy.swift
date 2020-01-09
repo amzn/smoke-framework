@@ -11,23 +11,26 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerInvocationReporting.swift
-//  SmokeOperations
+//  GlobalDispatchQueueAsyncInvocationStrategy.swift
+//  SmokeInvocation
 //
+
 import Foundation
-import Logging
 
 /**
- A context related to reporting on the invocation of the SmokeFramework.
+ An InvocationStrategy that will invocate the handler on
+ DispatchQueue.global(), waiting for it to complete.
  */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext> {
-    public let logger: Logger
-    public let internalRequestId: String
-    public let traceContext: TraceContextType
+public struct GlobalDispatchQueueSyncInvocationStrategy: InvocationStrategy {
+    let queue = DispatchQueue.global()
     
-    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType) {
-        self.logger = logger
-        self.internalRequestId = internalRequestId
-        self.traceContext = traceContext
+    public init() {
+        
+    }
+    
+    public func invoke(handler: @escaping () -> ()) {
+        queue.sync {
+            handler()
+        }
     }
 }

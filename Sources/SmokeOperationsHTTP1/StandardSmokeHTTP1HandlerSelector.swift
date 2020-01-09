@@ -34,6 +34,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     
     public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
             DefaultOperationDelegateType.RequestHeadType,
+            DefaultOperationDelegateType.TraceContextType,
             DefaultOperationDelegateType.ResponseHandlerType,
             OperationIdentifer>
     

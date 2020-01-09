@@ -16,11 +16,11 @@
 //
 import Foundation
 
-public struct SmokeServerInvocationContext {
-    public let invocationReporting: SmokeServerInvocationReporting
+public struct SmokeServerInvocationContext<TraceContextType: OperationTraceContext> {
+    public let invocationReporting: SmokeServerInvocationReporting<TraceContextType>
     public let requestReporting: SmokeServerOperationReporting
     
-    public init(invocationReporting: SmokeServerInvocationReporting,
+    public init(invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
                 requestReporting: SmokeServerOperationReporting) {
         self.invocationReporting = invocationReporting
         self.requestReporting = requestReporting

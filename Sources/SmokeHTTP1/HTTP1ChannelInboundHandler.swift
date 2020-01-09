@@ -19,13 +19,15 @@ import Foundation
 import NIO
 import NIOHTTP1
 import NIOFoundationCompat
-import SmokeOperations
 import Logging
+import SmokeInvocation
 
 /**
  Handler that manages the inbound channel for a HTTP Request.
  */
-class HTTP1ChannelInboundHandler: ChannelInboundHandler {
+class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
+                                 InvocationContext: HTTP1RequestInvocationContext>: ChannelInboundHandler
+        where HTTP1RequestHandlerType.ResponseHandlerType == StandardHTTP1ResponseHandler<InvocationContext> {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
     
@@ -193,12 +195,12 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         }
     }
     
-    private let handler: HTTP1RequestHandler
+    private let handler: HTTP1RequestHandlerType
     private let invocationStrategy: InvocationStrategy
     
     private var state = State.idle
     
-    init(handler: HTTP1RequestHandler,
+    init(handler: HTTP1RequestHandlerType,
          invocationStrategy: InvocationStrategy) {
         self.handler = handler
         self.invocationStrategy = invocationStrategy
@@ -244,7 +246,7 @@ class HTTP1ChannelInboundHandler: ChannelInboundHandler {
         logger.debug("Handling request body with \(bodyData?.count ?? 0) size.")
         
         // create a response handler for this request
-        let responseHandler = StandardHTTP1ResponseHandler(
+        let responseHandler = StandardHTTP1ResponseHandler<HTTP1RequestHandlerType.ResponseHandlerType.InvocationContext>(
             requestHead: requestHead,
             keepAliveStatus: pendingResponse.keepAliveStatus,
             context: context,

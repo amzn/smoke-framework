@@ -28,6 +28,9 @@ let package = Package(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
         .library(
+            name: "SmokeInvocation",
+            targets: ["SmokeInvocation"]),
+        .library(
             name: "SmokeHTTP1",
             targets: ["SmokeHTTP1"]),
     ],
@@ -40,11 +43,14 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "SmokeInvocation",
+            dependencies: ["Logging"]),
+        .target(
             name: "SmokeHTTP1",
-            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "SmokeOperations", "Logging"]),
+            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "Logging", "SmokeInvocation"]),
         .target(
             name: "SmokeOperations",
-            dependencies: ["Logging", "Metrics"]),
+            dependencies: ["Logging", "Metrics", "SmokeInvocation"]),
         .target(
             name: "SmokeOperationsHTTP1",
             dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",

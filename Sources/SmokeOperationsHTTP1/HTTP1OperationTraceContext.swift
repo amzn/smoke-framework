@@ -11,22 +11,15 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  InvocationStrategy.swift
-//  SmokeOperations
+// HTTP1OperationTraceContext.swift
+// SmokeOperationsHTTP1
 //
 
 import Foundation
+import SmokeOperations
+import NIOHTTP1
 
-/**
- A strategy protocol that manages how to invocate a handler.
- */
-public protocol InvocationStrategy {
-    
-    /**
-     Function to handle the invocation of the handler.
- 
-     - Parameters:
-        - handler: The handler to invocate.
-     */
-    func invoke(handler: @escaping () -> ())
+public protocol HTTP1OperationTraceContext: OperationTraceContext
+    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders {
+
 }
