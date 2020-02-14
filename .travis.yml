@@ -21,6 +21,16 @@ matrix:
       sudo: required
       services: docker
       env: DOCKER_IMAGE_TAG=swift:5.0.3-xenial USE_SWIFT_LINT=yes
+    - os: linux
+      dist: xenial
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=swiftlang/swift:nightly-master-xenial USE_SWIFT_LINT=yes
+    - os: linux
+      dist: xenial
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=swiftlang/swift:nightly-5.2-xenial USE_SWIFT_LINT=yes
 
 before_install:
   - docker pull $DOCKER_IMAGE_TAG
