@@ -249,7 +249,7 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     TestOperationTraceContext == SelectorType.DefaultOperationDelegateType.TraceContextType,
     SelectorType.DefaultOperationDelegateType.ResponseHandlerType == TestHttpResponseHandler,
     SelectorType.OperationIdentifer == TestOperations {
-    let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType, TestOperations, SelectorType.DefaultOperationDelegateType.ResponseHandlerType>(
+    let handler = OperationServerHTTP1RequestHandler<SelectorType>(
         handlerSelector: handlerSelector,
         context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeServerReportingConfiguration<TestOperations>())
     

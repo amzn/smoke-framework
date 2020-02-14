@@ -31,26 +31,26 @@ internal struct PingParameters {
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
  */
-struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationIdentifer,
-                                          ResponseHandlerType: HTTP1ResponseHandler>: HTTP1RequestHandler
-        where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
+struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
+        where SelectorType: SmokeHTTP1HandlerSelector,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
         HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
-        ResponseHandlerType == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
-        SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType> == ResponseHandlerType.InvocationContext,
-SelectorType.OperationIdentifer == OperationIdentifer {
+        SelectorType.DefaultOperationDelegateType.ResponseHandlerType: HTTP1ResponseHandler,
+        SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
+    typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
+    
     
     typealias InvocationContext = ResponseHandlerType.InvocationContext
     typealias TraceContextType = SelectorType.DefaultOperationDelegateType.TraceContextType
         
     let handlerSelector: SelectorType
-    let context: ContextType
+    let context: SelectorType.ContextType
     let pingOperationReporting: SmokeServerOperationReporting
     let unknownOperationReporting: SmokeServerOperationReporting
     let errorDeterminingOperationReporting: SmokeServerOperationReporting
     
-    init(handlerSelector: SelectorType, context: ContextType, serverName: String,
-         reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>) {
+    init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
+         reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.handlerSelector = handlerSelector
         self.context = context
         
@@ -93,8 +93,8 @@ SelectorType.OperationIdentifer == OperationIdentifer {
         let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
 
         // get the handler to use
-        let handler: OperationHandler<ContextType, SmokeHTTP1RequestHead, TraceContextType,
-                                      ResponseHandlerType, OperationIdentifer>
+        let handler: OperationHandler<SelectorType.ContextType, SmokeHTTP1RequestHead, TraceContextType,
+                                      ResponseHandlerType, SelectorType.OperationIdentifer>
         let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
         
