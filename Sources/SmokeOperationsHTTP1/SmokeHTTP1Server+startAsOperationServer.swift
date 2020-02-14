@@ -31,7 +31,7 @@ public extension SmokeHTTP1Server {
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer> = SmokeServerReportingConfiguration(),
         eventLoopProvider: SmokeServerEventLoopProvider = .spawnNewThreads,
-        shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) throws
+        shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
         where HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
@@ -39,15 +39,15 @@ public extension SmokeHTTP1Server {
             let handler = OperationServerHTTP1RequestHandler(
                 handlerSelector: handlerSelector,
                 context: context, serverName: serverName, reportingConfiguration: reportingConfiguration)
-                let server: StandardSmokeHTTP1Server<OperationServerHTTP1RequestHandler<SelectorType>, SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType>> = StandardSmokeHTTP1Server(handler: handler,
+                let server = StandardSmokeHTTP1Server(handler: handler,
                                                   port: port,
                                                   invocationStrategy: invocationStrategy,
                                                   defaultLogger: defaultLogger,
                                                   eventLoopProvider: eventLoopProvider,
                                                   shutdownOnSignal: shutdownOnSignal)
             
-            //try server.start()
+            try server.start()
             
-            //return server
+            return server
     }
 }
