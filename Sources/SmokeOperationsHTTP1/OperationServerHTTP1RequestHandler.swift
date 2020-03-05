@@ -44,7 +44,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
     typealias TraceContextType = SelectorType.DefaultOperationDelegateType.TraceContextType
         
     let handlerSelector: SelectorType
-    let context: SelectorType.ContextType
+    let context: PerInvocationContext<SelectorType.ContextType, TraceContextType>
     let pingOperationReporting: SmokeServerOperationReporting
     let unknownOperationReporting: SmokeServerOperationReporting
     let errorDeterminingOperationReporting: SmokeServerOperationReporting
@@ -52,7 +52,22 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
     init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
          reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.handlerSelector = handlerSelector
-        self.context = context
+        self.context = .static(context)
+        
+        self.pingOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .ping,
+                                                                    configuration: reportingConfiguration)
+        self.unknownOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .unknownOperation,
+                                                                       configuration: reportingConfiguration)
+        self.errorDeterminingOperationReporting = SmokeServerOperationReporting(serverName: serverName,
+                                                                                request: .errorDeterminingOperation,
+                                                                                configuration: reportingConfiguration)
+    }
+    
+    init(handlerSelector: SelectorType,
+         contextProvider: @escaping (SmokeServerInvocationReporting<SelectorType.DefaultOperationDelegateType.TraceContextType>) -> SelectorType.ContextType,
+         serverName: String, reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer>) {
+        self.handlerSelector = handlerSelector
+        self.context = .provider(contextProvider)
         
         self.pingOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .ping,
                                                                     configuration: reportingConfiguration)

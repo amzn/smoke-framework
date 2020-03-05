@@ -22,7 +22,7 @@ if [ "$USE_SWIFT_LINT" == 'yes' ]; then
 fi
 
 cd $workspaceRoot/package
-swift build
+swift build -c release
 swift test
 
 if [ "$USE_SWIFT_LINT" == 'yes' ]; then
