@@ -100,9 +100,10 @@ func handleBadHTTP1OperationAsyncWithThrow(input: ExampleHTTP1Input, context: Ex
     throw MyError.theError(reason: "Is bad!")
 }
 
-fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations> = {
-    let defaultOperationDelegate = JSONPayloadHTTP1OperationDelegate()
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations>(
+fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext,
+        GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestOperationTraceContext>, TestOperations> = {
+    let defaultOperationDelegate = GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestOperationTraceContext>()
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, GenericJSONPayloadHTTP1OperationDelegate, TestOperations>(
         defaultOperationDelegate: defaultOperationDelegate)
     
     newHandlerSelector.addHandlerForOperation(

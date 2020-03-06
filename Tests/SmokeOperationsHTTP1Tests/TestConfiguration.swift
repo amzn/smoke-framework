@@ -19,6 +19,7 @@ import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 import Logging
+import SmokeInvocation
 @testable import SmokeOperationsHTTP1
 import XCTest
 
@@ -48,26 +49,40 @@ struct OperationResponse {
     let responseComponents: HTTP1ServerResponseComponents
 }
 
+struct TestOperationTraceContext: HTTP1OperationTraceContext {
+    func decorateResponseHeaders(httpHeaders: inout HTTPHeaders) {
+        // do nothing
+    }
+    
+    init(requestHead: HTTPRequestHead) {
+        // do nothing
+    }
+    
+    init<InputType>(requestHead: HTTPRequestHead, input: InputType) where InputType : Validatable {
+        // do nothing
+    }
+}
+
 class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
     
-    func complete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func complete(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
         response = OperationResponse(status: status,
                                      responseComponents: responseComponents)
     }
     
-    func completeInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents) {
         complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents) {
         complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func executeInEventLoop(invocationContext: SmokeServerInvocationContext, execute: @escaping () -> ()) {
+    func executeInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, execute: @escaping () -> ()) {
         execute()
     }
 }
@@ -231,9 +246,10 @@ func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     additionalHeaders: [(String, String)] = []) -> OperationResponse
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+    TestOperationTraceContext == SelectorType.DefaultOperationDelegateType.TraceContextType,
+    SelectorType.DefaultOperationDelegateType.ResponseHandlerType == TestHttpResponseHandler,
     SelectorType.OperationIdentifer == TestOperations {
-    let handler = OperationServerHTTP1RequestHandler<ExampleContext, SelectorType, TestOperations>(
+    let handler = OperationServerHTTP1RequestHandler<SelectorType>(
         handlerSelector: handlerSelector,
         context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeServerReportingConfiguration<TestOperations>())
     
@@ -259,7 +275,8 @@ func verifyErrorResponse<SelectorType>(uri: String,
                                        additionalHeaders: [(String, String)] = []) throws
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+    TestHttpResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
+    TestOperationTraceContext == SelectorType.DefaultOperationDelegateType.TraceContextType,
     SelectorType.OperationIdentifer == TestOperations {
     let response = verifyPathOutput(uri: uri,
                                     body: serializedAlternateInput.data(using: .utf8)!,

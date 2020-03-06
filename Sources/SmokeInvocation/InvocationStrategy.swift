@@ -11,23 +11,22 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerInvocationReporting.swift
-//  SmokeOperations
+//  InvocationStrategy.swift
+//  SmokeInvocation
 //
+
 import Foundation
-import Logging
 
 /**
- A context related to reporting on the invocation of the SmokeFramework.
+ A strategy protocol that manages how to invocate a handler.
  */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext> {
-    public let logger: Logger
-    public let internalRequestId: String
-    public let traceContext: TraceContextType
+public protocol InvocationStrategy {
     
-    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType) {
-        self.logger = logger
-        self.internalRequestId = internalRequestId
-        self.traceContext = traceContext
-    }
+    /**
+     Function to handle the invocation of the handler.
+ 
+     - Parameters:
+        - handler: The handler to invocate.
+     */
+    func invoke(handler: @escaping () -> ())
 }

@@ -11,26 +11,17 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  GlobalDispatchQueueAsyncInvocationStrategy.swift
-//  SmokeOperations
+//  HTTP1RequestTraceContext.swift
+//  SmokeHTTP1
 //
 
 import Foundation
+import Logging
+import NIOHTTP1
 
-/**
- An InvocationStrategy that will invocate the handler on
- DispatchQueue.global(), waiting for it to complete.
- */
-public struct GlobalDispatchQueueSyncInvocationStrategy: InvocationStrategy {
-    let queue = DispatchQueue.global()
+public protocol HTTP1RequestInvocationContext {
     
-    public init() {
-        
-    }
+    var logger: Logger { get }
     
-    public func invoke(handler: @escaping () -> ()) {
-        queue.sync {
-            handler()
-        }
-    }
+    func decorateResponseHeaders(httpHeaders: inout HTTPHeaders)
 }

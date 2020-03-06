@@ -25,6 +25,8 @@ import Logging
 public protocol OperationDelegate {
     /// The type of the request head used with this delegate.
     associatedtype RequestHeadType
+    /// The trace context type used with this delegate
+    associatedtype TraceContextType: OperationTraceContext
     /// The type of response handler used with this delegate.
     associatedtype ResponseHandlerType
     
@@ -41,7 +43,7 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForOperationWithNoOutput(requestHead: RequestHeadType, responseHandler: ResponseHandlerType,
-                                                invocationContext: SmokeServerInvocationContext)
+                                                invocationContext: SmokeServerInvocationContext<TraceContextType>)
     
     /**
      Function to handle an operation failure.
@@ -54,7 +56,7 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForOperationFailure(requestHead: RequestHeadType, operationFailure: OperationFailure,
-                                           responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext)
+                                           responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>)
     
     /**
      Function to handle an internal server error.
@@ -66,7 +68,7 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForInternalServerError(requestHead: RequestHeadType, responseHandler: ResponseHandlerType,
-                                              invocationContext: SmokeServerInvocationContext)
+                                              invocationContext: SmokeServerInvocationContext<TraceContextType>)
     
     /**
      Function to handle an invalid operation being requested.
@@ -79,7 +81,7 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForInvalidOperation(requestHead: RequestHeadType, message: String,
-                                           responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext)
+                                           responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>)
     
     /**
      Function to handle a decoding error.
@@ -92,7 +94,7 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForDecodingError(requestHead: RequestHeadType, message: String,
-                                        responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext)
+                                        responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>)
     
     /**
      Function to handle a validation error.
@@ -105,5 +107,5 @@ public protocol OperationDelegate {
         - invocationContext: the context for the current invocation.
      */
     func handleResponseForValidationError(requestHead: RequestHeadType, message: String?,
-                                          responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext)
+                                          responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>)
 }

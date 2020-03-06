@@ -112,9 +112,11 @@ enum TestOperations: String, OperationIdentity {
     }
 }
 
-fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations> = {
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate, TestOperations>(
-        defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+typealias TestJSONPayloadHTTP1OperationDelegate = GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestOperationTraceContext>
+
+fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, TestJSONPayloadHTTP1OperationDelegate, TestOperations> = {
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, TestJSONPayloadHTTP1OperationDelegate, TestOperations>(
+        defaultOperationDelegate: GenericJSONPayloadHTTP1OperationDelegate())
     newHandlerSelector.addHandlerForOperation(
         .exampleOperation, httpMethod: .POST,
         operation: handleExampleOperation,

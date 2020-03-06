@@ -5,22 +5,22 @@ matrix:
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1-bionic USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.1.4-bionic USE_SWIFT_LINT=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1-xenial USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.1.4-xenial USE_SWIFT_LINT=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.0.1-bionic USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.0.3-bionic USE_SWIFT_LINT=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.0.1-xenial USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.0.3-xenial USE_SWIFT_LINT=yes
 
 before_install:
   - docker pull $DOCKER_IMAGE_TAG

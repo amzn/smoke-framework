@@ -24,6 +24,7 @@ import SmokeOperations
  A protocol that specifies a handler for a HTTP response.
  */
 public protocol HTTP1ResponseHandler {
+    associatedtype InvocationContext: HTTP1RequestInvocationContext
     
     /**
      Function used to provide a response to a HTTP request.
@@ -33,7 +34,7 @@ public protocol HTTP1ResponseHandler {
         - status: the status to provide in the response.
         - responseComponents: the components to send in the response.
      */
-    func complete(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents)
     
     /**
@@ -44,7 +45,7 @@ public protocol HTTP1ResponseHandler {
         - status: the status to provide in the response.
         - responseComponents: the components to send in the response.
      */
-    func completeInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents)
     
     /**
@@ -56,7 +57,7 @@ public protocol HTTP1ResponseHandler {
         - status: the status to provide in the response.
         - body: the content type and data to use for the response.
      */
-    func completeSilently(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents)
     
     /**
@@ -68,7 +69,7 @@ public protocol HTTP1ResponseHandler {
         - status: the status to provide in the response.
         - body: the content type and data to use for the response.
      */
-    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents)
     
     /**
@@ -78,11 +79,11 @@ public protocol HTTP1ResponseHandler {
         - invocationContext: the context for the current invocation.
         - execute: the closure to execute.
      */
-    func executeInEventLoop(invocationContext: SmokeServerInvocationContext, execute: @escaping () -> ())
+    func executeInEventLoop(invocationContext: InvocationContext, execute: @escaping () -> ())
 }
 
 public extension HTTP1ResponseHandler {
-    func completeSilently(invocationContext: SmokeServerInvocationContext, status: HTTPResponseStatus,
+    func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents) {
         complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }

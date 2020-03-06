@@ -36,11 +36,12 @@ public extension OperationHandler {
         OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer, reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping (InputType, ContextType, SmokeServerInvocationReporting) throws -> OutputType,
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext) -> Void),
+            operation: @escaping (InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> OutputType,
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext<TraceContextType>) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
+    TraceContextType == OperationDelegateType.TraceContextType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -50,7 +51,7 @@ public extension OperationHandler {
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: OperationDelegateType.ResponseHandlerType,
-                                     invocationContext: SmokeServerInvocationContext) in
+                                     invocationContext: SmokeServerInvocationContext<TraceContextType>) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
             do {
                 let output = try operation(input, context, invocationContext.invocationReporting)

@@ -34,7 +34,8 @@ public extension SmokeHTTP1HandlerSelector {
             ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting, @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>,
+                       @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         outputLocation: OperationOutputHTTPLocation) {
@@ -51,7 +52,7 @@ public extension SmokeHTTP1HandlerSelector {
         func outputHandler(requestHead: DefaultOperationDelegateType.RequestHeadType,
                            output: OutputType,
                            responseHandler: DefaultOperationDelegateType.ResponseHandlerType,
-                           invocationContext: SmokeServerInvocationContext) {
+                           invocationContext: SmokeServerInvocationContext<TraceContextType>) {
             delegateToUse.handleResponseForOperation(requestHead: requestHead,
                                                      location: outputLocation,
                                                      output: output,
@@ -85,12 +86,14 @@ public extension SmokeHTTP1HandlerSelector {
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting, @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>,
+                       @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         outputLocation: OperationOutputHTTPLocation,
         operationDelegate: OperationDelegateType)
         where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+        DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
             func inputProvider(requestHead: OperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
@@ -103,7 +106,7 @@ public extension SmokeHTTP1HandlerSelector {
             func outputHandler(requestHead: OperationDelegateType.RequestHeadType,
                                output: OutputType,
                                responseHandler: OperationDelegateType.ResponseHandlerType,
-                               invocationContext: SmokeServerInvocationContext) {
+                               invocationContext: SmokeServerInvocationContext<TraceContextType>) {
                 operationDelegate.handleResponseForOperation(requestHead: requestHead,
                                                              location: outputLocation,
                                                              output: output,
@@ -135,7 +138,8 @@ public extension SmokeHTTP1HandlerSelector {
             ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting, @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>,
+                       @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)]) {
         
         let handler = OperationHandler(
@@ -164,10 +168,12 @@ public extension SmokeHTTP1HandlerSelector {
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting, @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
+        operation: @escaping ((InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>,
+                       @escaping (Result<OutputType, Swift.Error>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+    DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         let handler = OperationHandler(

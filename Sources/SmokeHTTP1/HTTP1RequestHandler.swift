@@ -18,13 +18,15 @@
 import Foundation
 import NIO
 import NIOHTTP1
-import SmokeOperations
 import Logging
+import SmokeInvocation
 
 /**
  Protocol that specifies a handler for a HttpRequest.
  */
 public protocol HTTP1RequestHandler {
+    associatedtype ResponseHandlerType: HTTP1ResponseHandler
+    
     /**
      Handles an incoming request.
  
@@ -34,6 +36,6 @@ public protocol HTTP1RequestHandler {
         - responseHandler: a handler that can be used to respond to the request.
         - invocationStrategy: the invocationStrategy to use for this request.
      */
-    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler,
+    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                 invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String)
 }

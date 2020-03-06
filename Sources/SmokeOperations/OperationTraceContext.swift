@@ -11,23 +11,19 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerInvocationReporting.swift
+//  OperationTraceContext.swift
 //  SmokeOperations
 //
-import Foundation
-import Logging
 
-/**
- A context related to reporting on the invocation of the SmokeFramework.
- */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext> {
-    public let logger: Logger
-    public let internalRequestId: String
-    public let traceContext: TraceContextType
+import Foundation
+
+public protocol OperationTraceContext {
+    associatedtype RequestHeadType
+    associatedtype ResponseHeadersType
     
-    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType) {
-        self.logger = logger
-        self.internalRequestId = internalRequestId
-        self.traceContext = traceContext
-    }
+    init(requestHead: RequestHeadType)
+    
+    init<InputType: Validatable>(requestHead: RequestHeadType, input: InputType)
+    
+    func decorateResponseHeaders(httpHeaders: inout ResponseHeadersType)
 }

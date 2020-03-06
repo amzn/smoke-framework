@@ -42,10 +42,11 @@ public extension OperationHandler {
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping
                 (Result<OutputType, Swift.Error>) -> Void) throws -> Void),
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext) -> Void),
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext<TraceContextType>) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
+    TraceContextType == OperationDelegateType.TraceContextType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -54,7 +55,7 @@ public extension OperationHandler {
          * provides an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext) in
+            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>?
             do {
                 try operation(input, context) { result in
