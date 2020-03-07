@@ -29,7 +29,7 @@ public struct OperationHandler<ContextType, RequestHeadType, TraceContextType: O
         = (_ input: InputType, _ requestHead: RequestHeadType, _ context: ContextType,
         _ responseHandler: ResponseHandlerType, _ invocationContext: SmokeServerInvocationContext<TraceContextType>) -> ()
     public typealias OperationResultDataInputFunction
-        = (_ requestHead: RequestHeadType, _ body: Data?, _ context: ContextType,
+        = (_ requestHead: RequestHeadType, _ body: Data?, _ context: PerInvocationContext<ContextType, TraceContextType>,
         _ responseHandler: ResponseHandlerType, _ invocationStrategy: InvocationStrategy,
         _ requestLogger: Logger, _ internalRequestId: String, _ traceContext: TraceContextType) -> ()
     
@@ -39,7 +39,7 @@ public struct OperationHandler<ContextType, RequestHeadType, TraceContextType: O
      * Handle for an operation handler delegates the input to the wrapped handling function
      * constructed at initialization time.
      */
-    public func handle(_ requestHead: RequestHeadType, body: Data?, withContext context: ContextType,
+    public func handle(_ requestHead: RequestHeadType, body: Data?, withContext context: PerInvocationContext<ContextType, TraceContextType>,
                        responseHandler: ResponseHandlerType, invocationStrategy: InvocationStrategy,
                        requestLogger: Logger, internalRequestId: String, traceContext: TraceContextType) {
         return operationFunction(requestHead, body, context, responseHandler,
@@ -52,7 +52,7 @@ public struct OperationHandler<ContextType, RequestHeadType, TraceContextType: O
         case error(description: String, reportableType: String?, invocationContext: SmokeServerInvocationContext<TraceContextType>)
         
         func handle<OperationDelegateType: OperationDelegate>(
-                requestHead: RequestHeadType, context: ContextType,
+                requestHead: RequestHeadType, context: PerInvocationContext<ContextType, TraceContextType>,
                 responseHandler: ResponseHandlerType, operationDelegate: OperationDelegateType)
             where RequestHeadType == OperationDelegateType.RequestHeadType,
             TraceContextType == OperationDelegateType.TraceContextType,
@@ -97,7 +97,15 @@ public struct OperationHandler<ContextType, RequestHeadType, TraceContextType: O
                     return
                 }
                 
-                inputHandler(input, requestHead, context, responseHandler, invocationContext)
+                let contextForInvocation: ContextType
+                switch context {
+                case .static(let staticContext):
+                    contextForInvocation = staticContext
+                case .provider(let contextProvider):
+                    contextForInvocation = contextProvider(invocationContext.invocationReporting)
+                }
+                
+                inputHandler(input, requestHead, contextForInvocation, responseHandler, invocationContext)
             }
         }
     }

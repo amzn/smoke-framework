@@ -50,4 +50,33 @@ public extension SmokeHTTP1Server {
             
             return server
     }
+  
+    static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector>(
+        withHandlerSelector handlerSelector: SelectorType,
+        andContextProvider contextProvider: @escaping (SmokeServerInvocationReporting<SelectorType.DefaultOperationDelegateType.TraceContextType>) -> SelectorType.ContextType,
+        andPort port: Int = ServerDefaults.defaultPort,
+        serverName: String = "Server",
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+        defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
+        reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer> = SmokeServerReportingConfiguration(),
+        eventLoopProvider: SmokeServerEventLoopProvider = .spawnNewThreads,
+        shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
+        where HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
+        SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+        SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+            StandardHTTP1ResponseHandler<SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType>> {
+            let handler = OperationServerHTTP1RequestHandler<SelectorType>(
+                handlerSelector: handlerSelector,
+                contextProvider: contextProvider, serverName: serverName, reportingConfiguration: reportingConfiguration)
+                let server = StandardSmokeHTTP1Server(handler: handler,
+                                                  port: port,
+                                                  invocationStrategy: invocationStrategy,
+                                                  defaultLogger: defaultLogger,
+                                                  eventLoopProvider: eventLoopProvider,
+                                                  shutdownOnSignal: shutdownOnSignal)
+            
+            try server.start()
+            
+            return server
+    }
 }
