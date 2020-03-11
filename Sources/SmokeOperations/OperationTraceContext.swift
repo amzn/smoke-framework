@@ -16,14 +16,17 @@
 //
 
 import Foundation
+import Logging
 
 public protocol OperationTraceContext {
     associatedtype RequestHeadType
     associatedtype ResponseHeadersType
+    associatedtype ResponseStatusType
     
-    init(requestHead: RequestHeadType)
+    init(requestHead: RequestHeadType, bodyData: Data?)
     
-    init<InputType: Validatable>(requestHead: RequestHeadType, input: InputType)
+    func handleInwardsRequestStart(requestHead: RequestHeadType, bodyData: Data?, logger: inout Logger, internalRequestId: String)
     
-    func decorateResponseHeaders(httpHeaders: inout ResponseHeadersType)
+    func handleInwardsRequestComplete(httpHeaders: inout ResponseHeadersType, status: ResponseStatusType, body: (contentType: String, data: Data)?,
+                                      logger: Logger, internalRequestId: String)
 }

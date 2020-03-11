@@ -35,8 +35,8 @@ let package = Package(
             targets: ["SmokeHTTP1"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-log.git", .upToNextMajor(from: "1.0.0")),
-        .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0"..<"3.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.0.0-alpha"),
@@ -54,7 +54,7 @@ let package = Package(
         .target(
             name: "SmokeOperationsHTTP1",
             dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",
-                           "HTTPPathCoding", "HTTPHeadersCoding"]),
+                           "HTTPPathCoding", "HTTPHeadersCoding", "SmokeHTTPClient"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),

@@ -20,6 +20,6 @@ import SmokeOperations
 import NIOHTTP1
 
 public protocol HTTP1OperationTraceContext: OperationTraceContext
-    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders {
+    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders, ResponseStatusType == HTTPResponseStatus {
 
 }

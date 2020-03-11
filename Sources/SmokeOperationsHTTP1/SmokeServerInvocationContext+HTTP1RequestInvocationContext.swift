@@ -20,12 +20,17 @@ import SmokeOperations
 import Logging
 import NIOHTTP1
 
-extension SmokeServerInvocationContext: HTTP1RequestInvocationContext where TraceContextType.ResponseHeadersType == HTTPHeaders {
+extension SmokeServerInvocationContext: HTTP1RequestInvocationContext where
+        TraceContextType.RequestHeadType == HTTPRequestHead,
+        TraceContextType.ResponseHeadersType == HTTPHeaders, TraceContextType.ResponseStatusType == HTTPResponseStatus {
+    
     public var logger: Logger {
         return self.invocationReporting.logger
     }
     
-    public func decorateResponseHeaders(httpHeaders: inout HTTPHeaders) {
-        self.invocationReporting.traceContext.decorateResponseHeaders(httpHeaders: &httpHeaders)
+    public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus, body: (contentType: String, data: Data)?) {
+        self.invocationReporting.traceContext.handleInwardsRequestComplete(httpHeaders: &httpHeaders, status: status, body: body,
+                                                                           logger: self.invocationReporting.logger,
+                                                                           internalRequestId: self.invocationReporting.internalRequestId)
     }
 }

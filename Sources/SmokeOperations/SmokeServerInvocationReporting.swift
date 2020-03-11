@@ -14,6 +14,7 @@
 //  SmokeServerInvocationReporting.swift
 //  SmokeOperations
 //
+
 import Foundation
 import Logging
 
