@@ -28,12 +28,6 @@ extension SmokeServerInvocationContext: HTTP1RequestInvocationContext where
         return self.invocationReporting.logger
     }
     
-    public func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?) {
-        self.invocationReporting.traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: bodyData,
-                                                                        logger: self.invocationReporting.logger,
-                                                                        internalRequestId: self.invocationReporting.internalRequestId)
-    }
-    
     public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus, body: (contentType: String, data: Data)?) {
         self.invocationReporting.traceContext.handleInwardsRequestComplete(httpHeaders: &httpHeaders, status: status, body: body,
                                                                            logger: self.invocationReporting.logger,

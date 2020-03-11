@@ -87,7 +87,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
             
             let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
             traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                                   logger: decoratedRequestLogger, internalRequestId: internalRequestId)
+                                                   logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
             let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
                                                                      internalRequestId: internalRequestId, traceContext: traceContext)
             return SmokeServerInvocationContext(invocationReporting: invocationReporting,
@@ -150,10 +150,12 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
                                                           pathShape: shape)
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
-        traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body, logger: requestLogger, internalRequestId: internalRequestId)
+        var decoratedRequestLogger: Logger = requestLogger
+        traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
+                                               logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
         // let it be handled
         handler.handle(smokeHTTP1RequestHead, body: body, withContext: context,
                        responseHandler: responseHandler, invocationStrategy: invocationStrategy,
-                       requestLogger: requestLogger, internalRequestId: internalRequestId, traceContext: traceContext)
+                       requestLogger: decoratedRequestLogger, internalRequestId: internalRequestId, traceContext: traceContext)
     }
 }

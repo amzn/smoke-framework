@@ -25,7 +25,7 @@ public protocol OperationTraceContext {
     
     init(requestHead: RequestHeadType, bodyData: Data?)
     
-    func handleInwardsRequestStart(requestHead: RequestHeadType, bodyData: Data?, logger: Logger, internalRequestId: String)
+    func handleInwardsRequestStart(requestHead: RequestHeadType, bodyData: Data?, logger: inout Logger, internalRequestId: String)
     
     func handleInwardsRequestComplete(httpHeaders: inout ResponseHeadersType, status: ResponseStatusType, body: (contentType: String, data: Data)?,
                                       logger: Logger, internalRequestId: String)

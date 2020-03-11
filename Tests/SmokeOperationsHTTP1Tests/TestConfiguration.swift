@@ -54,7 +54,7 @@ struct TestOperationTraceContext: HTTP1OperationTraceContext {
         // nothing to do
     }
     
-    func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: Logger, internalRequestId: String) {
+    func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
         // nothing to do
     }
     
