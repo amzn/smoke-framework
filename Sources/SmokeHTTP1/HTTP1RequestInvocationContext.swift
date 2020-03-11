@@ -23,5 +23,8 @@ public protocol HTTP1RequestInvocationContext {
     
     var logger: Logger { get }
     
-    func decorateResponseHeaders(httpHeaders: inout HTTPHeaders)
+    func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?)
+    
+    func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
+                                      body: (contentType: String, data: Data)?)
 }

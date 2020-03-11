@@ -50,17 +50,19 @@ struct OperationResponse {
 }
 
 struct TestOperationTraceContext: HTTP1OperationTraceContext {
-    func decorateResponseHeaders(httpHeaders: inout HTTPHeaders) {
-        // do nothing
+    init(requestHead: HTTPRequestHead, bodyData: Data?) {
+        // nothing to do
     }
     
-    init(requestHead: HTTPRequestHead) {
-        // do nothing
+    func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: Logger, internalRequestId: String) {
+        // nothing to do
     }
     
-    init<InputType>(requestHead: HTTPRequestHead, input: InputType) where InputType : Validatable {
-        // do nothing
+    func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
+                                      body: (contentType: String, data: Data)?, logger: Logger, internalRequestId: String) {
+        // nothing to do
     }
+    
 }
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {

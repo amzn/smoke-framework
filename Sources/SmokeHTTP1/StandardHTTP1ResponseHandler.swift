@@ -101,7 +101,7 @@ public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvoca
             headers.add(name: header.0, value: header.1)
         }
         
-        invocationContext.decorateResponseHeaders(httpHeaders: &headers)
+        invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
         
         context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
                                                                   status: status,
