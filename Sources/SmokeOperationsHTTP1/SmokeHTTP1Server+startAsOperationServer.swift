@@ -30,8 +30,8 @@ public extension SmokeHTTP1Server {
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer> = SmokeServerReportingConfiguration(),
-        eventLoopProvider: SmokeServerEventLoopProvider = .spawnNewThreads,
-        shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+        shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
         where HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
@@ -48,7 +48,7 @@ public extension SmokeHTTP1Server {
             
             try server.start()
             
-            return server
+            return SmokeHTTP1Server(wrappedServer: server)
     }
   
     static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector>(
@@ -59,8 +59,8 @@ public extension SmokeHTTP1Server {
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer> = SmokeServerReportingConfiguration(),
-        eventLoopProvider: SmokeServerEventLoopProvider = .spawnNewThreads,
-        shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+        shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
         where HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
@@ -77,6 +77,6 @@ public extension SmokeHTTP1Server {
             
             try server.start()
             
-            return server
+            return SmokeHTTP1Server(wrappedServer: server)
     }
 }

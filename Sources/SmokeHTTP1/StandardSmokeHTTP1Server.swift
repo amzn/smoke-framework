@@ -22,21 +22,12 @@ import NIOExtras
 import Logging
 import SmokeInvocation
 
-public struct ServerDefaults {
-    static let defaultHost = "0.0.0.0"
-    public static let defaultPort = 8080
-}
-
-public enum SmokeHTTP1ServerError: Error {
-    case shutdownAttemptOnUnstartedServer
-}
-
 /**
  A basic non-blocking HTTP server that handles a request with an
  optional body and returns a response with an optional body.
  */
 public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandler,
-                                      InvocationContext: HTTP1RequestInvocationContext>: SmokeHTTP1Server
+                                      InvocationContext: HTTP1RequestInvocationContext>
         where HTTP1RequestHandlerType.ResponseHandlerType == StandardHTTP1ResponseHandler<InvocationContext> {
     let port: Int
     
@@ -89,7 +80,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
                 invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
                 defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.SmokeHTTP1Server"),
                 shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
-                eventLoopProvider: SmokeServerEventLoopProvider = .spawnNewThreads, shutdownOnSignal: SmokeServerShutdownOnSignal = .sigint) {
+                eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
+                shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal = .sigint) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
