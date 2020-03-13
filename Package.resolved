@@ -14,9 +14,9 @@
         "package": "SmokeHTTP",
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
-          "branch": "async-http-client",
-          "revision": "ae6944abc219a199a9739a43b8c03862755574c7",
-          "version": null
+          "branch": null,
+          "revision": "ae8003b3605c0b368925558254055222237b1da4",
+          "version": "2.0.0-alpha.7"
         }
       },
       {
