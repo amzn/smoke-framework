@@ -20,6 +20,7 @@ import Logging
 import SmokeHTTPClient
 import SmokeOperations
 import NIOHTTP1
+import AsyncHTTPClient
 
 private extension Data {
     var debugString: String {
@@ -124,50 +125,50 @@ extension SmokeInvocationTraceContext: HTTP1OperationTraceContext {
 extension SmokeInvocationTraceContext: InvocationTraceContext {
     public typealias OutwardsRequestContext = String
     
-    public func handleOutwardsRequestStart(method: HTTPMethod, uri: String, version: HTTPVersion, logger: Logger, internalRequestId: String,
-                                    headers: inout [(String, String)], bodyData: Data) -> String {
+        public func handleOutwardsRequestStart(method: HTTPMethod, uri: String, logger: Logger, internalRequestId: String,
+                                               headers: inout HTTPHeaders, bodyData: Data) -> String {
         // log details about the outgoing request
         logger.debug("Starting outgoing \(method) request to endpoint '\(uri)'. Received body with size \(bodyData.count): \(bodyData.debugString)")
         
         // pass the internal request id to the downstream caller
-        headers.append((requestIdHeader, internalRequestId))
+        headers.add(name: requestIdHeader, value: internalRequestId)
         
         // pass the trace id to the downstream caller if present
         if let traceId = traceId {
-            headers.append((traceIdHeader, traceId))
+            headers.add(name: traceIdHeader, value: traceId)
         }
         
         return ""
     }
     
-    public func handleOutwardsRequestSuccess(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
-                                      responseHead: HTTPResponseHead?, bodyData: Data?) {
-        let logLine = getLogLine(successfullyCompletedRequest: true, responseHead: responseHead, bodyData: bodyData)
+     public func handleOutwardsRequestSuccess(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
+                                              response: HTTPClient.Response, bodyData: Data?) {
+        let logLine = getLogLine(successfullyCompletedRequest: true, response: response, bodyData: bodyData)
         
         logger.info("\(logLine)")
     }
     
     public func handleOutwardsRequestFailure(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
-                                      responseHead: HTTPResponseHead?, bodyData: Data?, error: Error) {
-        let logLine = getLogLine(successfullyCompletedRequest: true, responseHead: responseHead, bodyData: bodyData)
+                                             response: HTTPClient.Response?, bodyData: Data?, error: Error) {
+        let logLine = getLogLine(successfullyCompletedRequest: true, response: response, bodyData: bodyData)
         
         logger.error("\(logLine)")
     }
     
-    private func getLogLine(successfullyCompletedRequest: Bool, responseHead: HTTPResponseHead?, bodyData: Data?) -> String {
+    private func getLogLine(successfullyCompletedRequest: Bool, response: HTTPClient.Response?, bodyData: Data?) -> String {
         var logElements: [String] = []
         let completionString = successfullyCompletedRequest ? "Successfully" : "Unsuccessfully"
         logElements.append("\(completionString) completed outgoing request.")
         
-        if let code = responseHead?.status.code {
+        if let code = response?.status.code {
             logElements.append("Returned status code: \(code)")
         }
         
-        if let requestIds = responseHead?.headers[requestIdHeader], !requestIds.isEmpty {
+        if let requestIds = response?.headers[requestIdHeader], !requestIds.isEmpty {
             logElements.append("Returned \(requestIdHeader) header '\(requestIds.joined(separator: ","))'")
         }
         
-        if let traceIds = responseHead?.headers[traceIdHeader], !traceIds.isEmpty {
+        if let traceIds = response?.headers[traceIdHeader], !traceIds.isEmpty {
             logElements.append("Returned \(traceIdHeader) header '\(traceIds.joined(separator: ","))'")
         }
         

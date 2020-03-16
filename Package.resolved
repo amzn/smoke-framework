@@ -2,12 +2,21 @@
   "object": {
     "pins": [
       {
+        "package": "async-http-client",
+        "repositoryURL": "https://github.com/swift-server/async-http-client.git",
+        "state": {
+          "branch": null,
+          "revision": "e2636a4c24e646d3e480fc666da0c090818beb09",
+          "version": "1.1.0"
+        }
+      },
+      {
         "package": "SmokeHTTP",
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
           "branch": null,
-          "revision": "1e42bb839956c0132d82b3cda20981eb81fbb532",
-          "version": "2.0.0-alpha.5"
+          "revision": "ae8003b3605c0b368925558254055222237b1da4",
+          "version": "2.0.0-alpha.7"
         }
       },
       {
