@@ -179,18 +179,12 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
         
         mutating func updateKeepAliveStatus(keepAliveStatus: Bool) -> Bool {
             switch self {
-            case .waitingForRequestBody:
-                return true
-            case .receivingRequestBody:
+            case .idle, .waitingForRequestBody, .receivingRequestBody:
                 return true
             case .pendingResponse(let pendingResponse):
                 self = .pendingResponse(PendingResponse(pendingResponse: pendingResponse, keepAliveStatus: keepAliveStatus))
                 
                 return false
-            case .idle:
-                assertionFailure("Invalid state to update keep alive status: \(self)")
-                
-                fatalError()
             }
         }
     }
