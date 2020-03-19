@@ -177,6 +177,17 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
             }
         }
         
+        mutating func responseFullSent() {
+            switch self {
+            case .pendingResponse:
+                self = .idle
+            case .idle, .waitingForRequestBody, .receivingRequestBody:
+                assertionFailure("Invalid state for response fully sent: \(self)")
+                
+                fatalError()
+            }
+        }
+        
         mutating func updateKeepAliveStatus(keepAliveStatus: Bool) -> Bool {
             switch self {
             case .idle, .waitingForRequestBody, .receivingRequestBody:
@@ -239,12 +250,17 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
         
         logger.debug("Handling request body with \(bodyData?.count ?? 0) size.")
         
+        func onComplete() {
+            self.state.responseFullSent()
+        }
+        
         // create a response handler for this request
         let responseHandler = StandardHTTP1ResponseHandler<HTTP1RequestHandlerType.ResponseHandlerType.InvocationContext>(
             requestHead: requestHead,
             keepAliveStatus: pendingResponse.keepAliveStatus,
             context: context,
-            wrapOutboundOut: wrapOutboundOut)
+            wrapOutboundOut: wrapOutboundOut,
+            onComplete: onComplete)
     
         let currentHandler = handler
         

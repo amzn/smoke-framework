@@ -28,6 +28,7 @@ public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvoca
     let keepAliveStatus: KeepAliveStatus
     let context: ChannelHandlerContext
     let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
+    let onComplete: () -> ()
     
     public func executeInEventLoop(invocationContext: InvocationContext, execute: @escaping () -> ()) {
         // if we are currently on a thread that can complete the response
@@ -121,6 +122,8 @@ public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvoca
                 currentContext.close(promise: nil)
             }
         }
+        
+        onComplete()
         
         // write the response end and flush
         context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
