@@ -26,9 +26,7 @@ import SmokeInvocation
  A basic non-blocking HTTP server that handles a request with an
  optional body and returns a response with an optional body.
  */
-public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandler,
-                                      InvocationContext: HTTP1RequestInvocationContext>
-        where HTTP1RequestHandlerType.ResponseHandlerType == StandardHTTP1ResponseHandler<InvocationContext> {
+public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandler> {
     let port: Int
     
     let quiesce: ServerQuiescingHelper
@@ -159,8 +157,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             }
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().flatMap {
-                    channel.pipeline.addHandler(HTTP1ChannelInboundHandler<HTTP1RequestHandlerType,
-                                                    HTTP1RequestHandlerType.ResponseHandlerType.InvocationContext>(
+                    channel.pipeline.addHandler(HTTP1ChannelInboundHandler<HTTP1RequestHandlerType>(
                         handler: currentHandler,
                         invocationStrategy: currentInvocationStrategy))
                 }

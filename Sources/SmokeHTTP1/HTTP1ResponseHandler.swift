@@ -27,6 +27,22 @@ public protocol HTTP1ResponseHandler {
     associatedtype InvocationContext: HTTP1RequestInvocationContext
     
     /**
+     Initializer.
+     
+     - Parameters:
+         - requestHead: the head of the request that this handler will respond to.
+         - keepAliveStatus: if the request should be kept alive.
+         - context: the `ChannelHandlerContext` associated with the response.
+         - wrapOutboundOut: helper function to prepare a `HTTPServerResponsePart` for transmission on the channel.
+         - onComplete: to be called when the response has been sent on the channel.
+     */
+    init(requestHead: HTTPRequestHead,
+         keepAliveStatus: KeepAliveStatus,
+         context: ChannelHandlerContext,
+         wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
+         onComplete: @escaping () -> ())
+    
+    /**
      Function used to provide a response to a HTTP request.
  
      - Parameters:
