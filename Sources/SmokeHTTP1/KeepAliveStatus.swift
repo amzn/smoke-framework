@@ -21,7 +21,7 @@ import Foundation
  Class that shares the keepAlive status of a HTTP Request between the
  HTTPChannelInboundHandler and HttpResponseHandler.
  */
-class KeepAliveStatus {
+public class KeepAliveStatus {
     var state: Bool
     
     init(state: Bool) {

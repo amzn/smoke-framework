@@ -25,9 +25,7 @@ import SmokeInvocation
 /**
  Handler that manages the inbound channel for a HTTP Request.
  */
-class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
-                                 InvocationContext: HTTP1RequestInvocationContext>: ChannelInboundHandler
-        where HTTP1RequestHandlerType.ResponseHandlerType == StandardHTTP1ResponseHandler<InvocationContext> {
+class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
     
@@ -255,7 +253,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler,
         }
         
         // create a response handler for this request
-        let responseHandler = StandardHTTP1ResponseHandler<HTTP1RequestHandlerType.ResponseHandlerType.InvocationContext>(
+        let responseHandler = HTTP1RequestHandlerType.ResponseHandlerType(
             requestHead: requestHead,
             keepAliveStatus: pendingResponse.keepAliveStatus,
             context: context,

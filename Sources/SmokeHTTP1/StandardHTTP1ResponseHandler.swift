@@ -30,6 +30,18 @@ public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvoca
     let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
     let onComplete: () -> ()
     
+    public init(requestHead: HTTPRequestHead,
+                keepAliveStatus: KeepAliveStatus,
+                context: ChannelHandlerContext,
+                wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
+                onComplete: @escaping () -> ()) {
+        self.requestHead = requestHead
+        self.keepAliveStatus = keepAliveStatus
+        self.context = context
+        self.wrapOutboundOut = wrapOutboundOut
+        self.onComplete = onComplete
+    }
+    
     public func executeInEventLoop(invocationContext: InvocationContext, execute: @escaping () -> ()) {
         // if we are currently on a thread that can complete the response
         if context.eventLoop.inEventLoop {

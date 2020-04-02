@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-swiftLintVersion=0.36.0
+swiftLintVersion=0.39.1
 
 USE_SWIFT_LINT=$1
 
@@ -23,7 +23,7 @@ fi
 
 cd $workspaceRoot/package
 swift build -c release
-#swift test
+swift test
 
 if [ "$USE_SWIFT_LINT" == 'yes' ]; then
     swiftlint

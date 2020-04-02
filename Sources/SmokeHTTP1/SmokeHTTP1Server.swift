@@ -67,8 +67,8 @@ public class SmokeHTTP1Server {
     private let waitUntilShutdownAndThenHandler: (_ onShutdown: @escaping () -> Void) throws -> ()
     private let onShutdownHandler: (_ onShutdown: @escaping () -> Void) throws -> ()
     
-    public init<HTTP1RequestHandlerType: HTTP1RequestHandler, InvocationContext: HTTP1RequestInvocationContext>(
-            wrappedServer: StandardSmokeHTTP1Server<HTTP1RequestHandlerType, InvocationContext>) {
+    public init<HTTP1RequestHandlerType: HTTP1RequestHandler>(
+            wrappedServer: StandardSmokeHTTP1Server<HTTP1RequestHandlerType>) {
         self.startHandler = {
             try wrappedServer.start()
         }

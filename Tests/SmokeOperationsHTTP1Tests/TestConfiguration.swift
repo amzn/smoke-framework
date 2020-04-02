@@ -20,6 +20,7 @@ import NIOHTTP1
 import SmokeHTTP1
 import Logging
 import SmokeInvocation
+import NIO
 @testable import SmokeOperationsHTTP1
 import XCTest
 
@@ -67,6 +68,16 @@ struct TestOperationTraceContext: HTTP1OperationTraceContext {
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
+    
+    init() {
+        
+    }
+    
+    required init(requestHead: HTTPRequestHead, keepAliveStatus: KeepAliveStatus,
+                  context: ChannelHandlerContext, wrapOutboundOut: @escaping (HTTPServerResponsePart) -> NIOAny,
+                  onComplete: @escaping () -> ()) {
+        // nothing to do
+    }
     
     func complete(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
