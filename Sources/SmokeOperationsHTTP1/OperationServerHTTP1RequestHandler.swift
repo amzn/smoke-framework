@@ -35,7 +35,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
         where SelectorType: SmokeHTTP1HandlerSelector,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
         HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
-        SelectorType.DefaultOperationDelegateType.ResponseHandlerType: HTTP1ResponseHandler,
+        SelectorType.DefaultOperationDelegateType.ResponseHandlerType: ChannelHTTP1ResponseHandler,
         SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
     typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
     

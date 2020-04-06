@@ -66,7 +66,7 @@ struct TestOperationTraceContext: HTTP1OperationTraceContext {
     
 }
 
-class TestHttpResponseHandler: HTTP1ResponseHandler {
+class TestHttpResponseHandler: ChannelHTTP1ResponseHandler {
     var response: OperationResponse?
     
     init() {

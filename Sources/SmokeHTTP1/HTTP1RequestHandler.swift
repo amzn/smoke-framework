@@ -25,7 +25,7 @@ import SmokeInvocation
  Protocol that specifies a handler for a HttpRequest.
  */
 public protocol HTTP1RequestHandler {
-    associatedtype ResponseHandlerType: HTTP1ResponseHandler
+    associatedtype ResponseHandlerType: ChannelHTTP1ResponseHandler
     
     /**
      Handles an incoming request.

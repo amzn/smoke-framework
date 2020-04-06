@@ -42,7 +42,7 @@ public typealias JSONPayloadHTTP1OperationDelegate<TraceContextType: HTTP1Operat
  request and response payloads.
  */
 public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP1ResponseHandler,
-                                                       TraceContextType: HTTP1OperationTraceContext>: HTTP1OperationDelegate
+                                                       TraceContextType: OperationTraceContext>: HTTP1OperationDelegate
         where ResponseHandlerType.InvocationContext == SmokeServerInvocationContext<TraceContextType> {
     public init() {
         

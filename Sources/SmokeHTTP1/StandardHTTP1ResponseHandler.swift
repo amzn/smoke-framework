@@ -23,7 +23,7 @@ import Logging
 /**
  Handles the response to a HTTP request.
 */
-public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvocationContext>: HTTP1ResponseHandler {
+public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvocationContext>: ChannelHTTP1ResponseHandler {
     let requestHead: HTTPRequestHead
     let keepAliveStatus: KeepAliveStatus
     let context: ChannelHandlerContext
