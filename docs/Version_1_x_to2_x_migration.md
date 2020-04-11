@@ -1,13 +1,13 @@
 ---
-date: 2020-03-29 15:00
+date: 2020-04-11 14:00
 description: A step-by-step migration guide from converting a SmokeFramework-based application from version 1.x to 2.x.
-tags: hello
+tags: SmokeFramework, migration guide
 ---
 # SmokeFramework 1.x to 2.x
 
 The [SmokeFramework](https://github.com/amzn/smoke-framework) is a server-side service framework written in the Swift programming language.
 
-The SmokeFramework has been written and is maintained by my team in PrimeVideo. This framework allows us to run a number of micro services written in Swift on ECS/Fargate. 
+The SmokeFramework has been written and is maintained by a team within PrimeVideo at Amazon. This framework allows us to run a number of micro services written in Swift on ECS/Fargate. 
 
 In addition to the framework package, there is also-
 
@@ -28,10 +28,15 @@ To take advantage of the features of Swift Log, this required changing SmokeFram
 
 The benefit of making this change is that log messages can now be tagged with invocation or operation metadata so related log messages - such as from the same invocation - can be easily identified.
 
-Like SmokeFramework 1.x, version 2.x is designed to be run on Linux-based cloud instances but for development can be run locally on macOS. The macOS version requirements for version 2.x have been changed-
-* if compiling under Swift 5.2, macOS Catalina (10.15) or higher is required
-* if compiling under Swift 5.1 or Swift 5.0, macOS Sierra (10.12) or higher is required
+Like SmokeFramework 1.x, version 2.x is designed to be run on Linux-based cloud instances but for development can be run locally on macOS. The macOS version requirements for version 2.x have been changed. 
 
+If just the SmokeFramework is used, ***macOS High Sierra (10.13)*** or higher is required.
+
+If SmokeAWS is also used-
+* when compiling under Swift 5.2, ***macOS Catalina (10.15)*** or higher is required
+* when compiling under Swift 5.1 or Swift 5.0, ***macOS High Sierra (10.13)*** or higher is required
+
+SmokeFramework 2.x drops support for Swift versions prior to 5.0.
 
 ## Migration process
 
@@ -85,7 +90,7 @@ If you attempt to compile the application, one of the errors you will get is
 the product 'XXX' requires minimum platform version 10.12 for macos platform
 ```
 
-This is because the SmokeFramework projects now have a minimum MacOS version dependency. To correct there needs to be a couple of additions to to the Package.swift file.
+This is because the SmokeFramework projects now have a minimum MacOS version dependency. To correct this there needs to be a couple of additions to to the Package.swift file.
 
 #### Step 3a: Update the Tools version
 
@@ -93,13 +98,13 @@ Make sure the Swift Tools version is 5.0 or higher-
 
 ```
 Swift-tools-version:5.0
+```
 
 #### Step 3b: Update the language version
-```
 
 Specify the language versions supported by the application-
 
-```
+```swift
 targets: [
     ...
     ],
@@ -112,7 +117,7 @@ Specify the platforms supported by the application-
 
 ##### For Swift 5.2
 
-```
+```swift
 name: "XXX",
 platforms: [
   .macOS(.v10_15), .iOS(.v10)
@@ -122,7 +127,7 @@ products: [
 
 ##### For Swift 5.1 or Swift 5.0
 
-```
+```swift
 name: "XXX",
 platforms: [
   .macOS(.v10_12), .iOS(.v10)
@@ -194,7 +199,7 @@ context.logger.info("Hello")
 
 You may need to explicitly pass the context instance to functions that previously didn't need it.
 
-Note: Swift Log doesn't provide a **verbose** log level. You will need to determine what Swift Log level previously verbose level logs will be emitted at.
+***Note:*** Swift Log doesn't provide a **verbose** log level. You will need to determine what Swift Log level previously verbose level logs will be emitted at.
 
 You may get an error message similar to-
 
@@ -204,14 +209,14 @@ Cannot convert value of type 'String' to expected argument type 'Logger.Message'
 
 Here you will have to modify the logging statement to not directly pass a string (or a concatenation of strings)-
 
-```
+```swift
 context.logger.debug("Some long "
         + "log message")
 ```
 
 Should become-
 
-```
+```swift
 let logMessage = "Some long "
     + "log message"
 context.logger.debug("\(logMessage)")
@@ -219,7 +224,7 @@ context.logger.debug("\(logMessage)")
 
 ### Step 6: Setup the per-invocation context generator
 
-The code generator has already partially set up a generator type to create an invocation-specific context instance. This can be found in the `XXOperationsHTTP1` package. Add any additional properties used by the application's context type.
+The code generator has already partially set up a generator type to create an invocation-specific context instance. This can be found in the `XXXOperationsHTTP1` package. Add any additional properties used by the application's context type.
 
 If you are using clients from SmokeAWS, use their corresponding generator types-
 
@@ -263,10 +268,9 @@ public struct XXXOperationsContextGenerator {
 
 ### Step 7: Create generator instances on application start up
 
-Rather than creating clients themselves on application startup, create the generator instances. These generators also now take a generator.
+Rather than creating clients themselves on application startup, create the generator instances.
 
 #### Step 7a: Update EventLoopProvider creation
-
 
 ```swift
 let clientEventLoopProvider = HTTPClient.EventLoopProvider.use(clientEventLoopGroup)
@@ -291,6 +295,8 @@ return AWSDynamoDBCompositePrimaryKeyTable(
     eventLoopProvider: clientEventLoopProvider)
 ```
 
+becomes-
+
 ```swift
 return AWSDynamoDBCompositePrimaryKeyTableGenerator(
     credentialsProvider: credentialsProvider,
@@ -303,14 +309,14 @@ return AWSDynamoDBCompositePrimaryKeyTableGenerator(
 
 The `wait()` function has been removed from these clients-
 
-```
+```swift
 dynamodbTable.close()
 dynamodbTable.wait()
 ```
 
 becomes-
 
-```
+```swift
 try dynamodbTableGenerator.close()
 ```
 
@@ -318,11 +324,11 @@ try dynamodbTableGenerator.close()
 
 If your application logs during initialisation, create a logger for this.
 
-```
+```swift
 let logger = Logger(label: "application.initialization")
 ```
 
-### Step 9: Create an instance of the operations context generator on startup
+### Step 9: Modify context creation at startup
 
 Instead of creating an instance of the operations context on application startup, create an instance of the context generator-
 
@@ -332,7 +338,9 @@ let operationsContext = XXXOperationsContext(
     idGenerator: idGenerator)
 ```
 
-```
+becomes-
+
+```swift
 import SmokeAWSHttp
 ...
 
@@ -350,13 +358,15 @@ let operationsContextGenerator = XXXOperationsContextGenerator(
 
 Pass the context generator function into the server initialisation.
 
-```
+```swift
 let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
             withHandlerSelector: createHandlerSelector(),
             andContext: operationsContext)
 ```
 
-```
+becomes-
+
+```swift
 let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
             withHandlerSelector: createHandlerSelector(),
             andContextProvider: operationsContextGenerator.get,
@@ -367,13 +377,13 @@ let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
 
 The `wait()` function has been removed from these clients-
 
-```
+```swift
 credentialsProvider.close()
 credentialsProvider.wait()
 ```
 
 becomes-
 
-```
+```swift
 try credentialsProvider.close()
 ```
