@@ -17,7 +17,6 @@
 import Foundation
 import SmokeOperations
 import NIOHTTP1
-import SmokeHTTP1
 import HTTPPathCoding
 import ShapeCoding
 import Logging
