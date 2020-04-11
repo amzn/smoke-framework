@@ -78,7 +78,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
-                       invocationReportingProvider: (Logger) -> InvocationReportingType) {
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
         func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting)
                 -> SmokeInvocationContext<InvocationReportingType> {
             var decoratedRequestLogger: Logger = requestLogger

@@ -15,14 +15,8 @@
 //  SmokeOperationsHTTP1Server
 //
 
-//import Foundation
 import SmokeOperations
 import SmokeOperationsHTTP1
-//import SmokeHTTP1
-//import HTTPPathCoding
-//import HTTPHeadersCoding
-//import QueryCoding
-//import Logging
 
 public typealias JSONPayloadHTTP1OperationDelegate<TraceContextType: HTTP1OperationTraceContext> =
     GenericJSONPayloadHTTP1OperationDelegate<

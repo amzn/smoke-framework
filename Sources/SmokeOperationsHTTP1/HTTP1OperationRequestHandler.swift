@@ -40,5 +40,5 @@ public protocol HTTP1OperationRequestHandler {
      */
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                 invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
-                invocationReportingProvider: (Logger) -> InvocationReportingType)
+                invocationReportingProvider: @escaping (Logger) -> InvocationReportingType)
 }

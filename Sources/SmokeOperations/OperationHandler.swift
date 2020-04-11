@@ -41,7 +41,8 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
      */
     public func handle(_ requestHead: RequestHeadType, body: Data?, withContext context: PerInvocationContext<ContextType, InvocationReportingType>,
                        responseHandler: ResponseHandlerType, invocationStrategy: InvocationStrategy,
-                       requestLogger: Logger, internalRequestId: String, invocationReportingProvider: (Logger) -> InvocationReportingType) {
+                       requestLogger: Logger, internalRequestId: String,
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
         return operationFunction(requestHead, body, context, responseHandler,
                                  invocationStrategy, requestLogger, internalRequestId, invocationReportingProvider)
     }
