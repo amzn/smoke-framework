@@ -17,7 +17,7 @@
 
 import Foundation
 
-public enum PerInvocationContext<ContextType, TraceContextType: OperationTraceContext> {
+public enum PerInvocationContext<ContextType, InvocationReportingType> {
     case `static`(ContextType)
-    case provider((SmokeServerInvocationReporting<TraceContextType>) -> ContextType)
+    case provider((InvocationReportingType) -> ContextType)
 }

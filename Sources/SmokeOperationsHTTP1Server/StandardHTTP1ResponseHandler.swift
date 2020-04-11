@@ -12,18 +12,21 @@
 // permissions and limitations under the License.
 //
 // StandardHTTP1Response.swift
-// SmokeHTTP1
+// SmokeOperationsHTTP1Server
 //
 
 import Foundation
 import NIO
 import NIOHTTP1
+import SmokeOperationsHTTP1
+import SmokeHTTP1
 import Logging
 
 /**
  Handles the response to a HTTP request.
 */
-public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvocationContext>: ChannelHTTP1ResponseHandler {
+public struct StandardHTTP1ResponseHandler<InvocationContext: HTTP1RequestInvocationContext>:
+        ChannelHTTP1ResponseHandler, HTTP1ResponseHandler {
     let requestHead: HTTPRequestHead
     let keepAliveStatus: KeepAliveStatus
     let context: ChannelHandlerContext

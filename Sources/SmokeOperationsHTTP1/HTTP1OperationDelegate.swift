@@ -63,7 +63,7 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
         requestHead: RequestHeadType,
         output: OutputType,
         responseHandler: ResponseHandlerType,
-        invocationContext: SmokeServerInvocationContext<TraceContextType>)
+        invocationContext: SmokeInvocationContext<InvocationReportingType>)
     
     /**
      Function to handle a successful response from an operation.
@@ -79,5 +79,5 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
                                                            location: OperationOutputHTTPLocation,
                                                            output: OutputType,
                                                            responseHandler: ResponseHandlerType,
-                                                           invocationContext: SmokeServerInvocationContext<TraceContextType>)
+                                                           invocationContext: SmokeInvocationContext<InvocationReportingType>)
 }

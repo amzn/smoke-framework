@@ -11,15 +11,12 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// HTTP1OperationTraceContext.swift
-// SmokeOperationsHTTP1
+//  SmokeHTTP1OperationServer.swift
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
-import SmokeOperations
-import NIOHTTP1
 
-public protocol HTTP1OperationTraceContext: OperationTraceContext
-    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders, ResponseStatusType == HTTPResponseStatus {
-
+public protocol SmokeHTTP1OperationServer {
+    
 }

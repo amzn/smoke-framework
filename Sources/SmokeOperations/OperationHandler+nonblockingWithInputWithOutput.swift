@@ -38,15 +38,15 @@ public extension OperationHandler {
     init<InputType: Validatable, OutputType: Validatable,
             ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
-            reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
+            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType, @escaping
                 (Result<OutputType, Swift.Error>) -> Void) throws -> Void),
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext<TraceContextType>) -> Void),
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
-    TraceContextType == OperationDelegateType.TraceContextType,
+    InvocationReportingType == OperationDelegateType.InvocationReportingType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -55,7 +55,7 @@ public extension OperationHandler {
          * provides an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>) in
+            responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>?
             do {
                 try operation(input, context) { result in

@@ -29,7 +29,7 @@ public protocol SmokeHTTP1HandlerSelector {
     associatedtype DefaultOperationDelegateType: HTTP1OperationDelegate
     associatedtype OperationIdentifer: OperationIdentity
     
-    typealias TraceContextType = DefaultOperationDelegateType.TraceContextType
+    typealias InvocationReportingType = DefaultOperationDelegateType.InvocationReportingType
     typealias RequestHeadType = DefaultOperationDelegateType.RequestHeadType
     typealias ResponseHandlerType = DefaultOperationDelegateType.ResponseHandlerType
     
@@ -37,7 +37,7 @@ public protocol SmokeHTTP1HandlerSelector {
     var defaultOperationDelegate: DefaultOperationDelegateType { get }
     
     var serverName: String { get }
-    var reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer> { get }
+    var reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer> { get }
     
     /**
      Gets the handler to use for an operation with the provided http request
@@ -47,7 +47,7 @@ public protocol SmokeHTTP1HandlerSelector {
         - requestHead: the request head of an incoming operation.
      */
     func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod, requestLogger: Logger) throws
-        -> (OperationHandler<ContextType, RequestHeadType, TraceContextType, ResponseHandlerType, OperationIdentifer>, Shape)
+        -> (OperationHandler<ContextType, RequestHeadType, InvocationReportingType, ResponseHandlerType, OperationIdentifer>, Shape)
     
     /**
      Adds a handler for the specified uri and http method.
@@ -60,5 +60,5 @@ public protocol SmokeHTTP1HandlerSelector {
     mutating func addHandlerForOperation(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        handler: OperationHandler<ContextType, RequestHeadType, TraceContextType, ResponseHandlerType, OperationIdentifer>)
+        handler: OperationHandler<ContextType, RequestHeadType, InvocationReportingType, ResponseHandlerType, OperationIdentifer>)
 }

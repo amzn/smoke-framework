@@ -36,13 +36,13 @@ public extension OperationHandler {
      */
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
-            reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
+            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
             operation: @escaping ((InputType, ContextType) throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
-    TraceContextType == OperationDelegateType.TraceContextType,
+    InvocationReportingType == OperationDelegateType.InvocationReportingType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -51,7 +51,7 @@ public extension OperationHandler {
          * throws an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-            responseHandler: ResponseHandlerType, invocationContext: SmokeServerInvocationContext<TraceContextType>) in
+            responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>) in
             let handlerResult: NoOutputOperationHandlerResult<ErrorType>
             do {
                 try operation(input, context)

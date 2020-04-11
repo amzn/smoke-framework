@@ -21,10 +21,9 @@ import NIOHTTP1
 import SmokeOperations
 
 /**
- Extension of the `HTTP1ResponseHandler` protocol; adds an initializer requirement to create
- an instance from the `HTTP1ChannelInboundHandler`.
+ A protocol that specifies a handler for a HTTP response.
  */
-public protocol ChannelHTTP1ResponseHandler : HTTP1ResponseHandler where InvocationContext: HTTP1RequestInvocationContext {
+public protocol ChannelHTTP1ResponseHandler {
     
     /**
      Initializer.

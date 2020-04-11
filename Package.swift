@@ -28,6 +28,9 @@ let package = Package(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
         .library(
+            name: "SmokeOperationsHTTP1Server",
+            targets: ["SmokeOperationsHTTP1Server"]),
+        .library(
             name: "SmokeInvocation",
             targets: ["SmokeInvocation"]),
         .library(
@@ -39,7 +42,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0"..<"3.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
-        .package(name: "SmokeHTTP", url: "https://github.com/amzn/smoke-http.git", from: "2.0.0-alpha.7"),
+        .package(url: "https://github.com/amzn/smoke-http.git", from: "2.0.0-alpha.9"),
     ],
     targets: [
         .target(
@@ -64,11 +67,15 @@ let package = Package(
         .target(
             name: "SmokeOperationsHTTP1", dependencies: [
                 .target(name: "SmokeOperations"),
+                .product(name: "QueryCoding", package: "smoke-http"),
+                .product(name: "HTTPPathCoding", package: "smoke-http"),
+                .product(name: "HTTPHeadersCoding", package: "smoke-http"),
+                .product(name: "SmokeHTTPClient", package: "smoke-http"),
+            ]),
+        .target(
+            name: "SmokeOperationsHTTP1Server", dependencies: [
+                .target(name: "SmokeOperationsHTTP1"),
                 .target(name: "SmokeHTTP1"),
-                .product(name: "QueryCoding", package: "SmokeHTTP"),
-                .product(name: "HTTPPathCoding", package: "SmokeHTTP"),
-                .product(name: "HTTPHeadersCoding", package: "SmokeHTTP"),
-                .product(name: "SmokeHTTPClient", package: "SmokeHTTP"),
             ]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [

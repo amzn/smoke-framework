@@ -17,7 +17,6 @@
 import Foundation
 import SmokeOperations
 import NIOHTTP1
-import SmokeHTTP1
 import Logging
 import SmokeInvocation
 import NIO
@@ -50,52 +49,36 @@ struct OperationResponse {
     let responseComponents: HTTP1ServerResponseComponents
 }
 
-struct TestOperationTraceContext: HTTP1OperationTraceContext {
-    init(requestHead: HTTPRequestHead, bodyData: Data?) {
-        // nothing to do
-    }
+struct TestInvocationReporting: InvocationReporting {
+    var logger: Logger = Logger(label: "test")
     
-    func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
-        // nothing to do
-    }
-    
-    func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
-                                      body: (contentType: String, data: Data)?, logger: Logger, internalRequestId: String) {
-        // nothing to do
-    }
-    
+    var internalRequestId: String = "internalRequestId"
 }
 
-class TestHttpResponseHandler: ChannelHTTP1ResponseHandler {
+class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
     
     init() {
         
     }
     
-    required init(requestHead: HTTPRequestHead, keepAliveStatus: KeepAliveStatus,
-                  context: ChannelHandlerContext, wrapOutboundOut: @escaping (HTTPServerResponsePart) -> NIOAny,
-                  onComplete: @escaping () -> ()) {
-        // nothing to do
-    }
-    
-    func complete(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
+    func complete(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
         response = OperationResponse(status: status,
                                      responseComponents: responseComponents)
     }
     
-    func completeInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
+    func completeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents) {
         complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func completeSilentlyInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, status: HTTPResponseStatus,
+    func completeSilentlyInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents) {
         complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
     
-    func executeInEventLoop(invocationContext: SmokeServerInvocationContext<TestOperationTraceContext>, execute: @escaping () -> ()) {
+    func executeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, execute: @escaping () -> ()) {
         execute()
     }
 }
@@ -259,12 +242,12 @@ func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     additionalHeaders: [(String, String)] = []) -> OperationResponse
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    TestOperationTraceContext == SelectorType.DefaultOperationDelegateType.TraceContextType,
+    TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
     SelectorType.DefaultOperationDelegateType.ResponseHandlerType == TestHttpResponseHandler,
     SelectorType.OperationIdentifer == TestOperations {
-    let handler = OperationServerHTTP1RequestHandler<SelectorType>(
+    let handler = StandardHTTP1OperationRequestHandler<SelectorType>(
         handlerSelector: handlerSelector,
-        context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeServerReportingConfiguration<TestOperations>())
+        context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeReportingConfiguration<TestOperations>())
     
     var httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .POST,
@@ -274,11 +257,16 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     }
     
     let responseHandler = TestHttpResponseHandler()
+        
+    func invocationReportingProvider(logger: Logger) -> TestInvocationReporting {
+        return TestInvocationReporting()
+    }
     
     handler.handle(requestHead: httpRequestHead, body: body,
                    responseHandler: responseHandler,
                    invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
-                   internalRequestId: "internalRequestId")
+                   internalRequestId: "internalRequestId",
+                   invocationReportingProvider: invocationReportingProvider)
     
     return responseHandler.response!
 }
@@ -289,7 +277,7 @@ func verifyErrorResponse<SelectorType>(uri: String,
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     TestHttpResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
-    TestOperationTraceContext == SelectorType.DefaultOperationDelegateType.TraceContextType,
+    TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
     SelectorType.OperationIdentifer == TestOperations {
     let response = verifyPathOutput(uri: uri,
                                     body: serializedAlternateInput.data(using: .utf8)!,

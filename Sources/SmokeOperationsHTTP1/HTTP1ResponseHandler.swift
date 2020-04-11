@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // HTTP1ResponseHandler.swift
-// SmokeHTTP1
+// SmokeOperationsHTTP1
 //
 
 import Foundation

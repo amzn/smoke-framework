@@ -34,14 +34,14 @@ public extension OperationHandler {
      */
     init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer, reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>,
+            serverName: String, operationIdentifer: OperationIdentifer, reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping (InputType, ContextType, SmokeServerInvocationReporting<TraceContextType>) throws -> OutputType,
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeServerInvocationContext<TraceContextType>) -> Void),
+            operation: @escaping (InputType, ContextType, InvocationReportingType) throws -> OutputType,
+            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
-    TraceContextType == OperationDelegateType.TraceContextType,
+    InvocationReportingType == OperationDelegateType.InvocationReportingType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         /**
@@ -51,7 +51,7 @@ public extension OperationHandler {
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: OperationDelegateType.ResponseHandlerType,
-                                     invocationContext: SmokeServerInvocationContext<TraceContextType>) in
+                                     invocationContext: SmokeInvocationContext<InvocationReportingType>) in
             let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
             do {
                 let output = try operation(input, context, invocationContext.invocationReporting)

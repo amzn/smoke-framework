@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // JSONEncoder+getFrameworkEncoder.swift
-// SwiftOperations
+// SmokeOperations
 //
 
 import Foundation

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // SmokeServerInvocationContext+HTTP1RequestInvocationContext.swift
-// SmokeOperationsHTTP1
+// SmokeOperationsHTTP1Server
 
 import Foundation
 import SmokeHTTP1
@@ -20,9 +20,11 @@ import SmokeOperations
 import Logging
 import NIOHTTP1
 
-extension SmokeServerInvocationContext: HTTP1RequestInvocationContext where
-        TraceContextType.RequestHeadType == HTTPRequestHead,
-        TraceContextType.ResponseHeadersType == HTTPHeaders, TraceContextType.ResponseStatusType == HTTPResponseStatus {
+extension SmokeInvocationContext: HTTP1RequestInvocationContext where
+        InvocationReportingType: InvocationReportingWithTraceContext,
+        InvocationReportingType.TraceContextType.RequestHeadType == HTTPRequestHead,
+        InvocationReportingType.TraceContextType.ResponseHeadersType == HTTPHeaders,
+        InvocationReportingType.TraceContextType.ResponseStatusType == HTTPResponseStatus {
     
     public var logger: Logger {
         return self.invocationReporting.logger

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // SmokeServerInvocationReporting+withInvocationTraceContext.swift
-// SmokeOperationsHTTP1
+// SmokeOperationsHTTP1Server
 
 import Foundation
 import Logging

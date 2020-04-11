@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerReportingConfiguration.swift
+//  SmokeReportingConfiguration.swift
 //  SmokeOperations
 //
 
@@ -37,7 +37,7 @@ public enum RequestType<OperationIdentifer: OperationIdentity>: CustomStringConv
     }
 }
 
-public struct SmokeServerReportingConfiguration<OperationIdentifer: OperationIdentity> {
+public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity> {
     
     public enum MatchingOperations {
         case all

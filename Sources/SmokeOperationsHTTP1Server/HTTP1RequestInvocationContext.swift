@@ -11,24 +11,18 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerInvocationReporting.swift
-//  SmokeOperations
+//  HTTP1RequestTraceContext.swift
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
 import Logging
+import NIOHTTP1
 
-/**
- A context related to reporting on the invocation of the SmokeFramework.
- */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext> {
-    public let logger: Logger
-    public let internalRequestId: String
-    public let traceContext: TraceContextType
+public protocol HTTP1RequestInvocationContext {
     
-    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType) {
-        self.logger = logger
-        self.internalRequestId = internalRequestId
-        self.traceContext = traceContext
-    }
+    var logger: Logger { get }
+    
+    func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
+                                      body: (contentType: String, data: Data)?)
 }
