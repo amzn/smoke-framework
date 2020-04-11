@@ -28,6 +28,9 @@ let package = Package(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
         .library(
+            name: "SmokeOperationsHTTP1Server",
+            targets: ["SmokeOperationsHTTP1Server"]),
+        .library(
             name: "SmokeInvocation",
             targets: ["SmokeInvocation"]),
         .library(
@@ -53,8 +56,11 @@ let package = Package(
             dependencies: ["Logging", "Metrics", "SmokeInvocation"]),
         .target(
             name: "SmokeOperationsHTTP1",
-            dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",
+            dependencies: ["SmokeOperations", "QueryCoding",
                            "HTTPPathCoding", "HTTPHeadersCoding", "SmokeHTTPClient"]),
+        .target(
+            name: "SmokeOperationsHTTP1Server",
+            dependencies: ["SmokeOperationsHTTP1", "SmokeHTTP1"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),
