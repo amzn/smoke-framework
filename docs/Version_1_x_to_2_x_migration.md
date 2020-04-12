@@ -63,10 +63,10 @@ After updating the generated code, the application will no longer compile. The a
 Update these dependencies to the new versions-
 
 ```swift
-.package(url: "https://github.com/amzn/smoke-framework.git", .branch("5_2_manifest")),
-.package(url: "https://github.com/amzn/smoke-aws-credentials.git", .branch("use_swift_crypto_under_5_2")),
-.package(url: "https://github.com/amzn/smoke-aws.git", from: "2.0.0-alpha.6"),
-.package(url: "https://github.com/amzn/smoke-dynamodb.git", .branch("use_swift_crypto_under_5_2")),
+.package(url: "https://github.com/amzn/smoke-framework.git", from: "2.0.0-beta.1"),
+.package(url: "https://github.com/amzn/smoke-aws-credentials.git", from: "2.0.0-beta.1"),
+.package(url: "https://github.com/amzn/smoke-aws.git", from: "2.0.0-beta.1"),
+.package(url: "https://github.com/amzn/smoke-dynamodb.git", from: "2.0.0-beta.1"),
 ```
 
 #### Step 2b: Update the target dependencies
