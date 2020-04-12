@@ -270,7 +270,7 @@ return AWSDynamoDBCompositePrimaryKeyTableGenerator(
 
 ### Step 7: Create a per-invocation context
 
-Add instance variables to this type if required to enable the constructions of an operations context in the `getInvocationContext()` function.
+Add instance variables to this type if required to enable the construction of an operations context in the `getInvocationContext()` function.
 
 ```swift
 import Foundation
@@ -309,7 +309,7 @@ struct XXXPerInvocationContextInitializer: SmokeServerPerInvocationContextInitia
 
 ### Step 8: Move any shutdown logic
 
-Move any shutdown logic to the `onShutdown()` function. Any any errors can be thrown out of this function and will be logged.
+Move any shutdown logic to the `onShutdown()` function. Any errors can be thrown out of this function and will be logged.
 
 The `wait()` function has been removed from these clients-
 
@@ -337,5 +337,5 @@ Delete the `\(baseName)Server.swift` and update the contents of `main.swift` to 
 import SmokeHTTP1
 import SmokeOperationsHTTP1Server
 
-SmokeHTTP1Server.runAsOperationServer(EmptyExamplePerInvocationContextInitializer.init)
+SmokeHTTP1Server.runAsOperationServer(\(baseName)PerInvocationContextInitializer.init)
 ```
