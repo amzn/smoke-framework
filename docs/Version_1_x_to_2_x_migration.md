@@ -71,7 +71,7 @@ Update these dependencies to the new versions-
 
 #### Step 2b: Update the target dependencies
 
-Change the `SmokeOperationsHTTP1` dependency for the `\(baseName)OperationsHTTP1` target to `SmokeOperationsHTTP1Server`.
+Add a dependency on the `SmokeOperationsHTTP1Server` package from `SmokeFramework` to the `\(baseName)Server` target.
 
 #### Step 2c: Verify changes
 
@@ -222,70 +222,33 @@ let logMessage = "Some long "
 context.logger.debug("\(logMessage)")
 ```
 
-### Step 6: Setup the per-invocation context generator
+### Step 6: Setup the application initializer
 
-The code generator has already partially set up a generator type to create an invocation-specific context instance. This can be found in the `XXXOperationsHTTP1` package. Add any additional properties used by the application's context type.
+Version 2.x of the code generator provides a new mechanism to initialize the application, the `\(baseName)PerInvocationContextInitializer` type. This can be found in the `\(baseName)Service` package.
 
-If you are using clients from SmokeAWS, use their corresponding generator types-
+Copy any application initialization logic into the initalizer of this type. Initialization errors can be thrown out of this constructor and the framework will log the failure.
 
-```swift
-import Foundation
-import XXXOperations
-import SmokeOperations
-import SmokeOperationsHTTP1
-import SmokeDynamoDB
-import XXXModel
-import SmokeAWSHttp
-import Logging
+#### Step 6a: Update EventLoopProvider creation
 
-/**
- Per-invocation generator for the context to be passed to each of the PlaybackAssets operations.
- */
-public struct XXXOperationsContextGenerator {
-    public let dynamodbTableGenerator: AWSDynamoDBCompositePrimaryKeyTableGenerator
-    public let idGenerator: (String) -> String
-    public let awsClientInvocationTraceContext: AWSClientInvocationTraceContext
-
-    public init(dynamodbTableGenerator: AWSDynamoDBCompositePrimaryKeyTableGenerator,
-                idGenerator: @escaping (String) -> String,
-                awsClientInvocationTraceContext: AWSClientInvocationTraceContext) {
-        self.dynamodbTableGenerator = dynamodbTableGenerator
-        self.idGenerator = idGenerator
-        self.awsClientInvocationTraceContext = awsClientInvocationTraceContext
-    }
-
-    public func get(invocationReporting: SmokeServerInvocationReporting<SmokeInvocationTraceContext>) -> XXXOperationsContext {
-        let awsClientInvocationReporting = invocationReporting.withInvocationTraceContext(traceContext: awsClientInvocationTraceContext)
-        let dynamodbTable = self.dynamodbTableGenerator.with(reporting: awsClientInvocationReporting)
-        
-        return XXXOperationsContext(
-            dynamodbTable: dynamodbTable,
-            logger: invocationReporting.logger,
-            idGenerator: self.idGenerator)
-    }
-}
-```
-
-### Step 7: Create generator instances on application start up
-
-Rather than creating clients themselves on application startup, create the generator instances.
-
-#### Step 7a: Update EventLoopProvider creation
+Use the provided event loop for any clients.
 
 ```swift
+let clientEventLoopGroup = ...
 let clientEventLoopProvider = HTTPClient.EventLoopProvider.use(clientEventLoopGroup)
 ```
 
-Should become-
+becomes-
 
 ```swift
 import AsyncHTTPClient
 
-let clientEventLoopProvider = HTTPClient.EventLoopGroupProvider.shared(clientEventLoopGroup)
+let clientEventLoopProvider = HTTPClient.EventLoopGroupProvider.shared(eventLoop)
 
 ```
 
-#### Step 7b: Update client creation to generator creation
+#### Step 6b: Update client creation to generator creation
+
+Rather than creating clients themselves on application startup, create the generator instances.
 
 ```swift
 return AWSDynamoDBCompositePrimaryKeyTable(
@@ -305,79 +268,55 @@ return AWSDynamoDBCompositePrimaryKeyTableGenerator(
     eventLoopProvider: clientEventLoopProvider)
 ```
 
-#### Step 7c: Update client cleanup
+### Step 7: Create a per-invocation context
+
+Add instance variables to this type if required to enable the construction of an operations context in the `getInvocationContext()` function.
+
+```swift
+import Foundation
+import XXXOperations
+import SmokeOperations
+import SmokeOperationsHTTP1
+import SmokeDynamoDB
+import XXXModel
+import SmokeAWSHttp
+import Logging
+
+struct XXXPerInvocationContextInitializer: SmokeServerPerInvocationContextInitializer {
+    let dynamodbTableGenerator: AWSDynamoDBCompositePrimaryKeyTableGenerator
+    let credentialsProvider: StoppableCredentialsProvider
+    let awsClientInvocationTraceContext = AWSClientInvocationTraceContext()
+    
+    init(eventLoop) throws {
+    ...
+    }
+    
+    let idGenerator = {
+        UUID().uuidString
+    }
+
+    public func getInvocationContext(invocationReporting: SmokeServerInvocationReporting<SmokeInvocationTraceContext>) -> XXXOperationsContext {
+        let awsClientInvocationReporting = invocationReporting.withInvocationTraceContext(traceContext: awsClientInvocationTraceContext)
+        let dynamodbTable = self.dynamodbTableGenerator.with(reporting: awsClientInvocationReporting)
+        
+        return XXXOperationsContext(
+            dynamodbTable: dynamodbTable,
+            logger: invocationReporting.logger,
+            idGenerator: self.idGenerator)
+    }
+}
+```
+
+### Step 8: Move any shutdown logic
+
+Move any shutdown logic to the `onShutdown()` function. Any errors can be thrown out of this function and will be logged.
 
 The `wait()` function has been removed from these clients-
 
 ```swift
 dynamodbTable.close()
 dynamodbTable.wait()
-```
 
-becomes-
-
-```swift
-try dynamodbTableGenerator.close()
-```
-
-### Step 8: Create an initialisation logger if required
-
-If your application logs during initialisation, create a logger for this.
-
-```swift
-let logger = Logger(label: "application.initialization")
-```
-
-### Step 9: Modify context creation at startup
-
-Instead of creating an instance of the operations context on application startup, create an instance of the context generator-
-
-```swift
-let operationsContext = XXXOperationsContext(
-    dynamodbTable: dynamodbTable,
-    idGenerator: idGenerator)
-```
-
-becomes-
-
-```swift
-import SmokeAWSHttp
-...
-
-let awsClientInvocationTraceContext = AWSClientInvocationTraceContext()
-
-let operationsContextGenerator = XXXOperationsContextGenerator(
-    dynamodbTableGenerator: dynamodbTableGenerator,
-    idGenerator: idGenerator,
-    awsClientInvocationTraceContext: awsClientInvocationTraceContext)
-```
-
-### Step 10: Update server initialisation 
-
-#### Step 10a: Update server initialisation call
-
-Pass the context generator function into the server initialisation.
-
-```swift
-let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
-            withHandlerSelector: createHandlerSelector(),
-            andContext: operationsContext)
-```
-
-becomes-
-
-```swift
-let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
-            withHandlerSelector: createHandlerSelector(),
-            andContextProvider: operationsContextGenerator.get,
-            shutdownOnSignal: .sigterm)
-```
-
-#### Step 10b: Update credentials cleanup
-
-The `wait()` function has been removed from these clients-
-
-```swift
 credentialsProvider.close()
 credentialsProvider.wait()
 ```
@@ -385,5 +324,18 @@ credentialsProvider.wait()
 becomes-
 
 ```swift
-try credentialsProvider.close()
+try self.dynamodbTableGenerator.close()
+
+try self.credentialsProvider.close()
+```
+
+### Step 8: Delete the \(baseName)Server.swift
+
+Delete the `\(baseName)Server.swift` and update the contents of `main.swift` to use the initializer type.
+
+```swift
+import SmokeHTTP1
+import SmokeOperationsHTTP1Server
+
+SmokeHTTP1Server.runAsOperationServer(\(baseName)PerInvocationContextInitializer.init)
 ```

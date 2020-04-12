@@ -36,9 +36,9 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
             SelectorType.DefaultOperationDelegateType.InvocationReportingType.TraceContextType,
         HTTPRequestHead == TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType: ChannelHTTP1ResponseHandler & HTTP1ResponseHandler,
-        SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
+        SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> ==
+            SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
     typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
-    
     
     typealias InvocationContext = ResponseHandlerType.InvocationContext
     typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
@@ -67,7 +67,6 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
-        
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
         var decoratedRequestLogger: Logger = requestLogger
