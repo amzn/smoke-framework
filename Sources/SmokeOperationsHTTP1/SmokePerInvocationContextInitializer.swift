@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // SmokePerInvocationContextInitializer.swift
-// SmokeOperationsHTTP1LambdaProxy
+// SmokeOperationsHTTP1
 //
 
 import NIO
@@ -35,6 +35,8 @@ public protocol SmokePerInvocationContextInitializer {
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> { get }
         
     func getInvocationContext(invocationReporting: InvocationReportingType) -> SelectorType.ContextType
+    
+    func onShutdown() throws
 }
 
 public extension SmokePerInvocationContextInitializer {
