@@ -32,7 +32,6 @@ public extension SmokeHTTP1Server {
         InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
         StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
-            let logger = Logger.init(label: "application.initialization")
             let eventLoopGroup =
                 MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
             
@@ -40,10 +39,15 @@ public extension SmokeHTTP1Server {
             do {
                 initalizer = try factory(eventLoopGroup.next())
             } catch {
+                let logger = Logger.init(label: "application.initialization")
+                
                 logger.error("Unable to inialize DynamoDB Table - \(error).")
                 
                 return
             }
+            
+            // initialize the logger after instatiating the initializer
+            let logger = Logger.init(label: "application.initialization")
             
             let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
                 handlerSelector: initalizer.handlerSelector,
@@ -76,7 +80,6 @@ public extension SmokeHTTP1Server {
         InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
         StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
-            let logger = Logger.init(label: "application.initialization")
             let eventLoopGroup =
                 MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
             
@@ -84,10 +87,15 @@ public extension SmokeHTTP1Server {
             do {
                 initalizer = try factory(eventLoopGroup.next())
             } catch {
+                let logger = Logger.init(label: "application.initialization")
+                
                 logger.error("Unable to inialize DynamoDB Table - \(error).")
                 
                 return
             }
+            
+            // initialize the logger after instatiating the initializer
+            let logger = Logger.init(label: "application.initialization")
             
             let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
                 handlerSelector: initalizer.handlerSelector,
