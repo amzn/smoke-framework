@@ -41,18 +41,18 @@ public protocol SmokePerInvocationContextInitializer {
 
 public extension SmokePerInvocationContextInitializer {
     var serverName: String {
-        "Server"
+        return "Server"
     }
     
     var invocationStrategy: InvocationStrategy {
-        GlobalDispatchQueueAsyncInvocationStrategy()
+        return GlobalDispatchQueueAsyncInvocationStrategy()
     }
     
     var defaultLogger: Logger {
-        Logger(label: "application.initialization")
+        return Logger(label: "application.initialization")
     }
     
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> {
-        SmokeReportingConfiguration()
+        return SmokeReportingConfiguration()
     }
 }
