@@ -12,16 +12,23 @@
 // permissions and limitations under the License.
 //
 //  SmokeServerInvocationReporting.swift
-//  SmokeOperations
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
+import SmokeOperations
 import Logging
+
+public protocol InvocationReportingWithTraceContext: InvocationReporting {
+    associatedtype TraceContextType: OperationTraceContext
+    
+    var traceContext: TraceContextType { get }
+}
 
 /**
  A context related to reporting on the invocation of the SmokeFramework.
  */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext> {
+public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext>: InvocationReportingWithTraceContext {
     public let logger: Logger
     public let internalRequestId: String
     public let traceContext: TraceContextType

@@ -21,7 +21,7 @@ import Metrics
 /**
   Stores the counters for reporting on a particular operation.
  */
-public struct SmokeServerOperationReporting {
+public struct SmokeOperationReporting {
     public let successCounter: Metrics.Counter?
     public let failure5XXCounter: Metrics.Counter?
     public let failure4XXCounter: Metrics.Counter?
@@ -37,7 +37,7 @@ public struct SmokeServerOperationReporting {
     private let latencyTimeMetric = "latencyTime"
     
     public init<OperationIdentifer: OperationIdentity>(serverName: String, request: RequestType<OperationIdentifer>,
-                                                       configuration: SmokeServerReportingConfiguration<OperationIdentifer>) {
+                                                       configuration: SmokeReportingConfiguration<OperationIdentifer>) {
         let operationName = request.description
         
         if configuration.reportSuccessForRequest(request) {

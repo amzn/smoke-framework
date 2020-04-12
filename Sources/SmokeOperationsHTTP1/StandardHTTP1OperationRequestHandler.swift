@@ -11,13 +11,12 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// OperationServerHTTP1RequestHandler.swift
+// StandardHTTP1OperationRequestHandler.swift
 // SmokeOperationsHTTP1
 //
 import Foundation
 import SmokeOperations
 import NIOHTTP1
-import SmokeHTTP1
 import ShapeCoding
 import Logging
 import SmokeInvocation
@@ -31,66 +30,62 @@ internal struct PingParameters {
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
  */
-struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
+public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1OperationRequestHandler
         where SelectorType: SmokeHTTP1HandlerSelector,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-        HTTPRequestHead == SelectorType.DefaultOperationDelegateType.TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType: HTTP1ResponseHandler,
-        SmokeServerInvocationContext<SelectorType.DefaultOperationDelegateType.TraceContextType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
-    typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
+        SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
+    public typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
     
     
     typealias InvocationContext = ResponseHandlerType.InvocationContext
-    typealias TraceContextType = SelectorType.DefaultOperationDelegateType.TraceContextType
+    public typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
         
     let handlerSelector: SelectorType
-    let context: PerInvocationContext<SelectorType.ContextType, TraceContextType>
-    let pingOperationReporting: SmokeServerOperationReporting
-    let unknownOperationReporting: SmokeServerOperationReporting
-    let errorDeterminingOperationReporting: SmokeServerOperationReporting
+    let context: PerInvocationContext<SelectorType.ContextType, InvocationReportingType>
+    let pingOperationReporting: SmokeOperationReporting
+    let unknownOperationReporting: SmokeOperationReporting
+    let errorDeterminingOperationReporting: SmokeOperationReporting
     
-    init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
-         reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer>) {
+    public init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
+         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.handlerSelector = handlerSelector
         self.context = .static(context)
         
-        self.pingOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .ping,
+        self.pingOperationReporting = SmokeOperationReporting(serverName: serverName, request: .ping,
                                                                     configuration: reportingConfiguration)
-        self.unknownOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .unknownOperation,
+        self.unknownOperationReporting = SmokeOperationReporting(serverName: serverName, request: .unknownOperation,
                                                                        configuration: reportingConfiguration)
-        self.errorDeterminingOperationReporting = SmokeServerOperationReporting(serverName: serverName,
+        self.errorDeterminingOperationReporting = SmokeOperationReporting(serverName: serverName,
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
     }
     
-    init(handlerSelector: SelectorType,
-         contextProvider: @escaping (SmokeServerInvocationReporting<SelectorType.DefaultOperationDelegateType.TraceContextType>) -> SelectorType.ContextType,
-         serverName: String, reportingConfiguration: SmokeServerReportingConfiguration<SelectorType.OperationIdentifer>) {
+    public init(handlerSelector: SelectorType,
+         contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
+         serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.handlerSelector = handlerSelector
         self.context = .provider(contextProvider)
         
-        self.pingOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .ping,
+        self.pingOperationReporting = SmokeOperationReporting(serverName: serverName, request: .ping,
                                                                     configuration: reportingConfiguration)
-        self.unknownOperationReporting = SmokeServerOperationReporting(serverName: serverName, request: .unknownOperation,
+        self.unknownOperationReporting = SmokeOperationReporting(serverName: serverName, request: .unknownOperation,
                                                                        configuration: reportingConfiguration)
-        self.errorDeterminingOperationReporting = SmokeServerOperationReporting(serverName: serverName,
+        self.errorDeterminingOperationReporting = SmokeOperationReporting(serverName: serverName,
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
     }
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
-                       invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
-        func getInvocationContextForAnonymousRequest(requestReporting: SmokeServerOperationReporting)
-                -> SmokeServerInvocationContext<TraceContextType> {
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
+        func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting)
+                -> SmokeInvocationContext<InvocationReportingType> {
             var decoratedRequestLogger: Logger = requestLogger
             handlerSelector.defaultOperationDelegate.decorateLoggerForAnonymousRequest(requestLogger: &decoratedRequestLogger)
             
-            let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
-            traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                                   logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
-            let invocationReporting = SmokeServerInvocationReporting(logger: decoratedRequestLogger,
-                                                                     internalRequestId: internalRequestId, traceContext: traceContext)
-            return SmokeServerInvocationContext(invocationReporting: invocationReporting,
+            let invocationReporting = invocationReportingProvider(decoratedRequestLogger)
+            return SmokeInvocationContext(invocationReporting: invocationReporting,
                                                 requestReporting: requestReporting)
         }
         
@@ -110,7 +105,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
         let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
 
         // get the handler to use
-        let handler: OperationHandler<SelectorType.ContextType, SmokeHTTP1RequestHead, TraceContextType,
+        let handler: OperationHandler<SelectorType.ContextType, SmokeHTTP1RequestHead, InvocationReportingType,
                                       ResponseHandlerType, SelectorType.OperationIdentifer>
         let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
@@ -149,13 +144,10 @@ struct OperationServerHTTP1RequestHandler<SelectorType>: HTTP1RequestHandler
                                                           query: query,
                                                           pathShape: shape)
         
-        let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
-        var decoratedRequestLogger: Logger = requestLogger
-        traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                               logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
         // let it be handled
         handler.handle(smokeHTTP1RequestHead, body: body, withContext: context,
                        responseHandler: responseHandler, invocationStrategy: invocationStrategy,
-                       requestLogger: decoratedRequestLogger, internalRequestId: internalRequestId, traceContext: traceContext)
+                       requestLogger: requestLogger, internalRequestId: internalRequestId,
+                       invocationReportingProvider: invocationReportingProvider)
     }
 }

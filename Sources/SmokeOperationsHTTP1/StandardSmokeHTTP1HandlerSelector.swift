@@ -17,7 +17,6 @@
 import Foundation
 import SmokeOperations
 import NIOHTTP1
-import SmokeHTTP1
 import HTTPPathCoding
 import ShapeCoding
 import Logging
@@ -29,12 +28,12 @@ import Logging
 public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDelegateType: HTTP1OperationDelegate,
         OperationIdentifer: OperationIdentity>: SmokeHTTP1HandlerSelector {
     public let serverName: String
-    public let reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer>
+    public let reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     public let defaultOperationDelegate: DefaultOperationDelegateType
     
     public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
             DefaultOperationDelegateType.RequestHeadType,
-            DefaultOperationDelegateType.TraceContextType,
+            DefaultOperationDelegateType.InvocationReportingType,
             DefaultOperationDelegateType.ResponseHandlerType,
             OperationIdentifer>
     
@@ -49,7 +48,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
     private var tokenizedHandlerMapping: [TokenizedHandler] = []
     
     public init(defaultOperationDelegate: DefaultOperationDelegateType, serverName: String = "Server",
-                reportingConfiguration: SmokeServerReportingConfiguration<OperationIdentifer> = SmokeServerReportingConfiguration()) {
+                reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer> = SmokeReportingConfiguration()) {
         self.serverName = serverName
         self.defaultOperationDelegate = defaultOperationDelegate
         self.reportingConfiguration = reportingConfiguration

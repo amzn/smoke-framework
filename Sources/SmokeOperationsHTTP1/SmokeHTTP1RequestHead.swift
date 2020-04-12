@@ -17,7 +17,6 @@
 
 import Foundation
 import NIOHTTP1
-import SmokeHTTP1
 import ShapeCoding
 
 /**
@@ -27,4 +26,12 @@ public struct SmokeHTTP1RequestHead {
     public let httpRequestHead: HTTPRequestHead
     public let query: String
     public let pathShape: Shape
+    
+    public init(httpRequestHead: HTTPRequestHead,
+                query: String,
+                pathShape: Shape) {
+        self.httpRequestHead = httpRequestHead
+        self.query = query
+        self.pathShape = pathShape
+    }
 }

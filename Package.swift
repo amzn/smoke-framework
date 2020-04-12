@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.2
 //
 // Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
@@ -16,9 +16,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "SmokeFramework",
+    name: "smoke-framework",
     platforms: [
-      .macOS(.v10_12), .iOS(.v10)
+      .macOS(.v10_13), .iOS(.v10)
     ],
     products: [
         .library(
@@ -27,6 +27,9 @@ let package = Package(
         .library(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
+        .library(
+            name: "SmokeOperationsHTTP1Server",
+            targets: ["SmokeOperationsHTTP1Server"]),
         .library(
             name: "SmokeInvocation",
             targets: ["SmokeInvocation"]),
@@ -39,25 +42,45 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0"..<"3.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
-        .package(url: "https://github.com/amzn/smoke-http.git", from: "2.0.0-alpha.7"),
+        .package(url: "https://github.com/amzn/smoke-http.git", from: "2.0.0-alpha.9"),
     ],
     targets: [
         .target(
-            name: "SmokeInvocation",
-            dependencies: ["Logging"]),
+            name: "SmokeInvocation", dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+            ]),
         .target(
-            name: "SmokeHTTP1",
-            dependencies: ["NIO", "NIOHTTP1", "NIOFoundationCompat", "NIOExtras", "Logging", "SmokeInvocation"]),
+            name: "SmokeHTTP1", dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "NIO", package: "swift-nio"),
+                .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
+                .product(name: "NIOExtras", package: "swift-nio-extras"),
+                .target(name: "SmokeInvocation"),
+            ]),
         .target(
-            name: "SmokeOperations",
-            dependencies: ["Logging", "Metrics", "SmokeInvocation"]),
+            name: "SmokeOperations", dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "Metrics", package: "swift-metrics"),
+                .target(name: "SmokeInvocation"),
+            ]),
         .target(
-            name: "SmokeOperationsHTTP1",
-            dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",
-                           "HTTPPathCoding", "HTTPHeadersCoding", "SmokeHTTPClient"]),
+            name: "SmokeOperationsHTTP1", dependencies: [
+                .target(name: "SmokeOperations"),
+                .product(name: "QueryCoding", package: "smoke-http"),
+                .product(name: "HTTPPathCoding", package: "smoke-http"),
+                .product(name: "HTTPHeadersCoding", package: "smoke-http"),
+                .product(name: "SmokeHTTPClient", package: "smoke-http"),
+            ]),
+        .target(
+            name: "SmokeOperationsHTTP1Server", dependencies: [
+                .target(name: "SmokeOperationsHTTP1"),
+                .target(name: "SmokeHTTP1"),
+            ]),
         .testTarget(
-            name: "SmokeOperationsHTTP1Tests",
-            dependencies: ["SmokeOperationsHTTP1"]),
+            name: "SmokeOperationsHTTP1Tests", dependencies: [
+                .target(name: "SmokeOperationsHTTP1"),
+            ]),
     ],
     swiftLanguageVersions: [.v5]
 )

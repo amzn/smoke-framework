@@ -77,7 +77,7 @@ public extension SmokeHTTP1HandlerSelector {
         inputLocation: OperationInputHTTPLocation,
         operationDelegate: OperationDelegateType)
         where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-        DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
+        DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
             func inputProvider(requestHead: OperationDelegateType.RequestHeadType, body: Data?) throws -> InputType {
@@ -145,7 +145,7 @@ public extension SmokeHTTP1HandlerSelector {
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-    DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
+    DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         let handler = OperationHandler(

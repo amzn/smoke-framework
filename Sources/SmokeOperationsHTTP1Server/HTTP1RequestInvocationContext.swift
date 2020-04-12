@@ -11,15 +11,18 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// HTTP1OperationTraceContext.swift
-// SmokeOperationsHTTP1
+//  HTTP1RequestTraceContext.swift
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
-import SmokeOperations
+import Logging
 import NIOHTTP1
 
-public protocol HTTP1OperationTraceContext: OperationTraceContext
-    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders, ResponseStatusType == HTTPResponseStatus {
-
+public protocol HTTP1RequestInvocationContext {
+    
+    var logger: Logger { get }
+    
+    func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
+                                      body: (contentType: String, data: Data)?)
 }

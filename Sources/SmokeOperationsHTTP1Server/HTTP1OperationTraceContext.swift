@@ -11,20 +11,15 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// KeepAliveStatus.swift
-// SmokeHTTP1
+// HTTP1OperationTraceContext.swift
+// SmokeOperationsHTTP1Server
 //
 
 import Foundation
+import SmokeOperations
+import NIOHTTP1
 
-/**
- Class that shares the keepAlive status of a HTTP Request between the
- HTTPChannelInboundHandler and HttpResponseHandler.
- */
-public class KeepAliveStatus {
-    public var state: Bool
-    
-    init(state: Bool) {
-        self.state = state
-    }
+public protocol HTTP1OperationTraceContext: OperationTraceContext
+    where RequestHeadType == HTTPRequestHead, ResponseHeadersType == HTTPHeaders, ResponseStatusType == HTTPResponseStatus {
+
 }

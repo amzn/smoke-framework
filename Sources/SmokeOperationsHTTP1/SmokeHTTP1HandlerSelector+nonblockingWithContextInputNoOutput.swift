@@ -34,12 +34,12 @@ public extension SmokeHTTP1HandlerSelector {
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType,
-                   SmokeServerInvocationReporting<TraceContextType>, @escaping (Swift.Error?) -> ()) throws -> ()),
+                   InvocationReportingType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation) {
         
         func outputProvider(input: InputType, context: ContextType,
-                            invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
+                            invocationReporting: InvocationReportingType,
                             completion: @escaping (Swift.Error?) -> ()) throws {
             try operation(input, context, invocationReporting, completion)
         }
@@ -79,16 +79,16 @@ public extension SmokeHTTP1HandlerSelector {
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType,
-                   SmokeServerInvocationReporting<TraceContextType>, @escaping (Swift.Error?) -> ()) throws -> ()),
+                   InvocationReportingType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
         operationDelegate: OperationDelegateType)
         where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-        DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
+        DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
         DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
             
             func outputProvider(input: InputType, context: ContextType,
-                                invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
+                                invocationReporting: InvocationReportingType,
                                 completion: @escaping (Swift.Error?) -> ()) throws {
                 try operation(input, context, invocationReporting, completion)
             }
@@ -124,11 +124,11 @@ public extension SmokeHTTP1HandlerSelector {
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType,
-                   SmokeServerInvocationReporting<TraceContextType>, @escaping (Swift.Error?) -> ()) throws -> ()),
+                   InvocationReportingType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)]) {
         
         func outputProvider(input: InputType, context: ContextType,
-                            invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
+                            invocationReporting: InvocationReportingType,
                             completion: @escaping (Swift.Error?) -> ()) throws {
             try operation(input, context, invocationReporting, completion)
         }
@@ -160,15 +160,15 @@ public extension SmokeHTTP1HandlerSelector {
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType,
-                   SmokeServerInvocationReporting<TraceContextType>, @escaping (Swift.Error?) -> ()) throws -> ()),
+                   InvocationReportingType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-    DefaultOperationDelegateType.TraceContextType == OperationDelegateType.TraceContextType,
+    DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
         func outputProvider(input: InputType, context: ContextType,
-                            invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
+                            invocationReporting: InvocationReportingType,
                             completion: @escaping (Swift.Error?) -> ()) throws {
             try operation(input, context, invocationReporting, completion)
         }

@@ -17,10 +17,10 @@
 
 import Foundation
 
-internal struct HTTP1Headers {
+public struct HTTP1Headers {
     /// Content-Length Header
-    static let contentLength = "Content-Length"
+    public static let contentLength = "Content-Length"
 
     /// Content-Type Header
-    static let contentType = "Content-Type"
+    public static let contentType = "Content-Type"
 }

@@ -11,12 +11,17 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeHTTP1OperationServer.swift
-//  SmokeOperationsHTTP1
+//  InvocationReporting.swift
+//  SmokeOperations
 //
 
 import Foundation
+import Logging
 
-public protocol SmokeHTTP1OperationServer {
-    
+/**
+ A protocol that can report on an invocation.
+ */
+public protocol InvocationReporting {
+    var logger: Logger { get }
+    var internalRequestId: String { get }
 }

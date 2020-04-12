@@ -11,18 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  SmokeServerInvocationReporting.swift
-//  SmokeOperations
+//  JSONPayloadHTTP1OperationDelegate.swift
+//  SmokeOperationsHTTP1Server
 //
-import Foundation
 
-public struct SmokeServerInvocationContext<TraceContextType: OperationTraceContext> {
-    public let invocationReporting: SmokeServerInvocationReporting<TraceContextType>
-    public let requestReporting: SmokeServerOperationReporting
-    
-    public init(invocationReporting: SmokeServerInvocationReporting<TraceContextType>,
-                requestReporting: SmokeServerOperationReporting) {
-        self.invocationReporting = invocationReporting
-        self.requestReporting = requestReporting
-    }
-}
+import SmokeOperations
+import SmokeOperationsHTTP1
+
+public typealias JSONPayloadHTTP1OperationDelegate<TraceContextType: HTTP1OperationTraceContext> =
+    GenericJSONPayloadHTTP1OperationDelegate<
+        StandardHTTP1ResponseHandler<SmokeInvocationContext<SmokeServerInvocationReporting<TraceContextType>>>,
+        SmokeServerInvocationReporting<TraceContextType>>

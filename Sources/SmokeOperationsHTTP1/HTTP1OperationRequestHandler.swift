@@ -11,8 +11,8 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// HTTP1RequestHandler.swift
-// SmokeHTTP1
+// HTTP1OperationRequestHandler.swift
+// SmokeOperationsHTTP1
 //
 
 import Foundation
@@ -20,12 +20,14 @@ import NIO
 import NIOHTTP1
 import Logging
 import SmokeInvocation
+import SmokeOperations
 
 /**
  Protocol that specifies a handler for a HttpRequest.
  */
-public protocol HTTP1RequestHandler {
-    associatedtype ResponseHandlerType: ChannelHTTP1ResponseHandler
+public protocol HTTP1OperationRequestHandler {
+    associatedtype ResponseHandlerType
+    associatedtype InvocationReportingType: InvocationReporting
     
     /**
      Handles an incoming request.
@@ -37,5 +39,6 @@ public protocol HTTP1RequestHandler {
         - invocationStrategy: the invocationStrategy to use for this request.
      */
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
-                invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String)
+                invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
+                invocationReportingProvider: @escaping (Logger) -> InvocationReportingType)
 }
