@@ -65,6 +65,8 @@ public extension SmokeHTTP1Server {
                 try server.waitUntilShutdownAndThen {
                     do {
                         try initalizer.onShutdown()
+                        
+                        try eventLoopGroup.syncShutdownGracefully()
                     } catch {
                         logger.error("Unable to shutdown cleanly: '\(error)'")
                     }
@@ -113,6 +115,8 @@ public extension SmokeHTTP1Server {
                 try server.waitUntilShutdownAndThen {
                     do {
                         try initalizer.onShutdown()
+                        
+                        try eventLoopGroup.syncShutdownGracefully()
                     } catch {
                         logger.error("Unable to shutdown cleanly: '\(error)'")
                     }
