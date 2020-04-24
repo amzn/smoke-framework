@@ -177,9 +177,9 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         
         mutating func responseFullSent() {
             switch self {
-            case .pendingResponse:
+            case .pendingResponse, .idle:
                 self = .idle
-            case .idle, .waitingForRequestBody, .receivingRequestBody:
+            case .waitingForRequestBody, .receivingRequestBody:
                 assertionFailure("Invalid state for response fully sent: \(self)")
                 
                 fatalError()
@@ -195,6 +195,26 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
                 
                 return false
             }
+        }
+        
+        mutating func closeOnError(context: ChannelHandlerContext, error: Swift.Error) {
+            let logger: Logger
+            switch self {
+            case .idle:
+                logger = Logger(label: "HTTP1ChannelInboundHandler")
+            case .waitingForRequestBody(let waitingForRequestBody):
+                logger = waitingForRequestBody.logger
+            case .receivingRequestBody(let receivingRequestBody):
+                logger = receivingRequestBody.logger
+            case .pendingResponse(let pendingResponse):
+                logger = pendingResponse.logger
+            }
+            
+            logger.warning(
+                "Closing ChannelHandlerContext from state '\(self)' due to error received: \(String(describing: error))")
+            
+            context.close(promise: nil)
+            self = .idle
         }
     }
     
@@ -313,5 +333,9 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         default:
             context.fireUserInboundEventTriggered(event)
         }
+    }
+    
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        self.state.closeOnError(context: context, error: error)
     }
 }
