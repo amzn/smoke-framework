@@ -2,16 +2,17 @@
 <a href="https://travis-ci.com/amzn/smoke-framework">
 <img src="https://travis-ci.com/amzn/smoke-framework.svg?branch=master" alt="Build - Master Branch">
 </a>
-<img src="https://img.shields.io/badge/os-linux-green.svg?style=flat" alt="Linux">
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-5.0-orange.svg?style=flat" alt="Swift 5.0 Compatible">
+<img src="https://img.shields.io/badge/swift-5.0-orange.svg?style=flat" alt="Swift 5.0 Tested">
 </a>
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-5.1-orange.svg?style=flat" alt="Swift 5.1 Compatible">
+<img src="https://img.shields.io/badge/swift-5.1-orange.svg?style=flat" alt="Swift 5.1 Tested">
 </a>
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-5.2-orange.svg?style=flat" alt="Swift 5.2 Compatible">
+<img src="https://img.shields.io/badge/swift-5.2-orange.svg?style=flat" alt="Swift 5.2 Tested">
 </a>
+<img src="https://img.shields.io/badge/ubuntu-16.04-yellow.svg?style=flat" alt="Ubuntu 16.04 Tested">
+<img src="https://img.shields.io/badge/ubuntu-18.04-yellow.svg?style=flat" alt="Ubuntu 18.04 Tested">
 <a href="https://gitter.im/SmokeServerSide">
 <img src="https://img.shields.io/badge/chat-on%20gitter-ee115e.svg?style=flat" alt="Join the Smoke Server Side community on gitter">
 </a>
@@ -27,13 +28,17 @@ with code generators from service models such as [Swagger/OpenAPI](https://www.o
 
 The framework has built in support for JSON-encoded request and response payloads.
 
+## Support Policy
+
+SmokeFramework follows the same support policy as followed by SmokeAWS [here](https://github.com/amzn/smoke-aws/blob/master/docs/Support_Policy.md).
+
 # Conceptual Overview
 
 The Smoke Framework provides the ability to specify handlers for operations your service application
 needs to perform. When a request is received, the framework will decode the request into the operation's
 input. When the handler returns, its response (if any) will be encoded and sent in the response.
 
-Each invocation of a handler is also passed an application-specific context, allowing application-scope
+Each invocation of a handler is also passed an application-specific context, allowing application-scope or invocation-scope
 entities such as other service clients to be passed to operation handlers. Using the context allows 
 operation handlers to remain *pure* functions (where its return value is determined by the function's 
 logic and input values) and hence easily testable.
@@ -52,19 +57,82 @@ See the instructions in the code generator repository on how to get started.
 
 # Getting Started without Code Generation
 
+These steps assume you have just created a new swift application using `swift package init --type executable`.
+
 ## Step 1: Add the Smoke Framework dependency
 
 The Smoke Framework uses the Swift Package Manager. To use the framework, add the following dependency
 to your Package.swift-
 
+For swift-tools version 5.2 and greater-
+
 ```swift
 dependencies: [
-    .package(url: "https://github.com/amzn/smoke-framework.git", .upToNextMajor(from: "1.0.0"))
+    .package(url: "https://github.com/amzn/smoke-framework.git", from: "2.0.0")
+]
+
+.target(name: ..., dependencies: [
+    ..., 
+    .product(name: "SmokeOperationsHTTP1Server", package: "smoke-framework"),
+]),
+```
+
+For swift-tools version 5.1 and prior-
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/amzn/smoke-framework.git", from: "2.0.0")
 ]
 
 .target(
     name: ...,
-    dependencies: [..., "SmokeOperations", "SmokeOperationsHTTP1"]),
+    dependencies: [..., "SmokeOperationsHTTP1Server"]),
+```
+
+
+## Step 2: Update the runtime dependency requirements of the application
+
+If you attempt to compile the application, you will get the error
+
+```
+the product 'XXX' requires minimum platform version 10.12 for macos platform
+```
+
+This is because SmokeFramework projects have a minimum MacOS version dependency. To correct this there needs to be a couple of additions to to the Package.swift file.
+
+### Step 2a: Update the language version
+
+Specify the language versions supported by the application-
+
+```swift
+targets: [
+    ...
+    ],
+swiftLanguageVersions: [.v5]
+```
+
+### Step 2b: Update the supported platforms
+
+Specify the platforms supported by the application-
+
+#### For Swift 5.2
+
+```swift
+name: "XXX",
+platforms: [
+  .macOS(.v10_15), .iOS(.v10)
+],
+products: [
+```
+
+#### For Swift 5.1 or Swift 5.0
+
+```swift
+name: "XXX",
+platforms: [
+  .macOS(.v10_12), .iOS(.v10)
+],
+products: [
 ```
 
 ## Step 2: Add an Operation Function
@@ -78,12 +146,14 @@ func handleTheOperation(input: OperationInput, context: MyApplicationContext) th
 }
 ```
 
-This particular operation function accepts the input to the operation and the application-specific context while
-returning the output from the operation.
+This particular operation function accepts the input to the operation and the application-specific context - `MyApplicationContext` - while
+returning the output from the operation. The application-specific context can be any type the application requires to pass application-specific or invocation-specific context to the operation handlers
 
-For HTTP1, the operation input can conform to `OperationHTTP1InputProtocol`, which defines how the input type is constructed from
-the HTTP1 request. Similarly, the operation output can conform to `OperationHTTP1OutputProtocol`, which defines how to construct
-the HTTP1 response from the output type. As an alternative, both operation input and output can conform to the `Codable` protocol if
+For HTTP1, the operation input can conform to [OperationHTTP1InputProtocol](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/OperationHTTP1InputProtocol.swift), which defines how the input type is constructed from
+the HTTP1 request. Similarly, the operation output can conform to [OperationHTTP1OutputProtocol](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/OperationHTTP1OutputProtocol.swift), which defines how to construct
+the HTTP1 response from the output type. Both must also conform to the [Validatable](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperations/Validatable.swift#L23) protocol, giving the opportunity to validate any field constraints.
+
+As an alternative, both operation input and output can conform to the `Codable` protocol if
 they are constructed from only one part of the HTTP1 request and response.
 
 The Smoke Framework also supports additional built-in and custom operation function signatures. See the *The Operation Function*
@@ -93,38 +163,27 @@ and *Extension Points* sections for more information.
 
 After defining the required operation handlers, it is time to specify how they are selected for incoming requests.
 
-The Smoke Framework provides the `StandardSmokeHTTP1HandlerSelector` implementation of a Handler Selector
-suitable for a basic REST-like service where operation handlers are selected based on the HTTP URI and verb
-of the request.
-
-The following code shows how to create a handler selector using the `StandardSmokeHTTP1HandlerSelector`-
+The Smoke Framework provides the [SmokeHTTP1HandlerSelector](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/SmokeHTTP1HandlerSelector.swift) protocol to add handlers to a selector.
 
 
 ```swift
 import SmokeOperationsHTTP1
 
-public typealias HandlerSelectorType =
-    StandardSmokeHTTP1HandlerSelector<MyApplicationContext, JSONPayloadHTTP1OperationDelegate>
-
-public func createHandlerSelector() -> HandlerSelectorType {
-    var newHandler = HandlerSelectorType(defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+public func addOperations<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
+        where SelectorType.ContextType == MyApplicationContext,
+              SelectorType.OperationIdentifer == MyOperations {
     
-    newHandler.addHandlerForUri("/theOperationPath", httpMethod: .POST,
-                                operation: handleTheOperation,
-                                allowedErrors: [(MyApplicationErrors.unknownResource, 400)])
-
-    return newHandler
+    selector.addHandlerForOperation(MyOperations.theOperation, httpMethod: .POST,
+                                   operation: handleTheOperation,
+                                   allowedErrors: [(MyApplicationErrors.unknownResource, 400)])
 }
 ```
 
-* `StandardSmokeHTTP1HandlerSelector` takes two generic parameters:
-  * The type of the context instance to use for the application.
-  * The type of the default operation delegate.
-* Each handler added requires the following parameters to be specified:
-  * The operation URI that must be matched by the incoming request to select the handler.
+Each handler added requires the following parameters to be specified:
+* The operation to be added. This must be of a type conforming to [OperationIdentity](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperations/OperationIdentity.swift) such as an [enum](https://github.com/amzn/smoke-framework-examples/blob/master/PersistenceExampleService/Sources/PersistenceExampleModel/PersistenceExampleModelOperations.swift). 
   * The HTTP method that must be matched by the incoming request to select the handler.
   * The function to be invoked.
-  * The errors that can be returned to the caller from this handler.
+  * The errors that can be returned to the caller from this handler. The error type must also conform to `CustomStringConvertible` that returns the identity of the current error.
   * The location in the HTTP1 request to construct the operation input type from (only required if the input type conforms to `Codable`)
   * The location in the HTTP1 response that the output type represents (only required if the output type conforms to `Codable`)
 
@@ -134,32 +193,57 @@ The final step is to setup an application as an operation server.
 
 ```swift
 import Foundation
-import SmokeHTTP1
 import SmokeOperationsHTTP1
-import LoggerAPI
+import SmokeOperationsHTTP1Server
+import AsyncHTTPClient
+import NIO
+import SmokeHTTP1
 
-// Enable logging here
+typealias MyOperationDelegate = JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>
 
-let operationsContext = ... 
+struct MyPerInvocationContextInitializer: SmokeServerPerInvocationContextInitializer {
+    typealias SelectorType =
+        StandardSmokeHTTP1HandlerSelector<MyApplicationContext, MyOperationDelegate,
+                                          MyOperations>
+    // add any application-wide context
+    let handlerSelector: SelectorType
 
-do {
-    let smokeHTTP1Server = try SmokeHTTP1Server.startAsOperationServer(
-        withHandlerSelector: createHandlerSelector(),
-        andContext: operationsContext)
-        
-    try smokeHTTP1Server.waitUntilShutdownAndThen {
-        // TODO: Close/shutdown any clients or credentials that are part
-        //       of the operationsContext.
+    /**
+     On application startup.
+     */
+    init(eventLoop: EventLoop) throws {
+        // set up any of the application-wide context
+    
+        var selector = SelectorType(defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+        addOperations(selector: &selector)
+
+        self.handlerSelector = selector
     }
-} catch {
-    Log.error("Unable to start Operation Server: '\(error)'")
+
+    /**
+     On invocation.
+    */
+    public func getInvocationContext(
+        invocationReporting: SmokeServerInvocationReporting<SmokeInvocationTraceContext>) -> MyApplicationContext {
+        // create an invocation-specific context to be passed to an operation handler
+        return MyApplicationContext(...)
+    }
+
+    /**
+     On application shutdown.
+    */
+    func onShutdown() throws {
+        // shutdown anything before the application closes
+    }
 }
+
+SmokeHTTP1Server.runAsOperationServer(MyPerInvocationContextInitializer.init)
 ```
 
 You can now run the application and the server will start up on port 8080. The application will block in the
-`smokeHTTP1Server.waitUntilShutdownAndThen` call. When the server has been fully shutdown and has
-completed all requests, the closure provided to this call will be executed. In this closure you can close/shutdown
-any clients or credentials that were created on startup for the operations context.
+`SmokeHTTP1Server.runAsOperationServer` call. When the server has been fully shutdown and has
+completed all requests, `onShutdown` will be called. In this function you can close/shutdown
+any clients or credentials that were created on application startup.
 
 # Further Concepts
 
@@ -179,14 +263,20 @@ stuff* such as a Dictionary.
 The Operation Delegate handles specifics such as encoding and decoding requests to the handler's 
 input and output.
 
-The Smoke Framework provides the `JSONPayloadHTTP1OperationDelegate` implementation that expects 
+The Smoke Framework provides the [JSONPayloadHTTP1OperationDelegate](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/JSONPayloadHTTP1OperationDelegate.swift#L21) implementation that expects 
 a JSON encoded request body as the handler's input and returns the output as the JSON encoded
 response body.
 
-Each `addHandlerForUri` invocation can optionally accept an operation delegate to use when that
+Each `addHandlerForOperation` invocation can optionally accept an operation delegate to use when that
 handler is selected. This can be used when operations have specific encoding or decoding requirements.
 A default operation delegate is set up at server startup to be used for operations without a specific
 handler or when no handler matches a request.
+
+## The Trace Context
+
+The `JSONPayloadHTTP1OperationDelegate` takes a generic parameter conforming to the [HTTP1OperationTraceContext](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/HTTP1OperationTraceContext.swift) protocol. This protocol can be used to providing request-level tracing. The requirements for this protocol are defined [here](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperations/OperationTraceContext.swift#L21).
+
+A default implementation - [SmokeInvocationTraceContext](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/SmokeInvocationTraceContext.swift#L48) - provides some basic tracing using request and response headers.
 
 ## The Operation Function
 
@@ -292,7 +382,7 @@ If you want to run all test cases in Smoke Framework, please open command line a
 # Extension Points
 
 The Smoke Framework is designed to be extensible beyond its current functionality-
-* `JSONPayloadHTTP1OperationDelegate` provides basic JSON payload encoding and decoding. Instead, the `OperationDelegate` can
+* `JSONPayloadHTTP1OperationDelegate` provides basic JSON payload encoding and decoding. Instead, the `HTTP1OperationDelegate` protocol can
   be used to create a delegate that provides alternative payload encoding and decoding. Instances of this protocol are given
   the entire HttpRequestHead and request body when decoding the input and encoding the output for situations when these are required.
 * `StandardSmokeHTTP1HandlerSelector` provides a handler selector that compares the HTTP URI and verb to select a
