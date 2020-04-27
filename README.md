@@ -276,7 +276,7 @@ handler or when no handler matches a request.
 
 The `JSONPayloadHTTP1OperationDelegate` takes a generic parameter conforming to the [HTTP1OperationTraceContext](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/HTTP1OperationTraceContext.swift) protocol. This protocol can be used to providing request-level tracing. The requirements for this protocol are defined [here](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperations/OperationTraceContext.swift#L21).
 
-A default implementation - [SmokeInvocationTraceContext](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/SmokeInvocationTraceContext.swift#L48) that provides some basic tracing using request and response headers.
+A default implementation - [SmokeInvocationTraceContext](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1Server/SmokeInvocationTraceContext.swift#L48) - provides some basic tracing using request and response headers.
 
 ## The Operation Function
 
