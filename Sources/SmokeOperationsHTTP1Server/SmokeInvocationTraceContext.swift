@@ -48,6 +48,12 @@ private let traceIdHeader = "x-smoke-trace-id"
 public struct SmokeInvocationTraceContext {
     private let externalRequestId: String?
     private let traceId: String?
+    
+    public init(externalRequestId: String? = nil,
+                traceId: String? = nil) {
+        self.externalRequestId = externalRequestId
+        self.traceId = traceId
+    }
 }
 
 extension SmokeInvocationTraceContext: HTTP1OperationTraceContext {
