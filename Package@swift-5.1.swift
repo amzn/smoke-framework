@@ -72,7 +72,7 @@ let package = Package(
             dependencies: ["Logging", "NIO", "SmokeOperations"]),
         .target(
             name: "SmokeAsyncHTTP1",
-            dependencies: ["NIOHTTP1", "SmokeOperationsHTTP1"]),
+            dependencies: ["NIOHTTP1", "SmokeOperationsHTTP1", "SmokeAsync"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),

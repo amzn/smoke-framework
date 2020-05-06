@@ -92,6 +92,7 @@ let package = Package(
         .target(
             name: "SmokeAsyncHTTP1", dependencies: [
                 .product(name: "NIOHTTP1", package: "swift-nio"),
+                .target(name: "SmokeAsync"),
                 .target(name: "SmokeOperationsHTTP1"),
             ]),
         .testTarget(
