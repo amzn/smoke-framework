@@ -11,7 +11,7 @@
         }
       },
       {
-        "package": "SmokeHTTP",
+        "package": "smoke-http",
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
           "branch": null,
