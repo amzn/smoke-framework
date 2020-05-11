@@ -41,7 +41,7 @@ public extension SmokeHTTP1Server {
             } catch {
                 let logger = Logger.init(label: "application.initialization")
                 
-                logger.error("Unable to inialize DynamoDB Table - \(error).")
+                logger.error("Unable to inialize application from factory due to error - \(error).")
                 
                 return
             }
@@ -91,8 +91,8 @@ public extension SmokeHTTP1Server {
             } catch {
                 let logger = Logger.init(label: "application.initialization")
                 
-                logger.error("Unable to inialize DynamoDB Table - \(error).")
-                
+                logger.error("Unable to inialize application from factory due to error - \(error).")
+
                 return
             }
             
