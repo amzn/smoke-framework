@@ -36,6 +36,12 @@ let package = Package(
         .library(
             name: "SmokeHTTP1",
             targets: ["SmokeHTTP1"]),
+        .library(
+            name: "SmokeAsync",
+            targets: ["SmokeAsync"]),
+        .library(
+            name: "SmokeAsyncHTTP1",
+            targets: ["SmokeAsyncHTTP1"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -61,6 +67,12 @@ let package = Package(
         .target(
             name: "SmokeOperationsHTTP1Server",
             dependencies: ["SmokeOperationsHTTP1", "SmokeHTTP1"]),
+        .target(
+            name: "SmokeAsync",
+            dependencies: ["Logging", "NIO", "SmokeOperations"]),
+        .target(
+            name: "SmokeAsyncHTTP1",
+            dependencies: ["NIOHTTP1", "SmokeOperationsHTTP1", "SmokeAsync"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),
