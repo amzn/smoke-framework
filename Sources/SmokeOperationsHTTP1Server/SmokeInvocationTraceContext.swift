@@ -120,10 +120,11 @@ extension SmokeInvocationTraceContext: HTTP1OperationTraceContext {
         
         // log details about the response to the incoming request
         let logLine = logElements.joined(separator: " ")
-        if status == .ok {
-            logger.info("\(logLine)")
-        } else {
+        // log at error if this is a server error
+        if status.code >= 500 && status.code < 600 {
             logger.error("\(logLine)")
+        } else {
+            logger.info("\(logLine)")
         }
     }
 }
@@ -163,12 +164,11 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
                                              response: HTTPClient.Response?, bodyData: Data?, error: Error) {
         let logLine = getLogLine(successfullyCompletedRequest: false, response: response, bodyData: bodyData)
         
-        // if this is a client error, only log as a warning as
-        // it isn't definitely an error
-        if let response = response, response.status.code >= 400 && response.status.code < 500 {
-            logger.warning("\(logLine)")
-        } else {
+        // log at error if this is a server error
+        if let response = response, response.status.code >= 500 && response.status.code < 600 {
             logger.error("\(logLine)")
+        } else {
+            logger.info("\(logLine)")
         }
         
         if let bodyData = bodyData {
