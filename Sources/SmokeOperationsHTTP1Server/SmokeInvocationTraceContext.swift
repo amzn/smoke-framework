@@ -134,7 +134,8 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
         public func handleOutwardsRequestStart(method: HTTPMethod, uri: String, logger: Logger, internalRequestId: String,
                                                headers: inout HTTPHeaders, bodyData: Data) -> String {
         // log details about the outgoing request
-        logger.debug("Starting outgoing \(method) request to endpoint '\(uri)'. Received body with size \(bodyData.count): \(bodyData.debugString)")
+        logger.info("Starting outgoing \(method) request to endpoint '\(uri)'.")
+        logger.debug("Outgoing request body with size \(bodyData.count): \(bodyData.debugString)")
         
         // pass the internal request id to the downstream caller
         headers.add(name: requestIdHeader, value: internalRequestId)
@@ -152,13 +153,27 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
         let logLine = getLogLine(successfullyCompletedRequest: true, response: response, bodyData: bodyData)
         
         logger.info("\(logLine)")
+        
+        if let bodyData = bodyData {
+            logger.debug("Outgoing response body: \(bodyData.debugString)")
+        }
     }
     
     public func handleOutwardsRequestFailure(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
                                              response: HTTPClient.Response?, bodyData: Data?, error: Error) {
-        let logLine = getLogLine(successfullyCompletedRequest: true, response: response, bodyData: bodyData)
+        let logLine = getLogLine(successfullyCompletedRequest: false, response: response, bodyData: bodyData)
         
-        logger.error("\(logLine)")
+        // if this is a client error, only log as a warning as
+        // it isn't definitely an error
+        if let response = response, response.status.code >= 400 && response.status.code < 500 {
+            logger.warning("\(logLine)")
+        } else {
+            logger.error("\(logLine)")
+        }
+        
+        if let bodyData = bodyData {
+            logger.debug("Outgoing response body: \(bodyData.debugString)")
+        }
     }
     
     private func getLogLine(successfullyCompletedRequest: Bool, response: HTTPClient.Response?, bodyData: Data?) -> String {
@@ -179,7 +194,7 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
         }
         
         if let bodyData = bodyData {
-            logElements.append("Returned body with size \(bodyData.count): \(bodyData.debugString)")
+            logElements.append("Returned body with size \(bodyData.count)")
         }
         
         // log details about the response to the outgoing request
