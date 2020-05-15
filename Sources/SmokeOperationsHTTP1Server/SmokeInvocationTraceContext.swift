@@ -120,10 +120,11 @@ extension SmokeInvocationTraceContext: HTTP1OperationTraceContext {
         
         // log details about the response to the incoming request
         let logLine = logElements.joined(separator: " ")
-        if status == .ok {
-            logger.info("\(logLine)")
-        } else {
+        // log at error if this is a server error
+        if status.code >= 500 && status.code < 600 {
             logger.error("\(logLine)")
+        } else {
+            logger.info("\(logLine)")
         }
     }
 }
