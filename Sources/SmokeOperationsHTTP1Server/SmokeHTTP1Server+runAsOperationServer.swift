@@ -33,7 +33,7 @@ public extension SmokeHTTP1Server {
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
         StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
             func wrappedFactory(eventLoopGroup: EventLoopGroup) throws -> InitializerType {
-                try factory(eventLoopGroup.next())
+                return try factory(eventLoopGroup.next())
             }
             
             runAsOperationServer(wrappedFactory)
@@ -46,7 +46,7 @@ public extension SmokeHTTP1Server {
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
         StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
             func wrappedFactory(eventLoopGroup: EventLoopGroup) throws -> InitializerType {
-                try factory(eventLoopGroup.next())
+                return try factory(eventLoopGroup.next())
             }
             
             runAsOperationServer(wrappedFactory)
