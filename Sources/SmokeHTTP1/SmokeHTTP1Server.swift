@@ -17,7 +17,6 @@
 
 import Foundation
 import NIO
-import SmokeOperations
 
 public struct ServerDefaults {
     static let defaultHost = "0.0.0.0"

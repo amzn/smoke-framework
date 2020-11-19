@@ -18,7 +18,6 @@
 import Foundation
 import NIO
 import NIOHTTP1
-import SmokeOperations
 
 /**
  A protocol that specifies a handler for a HTTP response.
