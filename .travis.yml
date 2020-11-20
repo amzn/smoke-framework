@@ -5,35 +5,49 @@ matrix:
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.2-bionic USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.1-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.2-xenial USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.1-xenial ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1.4-bionic USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.1-focal ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.1.4-xenial USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.1-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.0.3-bionic USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.1-centos8 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.0.3-xenial USE_SWIFT_LINT=yes
+      env: DOCKER_IMAGE_TAG=swift:5.2.5-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+
+    - os: linux
+      dist: xenial
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=swift:5.1-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+
+    # Use a docker image that contains the SwiftLint executable the verify the code against the linter.
+    - os: linux
+      dist: xenial
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=bytesguy/swiftlint:0.39.2 ONLY_RUN_SWIFT_LINT=yes USE_APT_GET=no
 
 before_install:
   - docker pull $DOCKER_IMAGE_TAG
 
 script:
-  - docker run -v ${TRAVIS_BUILD_DIR}:/package ${DOCKER_IMAGE_TAG} /bin/bash -c "/package/CITests/run $USE_SWIFT_LINT"
+  - docker run -v ${TRAVIS_BUILD_DIR}:/package ${DOCKER_IMAGE_TAG} /bin/bash -c "/package/CITests/run $ONLY_RUN_SWIFT_LINT $USE_APT_GET"
