@@ -32,8 +32,6 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
         where SelectorType: SmokeHTTP1HandlerSelector,
         SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-        TraceContextType ==
-            SelectorType.DefaultOperationDelegateType.InvocationReportingType.TraceContextType,
         HTTPRequestHead == TraceContextType.RequestHeadType,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType: ChannelHTTP1ResponseHandler & HTTP1ResponseHandler,
         SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> ==
