@@ -288,6 +288,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
                               responseHandler: responseHandler,
                               invocationStrategy: invocationStrategy,
                               requestLogger: logger,
+                              eventLoop: context.eventLoop,
                               internalRequestId: pendingResponse.internalRequestId)
     }
     
