@@ -18,6 +18,7 @@
 import Foundation
 import SmokeOperations
 import SmokeOperationsHTTP1
+import NIO
 import NIOHTTP1
 import SmokeHTTP1
 import ShapeCoding
@@ -62,9 +63,16 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
             serverName: serverName,
             reportingConfiguration: reportingConfiguration)
     }
-
+    
+    // Function required to confirm to protocol, delegate to the variant that provides the event loop
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
+        handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
+               invocationStrategy: invocationStrategy, requestLogger: requestLogger, eventLoop: nil, internalRequestId: internalRequestId)
+    }
+
+    public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String) {
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
         var decoratedRequestLogger: Logger = requestLogger
@@ -73,7 +81,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
         
         func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
             return SmokeServerInvocationReporting(logger: logger,
-                                                  internalRequestId: internalRequestId, traceContext: traceContext)
+                                                  internalRequestId: internalRequestId, traceContext: traceContext, eventLoop: eventLoop)
         }
         
         // let it be handled

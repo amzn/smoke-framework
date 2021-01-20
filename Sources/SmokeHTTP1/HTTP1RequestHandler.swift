@@ -35,7 +35,34 @@ public protocol HTTP1RequestHandler {
         - body: the body of the request, if any.
         - responseHandler: a handler that can be used to respond to the request.
         - invocationStrategy: the invocationStrategy to use for this request.
+        - requestLogger: the logger to use for this request.
+        - internalRequestId: the internal identifier for this request.
      */
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                 invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String)
+    
+    /**
+     Handles an incoming request.
+ 
+     - Parameters:
+         - requestHead: the parameters specified in the head of the HTTP request.
+         - body: the body of the request, if any.
+         - responseHandler: a handler that can be used to respond to the request.
+         - invocationStrategy: the invocationStrategy to use for this request.
+         - requestLogger: the logger to use for this request.
+         - eventLoop: the event loop used for this request.
+         - internalRequestId: the internal identifier for this request.
+     */
+    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String)
+}
+
+public extension HTTP1RequestHandler {
+    // The function is being added as a non-breaking change, so add a default implementation that delegates to the existing
+    // function that must be implemented.
+    func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String) {
+        handle(requestHead: requestHead, body: body, responseHandler: responseHandler, invocationStrategy: invocationStrategy,
+               requestLogger: requestLogger, internalRequestId: internalRequestId)
+    }
 }

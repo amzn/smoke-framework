@@ -18,6 +18,7 @@
 import Foundation
 import SmokeOperations
 import Logging
+import NIO
 
 public protocol InvocationReportingWithTraceContext: InvocationReporting {
     associatedtype TraceContextType: OperationTraceContext
@@ -30,11 +31,13 @@ public protocol InvocationReportingWithTraceContext: InvocationReporting {
  */
 public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext>: InvocationReportingWithTraceContext {
     public let logger: Logger
+    public let eventLoop: EventLoop?
     public let internalRequestId: String
     public let traceContext: TraceContextType
     
-    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType) {
+    public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType, eventLoop: EventLoop? = nil) {
         self.logger = logger
+        self.eventLoop = eventLoop
         self.internalRequestId = internalRequestId
         self.traceContext = traceContext
     }
