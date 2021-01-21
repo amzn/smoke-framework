@@ -26,6 +26,7 @@ import AsyncHTTPClient
 import SmokeInvocation
 
 public extension SmokeHTTP1Server {
+    @available(swift, deprecated: 3.0, message: "Provide an initializer that accepts an EventLoopGroup instance.")
     static func runAsOperationServer<InitializerType: SmokeServerStaticContextInitializer, TraceContextType>(
         _ factory: @escaping (EventLoop) throws -> InitializerType)
         where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
@@ -39,6 +40,7 @@ public extension SmokeHTTP1Server {
             runAsOperationServer(wrappedFactory)
     }
   
+    @available(swift, deprecated: 3.0, message: "Provide an initializer that accepts an EventLoopGroup instance.")
     static func runAsOperationServer<InitializerType: SmokeServerPerInvocationContextInitializer, TraceContextType>(
         _ factory: @escaping (EventLoop) throws -> InitializerType)
         where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
@@ -74,6 +76,16 @@ public extension SmokeHTTP1Server {
               
               // initialize the logger after instatiating the initializer
               let logger = Logger.init(label: "application.initialization")
+        
+              let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+              // if the initializer is indicating to create new threads for the server
+              // just use the created eventLoopGroup
+              if case .spawnNewThreads = initalizer.eventLoopProvider {
+                  eventLoopProvider = .use(eventLoopGroup)
+              } else {
+                  // use what the initializer says
+                  eventLoopProvider = initalizer.eventLoopProvider
+              }
               
               let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
                   handlerSelector: initalizer.handlerSelector,
@@ -83,7 +95,7 @@ public extension SmokeHTTP1Server {
                                                     port: initalizer.port,
                                                     invocationStrategy: initalizer.invocationStrategy,
                                                     defaultLogger: initalizer.defaultLogger,
-                                                    eventLoopProvider: initalizer.eventLoopProvider,
+                                                    eventLoopProvider: eventLoopProvider,
                                                     shutdownOnSignal: initalizer.shutdownOnSignal)
               do {
                   try server.start()
@@ -124,6 +136,16 @@ public extension SmokeHTTP1Server {
               
               // initialize the logger after instatiating the initializer
               let logger = Logger.init(label: "application.initialization")
+        
+              let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+              // if the initializer is indicating to create new threads for the server
+              // just use the created eventLoopGroup
+              if case .spawnNewThreads = initalizer.eventLoopProvider {
+                  eventLoopProvider = .use(eventLoopGroup)
+              } else {
+                  // use what the initializer says
+                  eventLoopProvider = initalizer.eventLoopProvider
+              }
               
               let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
                   handlerSelector: initalizer.handlerSelector,
@@ -133,7 +155,7 @@ public extension SmokeHTTP1Server {
                                                     port: initalizer.port,
                                                     invocationStrategy: initalizer.invocationStrategy,
                                                     defaultLogger: initalizer.defaultLogger,
-                                                    eventLoopProvider: initalizer.eventLoopProvider,
+                                                    eventLoopProvider: eventLoopProvider,
                                                     shutdownOnSignal: initalizer.shutdownOnSignal)
               do {
                   try server.start()
