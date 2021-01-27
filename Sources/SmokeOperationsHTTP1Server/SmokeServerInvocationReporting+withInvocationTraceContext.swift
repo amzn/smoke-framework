@@ -18,18 +18,22 @@ import Foundation
 import Logging
 import SmokeOperations
 import SmokeHTTPClient
+import NIO
 
 public struct DelegatedInvocationReporting<TraceContextType: InvocationTraceContext>: HTTPClientCoreInvocationReporting {
     public let logger: Logger
     public var internalRequestId: String
     public var traceContext: TraceContextType
+    public var eventLoop: EventLoop?
     
     public init(logger: Logger,
                 internalRequestId: String,
-                traceContext: TraceContextType) {
+                traceContext: TraceContextType,
+                eventLoop: EventLoop? = nil) {
         self.logger = logger
         self.internalRequestId = internalRequestId
         self.traceContext = traceContext
+        self.eventLoop = eventLoop
     }
 }
 
@@ -42,7 +46,8 @@ public extension SmokeServerInvocationReporting {
         traceContext: TraceContextType) -> DelegatedInvocationReporting<TraceContextType> {
         return DelegatedInvocationReporting(logger: self.logger,
                                             internalRequestId: self.internalRequestId,
-                                            traceContext: traceContext)
+                                            traceContext: traceContext,
+                                            eventLoop: self.eventLoop)
         
     }
 }
