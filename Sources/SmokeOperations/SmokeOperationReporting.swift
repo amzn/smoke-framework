@@ -26,6 +26,9 @@ public struct SmokeOperationReporting {
     public let failure5XXCounter: Metrics.Counter?
     public let failure4XXCounter: Metrics.Counter?
     public let latencyTimer: Metrics.Timer?
+    public let serviceLatencyTimer: Metrics.Timer?
+    public let outwardsServiceCallLatencySumTimer: Metrics.Timer?
+    public let outwardsServiceCallRetryWaitSumTimer: Metrics.Timer?
     
     private let namespaceDimension = "Namespace"
     private let operationNameDimension = "Operation Name"
@@ -35,6 +38,9 @@ public struct SmokeOperationReporting {
     private let failure5XXCountMetric = "failure5XXCount"
     private let failure4XXCountMetric = "failure4XXCount"
     private let latencyTimeMetric = "latencyTime"
+    private let serviceLatencyTimeMetric = "serviceLatencyTime"
+    private let outwardsServiceCallLatencySumMetric = "outwardsServiceCallLatencySum"
+    private let outwardsServiceCallRetryWaitSumMetric = "outwardsServiceCallRetryWaitSum"
     
     public init<OperationIdentifer: OperationIdentity>(serverName: String, request: RequestType<OperationIdentifer>,
                                                        configuration: SmokeReportingConfiguration<OperationIdentifer>) {
@@ -78,6 +84,36 @@ public struct SmokeOperationReporting {
                                          dimensions: latencyTimeDimensions)
         } else {
             latencyTimer = nil
+        }
+        
+        if configuration.reportServiceLatencyForRequest(request) {
+            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
+                                                (operationNameDimension, operationName),
+                                                (metricNameDimension, serviceLatencyTimeMetric)]
+            serviceLatencyTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(serviceLatencyTimeMetric)",
+                                                dimensions: serviceLatencyTimeDimensions)
+        } else {
+            serviceLatencyTimer = nil
+        }
+        
+        if configuration.reportOutwardsServiceCallLatencySumForRequest(request) {
+            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
+                                                (operationNameDimension, operationName),
+                                                (metricNameDimension, outwardsServiceCallLatencySumMetric)]
+            outwardsServiceCallLatencySumTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(outwardsServiceCallLatencySumMetric)",
+                                                               dimensions: serviceLatencyTimeDimensions)
+        } else {
+            outwardsServiceCallLatencySumTimer = nil
+        }
+        
+        if configuration.reportOutwardsServiceCallRetryWaitLatencySumForRequest(request) {
+            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
+                                                (operationNameDimension, operationName),
+                                                (metricNameDimension, outwardsServiceCallRetryWaitSumMetric)]
+            outwardsServiceCallRetryWaitSumTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(outwardsServiceCallRetryWaitSumMetric)",
+                                                                 dimensions: serviceLatencyTimeDimensions)
+        } else {
+            outwardsServiceCallRetryWaitSumTimer = nil
         }
     }
 }

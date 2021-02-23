@@ -272,11 +272,14 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
             self.state.responseFullSent()
         }
         
+        let smokeInwardsRequestContext = StandardSmokeInwardsRequestContext(requestStart: Date())
+        
         // create a response handler for this request
         let responseHandler = HTTP1RequestHandlerType.ResponseHandlerType(
             requestHead: requestHead,
             keepAliveStatus: pendingResponse.keepAliveStatus,
             context: context,
+            smokeInwardsRequestContext: smokeInwardsRequestContext,
             wrapOutboundOut: wrapOutboundOut,
             onComplete: onComplete)
     
@@ -289,6 +292,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
                               invocationStrategy: invocationStrategy,
                               requestLogger: logger,
                               eventLoop: context.eventLoop,
+                              outwardsRequestAggregator: smokeInwardsRequestContext,
                               internalRequestId: pendingResponse.internalRequestId)
     }
     

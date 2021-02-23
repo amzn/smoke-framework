@@ -25,15 +25,18 @@ public struct DelegatedInvocationReporting<TraceContextType: InvocationTraceCont
     public var internalRequestId: String
     public var traceContext: TraceContextType
     public var eventLoop: EventLoop?
+    public var outwardsRequestAggregator: OutwardsRequestAggregator?
     
     public init(logger: Logger,
                 internalRequestId: String,
                 traceContext: TraceContextType,
-                eventLoop: EventLoop? = nil) {
+                eventLoop: EventLoop? = nil,
+                outwardsRequestAggregator: OutwardsRequestAggregator? = nil) {
         self.logger = logger
         self.internalRequestId = internalRequestId
         self.traceContext = traceContext
         self.eventLoop = eventLoop
+        self.outwardsRequestAggregator = outwardsRequestAggregator
     }
 }
 
@@ -47,7 +50,8 @@ public extension SmokeServerInvocationReporting {
         return DelegatedInvocationReporting(logger: self.logger,
                                             internalRequestId: self.internalRequestId,
                                             traceContext: traceContext,
-                                            eventLoop: self.eventLoop)
+                                            eventLoop: self.eventLoop,
+                                            outwardsRequestAggregator: self.outwardsRequestAggregator)
         
     }
 }
