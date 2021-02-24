@@ -22,6 +22,8 @@ import SmokeOperationsHTTP1
 import SmokeHTTP1
 import Logging
 
+private let timeIntervalToMilliseconds: Double = 1000
+
 /**
  Handles the response to a HTTP request.
 */
@@ -30,6 +32,7 @@ public struct StandardHTTP1ResponseHandler<
     let requestHead: HTTPRequestHead
     let keepAliveStatus: KeepAliveStatus
     let context: ChannelHandlerContext
+    let smokeInwardsRequestContext: SmokeInwardsRequestContext?
     let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
     let onComplete: () -> ()
     
@@ -38,9 +41,24 @@ public struct StandardHTTP1ResponseHandler<
                 context: ChannelHandlerContext,
                 wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
                 onComplete: @escaping () -> ()) {
+        self.init(requestHead: requestHead,
+                  keepAliveStatus: keepAliveStatus,
+                  context: context,
+                  smokeInwardsRequestContext: nil,
+                  wrapOutboundOut: wrapOutboundOut,
+                  onComplete: onComplete)
+    }
+    
+    public init(requestHead: HTTPRequestHead,
+                keepAliveStatus: KeepAliveStatus,
+                context: ChannelHandlerContext,
+                smokeInwardsRequestContext: SmokeInwardsRequestContext?,
+                wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
+                onComplete: @escaping () -> ()) {
         self.requestHead = requestHead
         self.keepAliveStatus = keepAliveStatus
         self.context = context
+        self.smokeInwardsRequestContext = smokeInwardsRequestContext
         self.wrapOutboundOut = wrapOutboundOut
         self.onComplete = onComplete
     }
@@ -119,6 +137,56 @@ public struct StandardHTTP1ResponseHandler<
         
         invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
         
+        if let smokeInwardsRequestContext = self.smokeInwardsRequestContext {
+            let requestLatency = Date().timeIntervalSince(smokeInwardsRequestContext.requestStart).milliseconds
+            let serviceCallCount = smokeInwardsRequestContext.retriableOutputRequestRecords.count
+            let serviceCallLatency = smokeInwardsRequestContext.retriableOutputRequestRecords.reduce(0) { (retriableRequestSum, retriableRequestRecord) in
+                return retriableRequestSum + retriableRequestRecord.outputRequests.reduce(0) { (requestSum, requestRecord) in
+                    return requestSum + requestRecord.requestLatency.milliseconds
+                }
+            }
+            let retryWaitLatency = smokeInwardsRequestContext.retryAttemptRecords.reduce(0) { (retryWaitSum, retryAttemptRecord) in
+                return retryWaitSum + retryAttemptRecord.retryWait.milliseconds
+            }
+            let retriedServiceCalls = smokeInwardsRequestContext.retriableOutputRequestRecords.filter { requestRecord in
+                return requestRecord.outputRequests.count > 1
+            }
+            let serviceOnlyLatency = requestLatency - serviceCallLatency - retryWaitLatency
+            
+            var logComponents: [String] = []
+            
+            if serviceCallCount == 0 {
+                let logMessage = "Request completed in \(requestLatency) ms; (no service calls)."
+                logComponents.append("\(logMessage)")
+            } else {
+                let logMessage = "Request completed in \(requestLatency) ms; "
+                    + "\(serviceOnlyLatency) ms excluding service calls (there was \(serviceCallCount); "
+                    + "\(serviceCallLatency) ms service call latency, \(retryWaitLatency) ms retry backoff)."
+                logComponents.append("\(logMessage)")
+            }
+            
+            if retriedServiceCalls.count == 1 {
+                logComponents.append("1 outward service call was retried.")
+            } else {
+                logComponents.append("\(retriedServiceCalls.count) outward service calls were retried.")
+            }
+            
+            invocationContext.logger.info("\(logComponents.joined(separator: " "))")
+            
+            invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
+            invocationContext.serviceLatencyTimer?.recordMilliseconds(serviceOnlyLatency)
+            invocationContext.outwardsServiceCallLatencySumTimer?.recordMilliseconds(serviceCallLatency)
+            invocationContext.outwardsServiceCallRetryWaitSumTimer?.recordMilliseconds(retryWaitLatency)
+            
+            if status.code >= 200 && status.code < 300 {
+                invocationContext.successCounter?.increment()
+            } else if status.code >= 400 && status.code < 500 {
+                invocationContext.failure4XXCounter?.increment()
+            } else {
+                invocationContext.failure5XXCounter?.increment()
+            }
+        }
+        
         context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
                                                                   status: status,
                                                                   headers: headers))), promise: nil)
@@ -145,5 +213,11 @@ public struct StandardHTTP1ResponseHandler<
                           promise: promise)
         
         return bodySize
+    }
+}
+
+private extension TimeInterval {
+    var milliseconds: Int {
+        return Int(self * timeIntervalToMilliseconds)
     }
 }

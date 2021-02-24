@@ -59,6 +59,14 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
             self.errorDeterminingOperation = errorDeterminingOperation
             self.matchingOperations = matchingOperations
         }
+        
+        public static var all: MatchingRequests {
+            return .init(matchingOperations: .all)
+        }
+        
+        public static var none: MatchingRequests {
+            return .init(matchingOperations: .none)
+        }
     }
     
     private let successCounterMatchingRequests: MatchingRequests
@@ -66,14 +74,25 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
     private let failure4XXCounterMatchingRequests: MatchingRequests
     private let latencyTimerMatchingRequests: MatchingRequests
     
+    // these are added as a non-breaking change, so by default they are not enabled
+    private let serviceLatencyTimerMatchingRequests: MatchingRequests
+    private let outwardServiceCallLatencySumTimerMatchingRequests: MatchingRequests
+    private let outwardServiceCallRetryWaitSumTimerMatchingRequests: MatchingRequests
+    
     public init(successCounterMatchingRequests: MatchingRequests,
                 failure5XXCounterMatchingRequests: MatchingRequests,
                 failure4XXCounterMatchingRequests: MatchingRequests,
-                latencyTimerMatchingRequests: MatchingRequests) {
+                latencyTimerMatchingRequests: MatchingRequests,
+                serviceLatencyTimerMatchingRequests: MatchingRequests = .none,
+                outwardServiceCallLatencyTimerMatchingRequests: MatchingRequests = .none,
+                outwardServiceCallRetryWaitTimerMatchingRequests: MatchingRequests = .none) {
         self.successCounterMatchingRequests = successCounterMatchingRequests
         self.failure5XXCounterMatchingRequests = failure5XXCounterMatchingRequests
         self.failure4XXCounterMatchingRequests = failure4XXCounterMatchingRequests
         self.latencyTimerMatchingRequests = latencyTimerMatchingRequests
+        self.serviceLatencyTimerMatchingRequests = serviceLatencyTimerMatchingRequests
+        self.outwardServiceCallLatencySumTimerMatchingRequests = outwardServiceCallLatencyTimerMatchingRequests
+        self.outwardServiceCallRetryWaitSumTimerMatchingRequests = outwardServiceCallRetryWaitTimerMatchingRequests
     }
     
     public init(matchingRequests: MatchingRequests = MatchingRequests()) {
@@ -81,6 +100,9 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         self.failure5XXCounterMatchingRequests = matchingRequests
         self.failure4XXCounterMatchingRequests = matchingRequests
         self.latencyTimerMatchingRequests = matchingRequests
+        self.serviceLatencyTimerMatchingRequests = .none
+        self.outwardServiceCallLatencySumTimerMatchingRequests = .none
+        self.outwardServiceCallRetryWaitSumTimerMatchingRequests = .none
     }
     
     public func reportSuccessForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
@@ -97,6 +119,18 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
     
     public func reportLatencyForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
         return isMatchingRequest(request, matchingRequests: latencyTimerMatchingRequests)
+    }
+    
+    public func reportServiceLatencyForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
+        return isMatchingRequest(request, matchingRequests: serviceLatencyTimerMatchingRequests)
+    }
+    
+    public func reportOutwardsServiceCallLatencySumForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
+        return isMatchingRequest(request, matchingRequests: outwardServiceCallLatencySumTimerMatchingRequests)
+    }
+    
+    public func reportOutwardsServiceCallRetryWaitLatencySumForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
+        return isMatchingRequest(request, matchingRequests: outwardServiceCallRetryWaitSumTimerMatchingRequests)
     }
     
     private func isMatchingRequest(_ request: RequestType<OperationIdentifer>, matchingRequests: MatchingRequests) -> Bool {

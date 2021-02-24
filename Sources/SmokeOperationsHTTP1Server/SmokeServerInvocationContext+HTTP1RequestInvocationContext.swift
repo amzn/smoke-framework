@@ -19,15 +19,44 @@ import SmokeHTTP1
 import SmokeOperations
 import Logging
 import NIOHTTP1
+import Metrics
 
 extension SmokeInvocationContext: HTTP1RequestInvocationContext where
         InvocationReportingType: InvocationReportingWithTraceContext,
         InvocationReportingType.TraceContextType.RequestHeadType == HTTPRequestHead,
         InvocationReportingType.TraceContextType.ResponseHeadersType == HTTPHeaders,
-        InvocationReportingType.TraceContextType.ResponseStatusType == HTTPResponseStatus {
+    InvocationReportingType.TraceContextType.ResponseStatusType == HTTPResponseStatus {
     
     public var logger: Logger {
         return self.invocationReporting.logger
+    }
+    
+    public var successCounter: Metrics.Counter? {
+        return self.requestReporting.successCounter
+    }
+    
+    public var failure5XXCounter: Metrics.Counter? {
+        return self.requestReporting.failure5XXCounter
+    }
+    
+    public var failure4XXCounter: Metrics.Counter? {
+        return self.requestReporting.failure4XXCounter
+    }
+    
+    public var latencyTimer: Metrics.Timer? {
+        return self.requestReporting.latencyTimer
+    }
+    
+    public var serviceLatencyTimer: Metrics.Timer? {
+        return self.requestReporting.serviceLatencyTimer
+    }
+    
+    public var outwardsServiceCallLatencySumTimer: Metrics.Timer? {
+        return self.requestReporting.outwardsServiceCallLatencySumTimer
+    }
+    
+    public var outwardsServiceCallRetryWaitSumTimer: Metrics.Timer? {
+        return self.requestReporting.outwardsServiceCallRetryWaitSumTimer
     }
     
     public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus, body: (contentType: String, data: Data)?) {

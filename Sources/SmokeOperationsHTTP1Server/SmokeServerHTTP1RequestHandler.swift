@@ -24,6 +24,7 @@ import SmokeHTTP1
 import ShapeCoding
 import Logging
 import SmokeInvocation
+import SmokeHTTPClient
 
 /**
  Implementation of the HttpRequestHandler protocol that handles an
@@ -68,11 +69,13 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
         handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
-               invocationStrategy: invocationStrategy, requestLogger: requestLogger, eventLoop: nil, internalRequestId: internalRequestId)
+               invocationStrategy: invocationStrategy, requestLogger: requestLogger, eventLoop: nil,
+               outwardsRequestAggregator: nil, internalRequestId: internalRequestId)
     }
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
-                       invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String) {
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?,
+                       outwardsRequestAggregator: OutwardsRequestAggregator?, internalRequestId: String) {
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
         var decoratedRequestLogger: Logger = requestLogger
@@ -81,7 +84,9 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
         
         func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
             return SmokeServerInvocationReporting(logger: logger,
-                                                  internalRequestId: internalRequestId, traceContext: traceContext, eventLoop: eventLoop)
+                                                  internalRequestId: internalRequestId, traceContext: traceContext,
+                                                  eventLoop: eventLoop,
+                                                  outwardsRequestAggregator: outwardsRequestAggregator)
         }
         
         // let it be handled
