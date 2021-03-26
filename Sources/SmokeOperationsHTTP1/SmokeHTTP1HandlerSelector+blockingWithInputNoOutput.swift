@@ -29,6 +29,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
+        - inputLocation: the location in the incoming http request to decode the input from.
      */
     mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
@@ -65,6 +66,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
+        - inputLocation: the location in the incoming http request to decode the input from.
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
