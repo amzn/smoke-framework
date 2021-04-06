@@ -5,27 +5,27 @@ matrix:
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.3.1-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.3-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.3.1-xenial ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.3-xenial ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.3.1-focal ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+      env: DOCKER_IMAGE_TAG=swift:5.3.3-focal ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.3.1-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+      env: DOCKER_IMAGE_TAG=swift:5.3.3-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
     - os: linux
       dist: xenial
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.3.1-centos8 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+      env: DOCKER_IMAGE_TAG=swift:5.3.3-centos8 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
 
     - os: linux
       dist: xenial
@@ -38,6 +38,13 @@ matrix:
       sudo: required
       services: docker
       env: DOCKER_IMAGE_TAG=swift:5.1-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+
+    # Verify against nightly of upcoming Swift 5.4
+    - os: linux
+      dist: xenial
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=swiftlang/swift:nightly-5.4-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
 
     # Use a docker image that contains the SwiftLint executable the verify the code against the linter.
     - os: linux
