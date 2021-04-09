@@ -25,8 +25,14 @@ let package = Package(
             name: "SmokeOperations",
             targets: ["SmokeOperations"]),
         .library(
+            name: "_SmokeOperationsConcurrency",
+            targets: ["_SmokeOperationsConcurrency"]),
+        .library(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
+        .library(
+            name: "_SmokeOperationsHTTP1Concurrency",
+            targets: ["_SmokeOperationsHTTP1Concurrency"]),
         .library(
             name: "SmokeOperationsHTTP1Server",
             targets: ["SmokeOperationsHTTP1Server"]),
@@ -72,12 +78,20 @@ let package = Package(
                 .target(name: "SmokeInvocation"),
             ]),
         .target(
+            name: "_SmokeOperationsConcurrency", dependencies: [
+                .target(name: "SmokeOperations"),
+            ]),
+        .target(
             name: "SmokeOperationsHTTP1", dependencies: [
                 .target(name: "SmokeOperations"),
                 .product(name: "QueryCoding", package: "smoke-http"),
                 .product(name: "HTTPPathCoding", package: "smoke-http"),
                 .product(name: "HTTPHeadersCoding", package: "smoke-http"),
                 .product(name: "SmokeHTTPClient", package: "smoke-http"),
+            ]),
+        .target(
+            name: "_SmokeOperationsHTTP1Concurrency", dependencies: [
+                .target(name: "SmokeOperationsHTTP1"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
