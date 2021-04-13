@@ -134,7 +134,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
         inputHandler: @escaping OperationResultValidatableInputFunction<InputType>,
         inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-        operationDelegate: OperationDelegateType)
+        operationDelegate: OperationDelegateType, ignoreInvocationStrategy: Bool = false)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
     InvocationReportingType == OperationDelegateType.InvocationReportingType,
     ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
@@ -207,12 +207,20 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
             // continue the execution of the request according to the `invocationStrategy`
             // To avoid retaining the original body `Data` object, `body` should not be referenced in this
             // invocation.
-            invocationStrategy.invoke {
+            if ignoreInvocationStrategy {
                 inputDecodeResult.handle(
                     requestHead: requestHead,
                     context: context,
                     responseHandler: responseHandler,
                     operationDelegate: operationDelegate)
+            } else {
+                invocationStrategy.invoke {
+                    inputDecodeResult.handle(
+                        requestHead: requestHead,
+                        context: context,
+                        responseHandler: responseHandler,
+                        operationDelegate: operationDelegate)
+                }
             }
         }
         
