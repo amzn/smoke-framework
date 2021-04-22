@@ -46,7 +46,7 @@ the related Smoke* repositories in action.
 # Getting Started using Code Generation
 
 The Smoke Framework provides a [code generator](https://github.com/amzn/smoke-framework-application-generate) that will
-generate a complete Swift Package Manager repository for a SmokeFrammework-based service from a Swagger 2.0 specification file.
+generate a complete Swift Package Manager repository for a SmokeFramework-based service from a Swagger 2.0 specification file.
 
 See the instructions in the code generator repository on how to get started.
 
@@ -130,19 +130,38 @@ platforms: [
 products: [
 ```
 
-## Step 2: Add an Operation Function
+## Step 2: Add a Context Type
+
+An instance of the context type will be passed to each invocation of an operation that needs to be handled. This instance can be setup to be initialized per invocation or once for the application.
+
+You will need to create this context type. There are no requirements for a type to be passed as a context. The following code shows an example of creating the context type-
+
+```swift
+public struct MyApplicationContext {
+    let logger: Logger
+    // TODO: Add properties to be accessed by the operation handlers
+    
+    public init(logger: Logger) {
+        self.logger = logger
+    }
+}
+```
+
+## Step 3: Add an Operation Function
 
 The next step to using the Smoke Framework is to define one or more functions that will perform the operations
 that your application requires. The following code shows an example of such a function-
 
 ```swift
-func handleTheOperation(input: OperationInput, context: MyApplicationContext) throws -> OperationOutput {
-    return OperationOutput()
+extension MyApplicationContext {
+    func handleTheOperation(input: OperationInput) throws -> OperationOutput {
+        return OperationOutput()
+    }
 }
 ```
 
-This particular operation function accepts the input to the operation and the application-specific context - `MyApplicationContext` - while
-returning the output from the operation. The application-specific context can be any type the application requires to pass application-specific or invocation-specific context to the operation handlers
+This particular operation function accepts the input to the operation and is within an extension of the context (giving it access to any attributes or functions on this type) while
+returning the output from the operation.
 
 For HTTP1, the operation input can conform to [OperationHTTP1InputProtocol](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/OperationHTTP1InputProtocol.swift), which defines how the input type is constructed from
 the HTTP1 request. Similarly, the operation output can conform to [OperationHTTP1OutputProtocol](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/OperationHTTP1OutputProtocol.swift), which defines how to construct
@@ -154,7 +173,7 @@ they are constructed from only one part of the HTTP1 request and response.
 The Smoke Framework also supports additional built-in and custom operation function signatures. See the *The Operation Function*
 and *Extension Points* sections for more information.
 
-## Step 3: Add Handler Selection
+## Step 4: Add Handler Selection
 
 After defining the required operation handlers, it is time to specify how they are selected for incoming requests.
 
@@ -168,9 +187,10 @@ public func addOperations<SelectorType: SmokeHTTP1HandlerSelector>(selector: ino
         where SelectorType.ContextType == MyApplicationContext,
               SelectorType.OperationIdentifer == MyOperations {
     
-    selector.addHandlerForOperation(MyOperations.theOperation, httpMethod: .POST,
-                                   operation: handleTheOperation,
-                                   allowedErrors: [(MyApplicationErrors.unknownResource, 400)])
+    let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
+    selector.addHandlerForOperationProvider(.theOperation, httpMethod: .POST,
+                                            operationProvider: MyApplicationContext.handleTheOperation,
+                                            allowedErrors: allowedErrorsForTheOperation)
 }
 ```
 
@@ -182,7 +202,7 @@ Each handler added requires the following parameters to be specified:
   * The location in the HTTP1 request to construct the operation input type from (only required if the input type conforms to `Codable`)
   * The location in the HTTP1 response that the output type represents (only required if the output type conforms to `Codable`)
 
-## Step 3: Setting up the Application Server
+## Step 5: Setting up the Application Server
 
 The final step is to setup an application as an operation server.
 
@@ -221,7 +241,7 @@ struct MyPerInvocationContextInitializer: SmokeServerPerInvocationContextInitial
     public func getInvocationContext(
         invocationReporting: SmokeServerInvocationReporting<SmokeInvocationTraceContext>) -> MyApplicationContext {
         // create an invocation-specific context to be passed to an operation handler
-        return MyApplicationContext(...)
+        return MyApplicationContext(logger: invocationReporting.logger)
     }
 
     /**
@@ -276,12 +296,12 @@ A default implementation - [SmokeInvocationTraceContext](https://github.com/amzn
 ## The Operation Function
 
 Each handler provides a function to be invoked when the handler is selected. By default, the Smoke
-framework provides four function signatures that this function can conform to-
+framework provides four function signatures declared on the Context Type that this function can conform to-
 
-* `((InputType, ContextType) throws -> ())`: Synchronous method with no output.
-* `((InputType, ContextType) throws -> OutputType)`: Synchronous method with output.
-* `((InputType, ContextType, (Swift.Error?) -> ()) throws -> ())`: Asynchronous method with no output.
-* `((InputType, ContextType, (SmokeResult<OutputType>) -> ()) throws -> ())`: Asynchronous method with output.
+* `((InputType) throws -> ())`: Synchronous method with no output.
+* `((InputType) throws -> OutputType)`: Synchronous method with output.
+* `((InputType, (Swift.Error?) -> ()) throws -> ())`: Asynchronous method with no output.
+* `((InputType, (Result<OutputType, Error>) -> ()) throws -> ())`: Asynchronous method with output.
 
 Due to Swift type inference, a handler can switch between these different signatures without changing the
 handler selector declaration - simply changing the function signature is sufficient.
@@ -306,6 +326,38 @@ handler and operation outputs after receiving from the handler-
 * If an operation output fails its validation call (by throwing an error), the framework will fail the operation
   with a 500 Internal Server Error, indicating an error by the service logic (the framework also logs this event 
   at *Error* level).
+  
+  Additionally, the Smoke Framework provides the option to declare operation handlers outside the Context Type as standalone functions.
+  The Context Type is passed in directly to these functions.
+
+  ```swift
+  func handleTheOperation(input: OperationInput, context: MyApplicationContext) throws -> OperationOutput {
+      return OperationOutput()
+  }
+  ```
+
+  Adding the handler selection is slightly different in this case-
+
+  ```swift
+  import SmokeOperationsHTTP1
+
+  public func addOperations<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
+          where SelectorType.ContextType == MyApplicationContext,
+                SelectorType.OperationIdentifer == MyOperations {
+      
+      let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
+      selector.addHandlerForOperation(.theOperation, httpMethod: .POST,
+                                      operation: handleTheOperation,
+                                      allowedErrors: allowedErrorsForTheOperation)
+  }
+  ```
+  
+ The four function signatures are also available when using this style of operation handlers.
+
+  * `((InputType, ContextType) throws -> ())`: Synchronous method with no output.
+  * `((InputType, ContextType) throws -> OutputType)`: Synchronous method with output.
+  * `((InputType, ContextType, (Swift.Error?) -> ()) throws -> ())`: Asynchronous method with no output.
+  * `((InputType, ContextType, (Result<OutputType, Error>) -> ()) throws -> ())`: Asynchronous method with output.
 
 ## Error Handling
 
