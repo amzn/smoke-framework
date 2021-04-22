@@ -261,7 +261,6 @@ emitted, a `swift-metrics` backend - such as [CloudWatchMetricsFactory](https://
 
 ```swift
 ...
-import SmokeAWSMetrics
 
 struct MyPerInvocationContextInitializer: StandardSmokeServerPerInvocationContextInitializer {
     typealias ContextType = MyApplicationContext
