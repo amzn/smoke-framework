@@ -160,7 +160,7 @@ extension MyApplicationContext {
 }
 ```
 
-This particular operation function accepts the input to the operation and is within an extension of the context (giving it access to any attributes or functions on this type - while
+This particular operation function accepts the input to the operation and is within an extension of the context (giving it access to any attributes or functions on this type) while
 returning the output from the operation.
 
 For HTTP1, the operation input can conform to [OperationHTTP1InputProtocol](https://github.com/amzn/smoke-framework/blob/master/Sources/SmokeOperationsHTTP1/OperationHTTP1InputProtocol.swift), which defines how the input type is constructed from
