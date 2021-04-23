@@ -183,6 +183,21 @@ The Smoke Framework provides the [SmokeHTTP1HandlerSelector](https://github.com/
 ```swift
 import SmokeOperationsHTTP1
 
+public enum MyOperations: String, Hashable, CustomStringConvertible {
+    case theOperation = "TheOperation"
+
+    public var description: String {
+        return rawValue
+    }
+
+    public var operationPath: String {
+        switch self {
+        case .theOperation:
+            return "/theOperation"
+        }
+    }
+}
+
 public extension MyOperations {
     static func addToSmokeServer<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
             where SelectorType.ContextType == MyApplicationContext,
@@ -280,10 +295,12 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
         // set up any of the application-wide context
         
         // for the server, only report the latency metrics
+        // only report 5XX error counts for TheOperation (even if additional operations are added in the future)
+        // only report 4XX error counts for operations other than TheOperation (as they are added in the future)
         self.reportingConfiguration = SmokeReportingConfiguration(
             successCounterMatchingRequests: .none,
-            failure5XXCounterMatchingRequests: .none,
-            failure4XXCounterMatchingRequests: .none,
+            failure5XXCounterMatchingRequests: .onlyForOperations([.theOperation]),
+            failure4XXCounterMatchingRequests: .exceptForOperations([.theOperation]),
             latencyTimerMatchingRequests: .all,
             serviceLatencyTimerMatchingRequests: .all,
             outwardServiceCallLatencyTimerMatchingRequests: .all,

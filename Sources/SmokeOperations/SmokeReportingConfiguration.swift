@@ -39,6 +39,8 @@ public enum RequestType<OperationIdentifer: OperationIdentity>: CustomStringConv
 
 public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity> {
     
+    // TODO: Remove non-inclusive language
+    // https://github.com/amzn/smoke-framework/issues/74
     public enum MatchingOperations {
         case all
         case whitelist(Set<OperationIdentifer>)
@@ -66,6 +68,14 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         
         public static var none: MatchingRequests {
             return .init(matchingOperations: .none)
+        }
+        
+        public static func onlyForOperations(_ operations: Set<OperationIdentifer>) -> MatchingRequests {
+            return .init(matchingOperations: .whitelist(operations))
+        }
+        
+        public static func exceptForOperations(_ operations: Set<OperationIdentifer>) -> MatchingRequests {
+            return .init(matchingOperations: .blacklist(operations))
         }
     }
     
