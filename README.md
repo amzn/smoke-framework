@@ -286,7 +286,7 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
     let reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     let serverName = "MyService"
     // specify the operations initializer
-    let operationsInitializer: OperationsInitializerType = addOperations
+    let operationsInitializer: OperationsInitializerType = MyOperations.addToSmokeServer
 
     /**
      On application startup.
