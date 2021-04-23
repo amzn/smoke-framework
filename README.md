@@ -183,14 +183,16 @@ The Smoke Framework provides the [SmokeHTTP1HandlerSelector](https://github.com/
 ```swift
 import SmokeOperationsHTTP1
 
-public func addOperations<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
-        where SelectorType.ContextType == MyApplicationContext,
-              SelectorType.OperationIdentifer == MyOperations {
-    
-    let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
-    selector.addHandlerForOperationProvider(.theOperation, httpMethod: .POST,
-                                            operationProvider: MyApplicationContext.handleTheOperation,
-                                            allowedErrors: allowedErrorsForTheOperation)
+public extension MyOperations {
+    static func addToSmokeServer<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
+            where SelectorType.ContextType == MyApplicationContext,
+                  SelectorType.OperationIdentifer == MyOperations {
+        
+        let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
+        selector.addHandlerForOperationProvider(.theOperation, httpMethod: .POST,
+                                                operationProvider: MyApplicationContext.handleTheOperation,
+                                                allowedErrors: allowedErrorsForTheOperation)
+    }
 }
 ```
 
@@ -213,13 +215,13 @@ import AsyncHTTPClient
 import NIO
 import SmokeHTTP1
 
-struct MyPerInvocationContextInitializer: StandardSmokeServerPerInvocationContextInitializer {
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
     typealias ContextType = MyApplicationContext
     typealias OperationIdentifer = MyOperations
     
     let serverName = "MyService"
     // specify the operations initializer
-    let operationsInitializer: OperationsInitializerType = addOperations
+    let operationsInitializer: OperationsInitializerType = MyOperations.addToSmokeServer
 
     /**
      On application startup.
@@ -262,7 +264,7 @@ emitted, a `swift-metrics` backend - such as [CloudWatchMetricsFactory](https://
 ```swift
 ...
 
-struct MyPerInvocationContextInitializer: StandardSmokeServerPerInvocationContextInitializer {
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
     typealias ContextType = MyApplicationContext
     typealias OperationIdentifer = MyOperations
     

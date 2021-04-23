@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// StandardSmokeServerPerInvocationContextInitializer.swift
+// StandardSmokeServerStaticContextInitializer.swift
 // SmokeOperationsHTTP1Server
 //
 
@@ -21,12 +21,12 @@ import SmokeHTTP1
 import SmokeOperations
 
 /**
-  A protocol that is derived from `SmokeServerPerInvocationContextInitializerV2` that uses the `StandardSmokeHTTP1HandlerSelector`
+  A protocol that is derived from `SmokeServerStaticContextInitializerV2` that uses the `StandardSmokeHTTP1HandlerSelector`
   type as the `SelectorType` and `JSONPayloadHTTP1OperationDelegate` as the `DefaultOperationDelegateType`.
  
   This reduces the configuration required for applications that use these standard components.
  */
-public protocol StandardSmokeServerPerInvocationContextInitializer: SmokeServerPerInvocationContextInitializerV2
+public protocol StandardJSONSmokeServerStaticContextInitializer: SmokeServerStaticContextInitializerV2
         where SelectorType ==
                 StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>,
                                                   OperationIdentifer> {
@@ -36,7 +36,7 @@ public protocol StandardSmokeServerPerInvocationContextInitializer: SmokeServerP
     typealias OperationsInitializerType = ((inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void)
 }
 
-public extension StandardSmokeServerPerInvocationContextInitializer {
+public extension StandardJSONSmokeServerStaticContextInitializer {
     var handlerSelectorProvider: (() -> SelectorType) {
         func provider() -> SelectorType {
             return SelectorType(defaultOperationDelegate: self.defaultOperationDelegate,
