@@ -15,7 +15,7 @@
 // _SmokeOperationsConcurrency
 //
 
-#if compiler(>=5.4) && $AsyncAwait
+#if compiler(>=5.5) && $AsyncAwait
 
 import Foundation
 import Logging
@@ -53,7 +53,7 @@ public extension OperationHandler {
         func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
                                  responseHandler: ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-            Task.runDetached {
+            detach {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
                     try await operation(input, context, invocationContext.invocationReporting)
