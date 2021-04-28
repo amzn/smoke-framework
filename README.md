@@ -183,14 +183,31 @@ The Smoke Framework provides the [SmokeHTTP1HandlerSelector](https://github.com/
 ```swift
 import SmokeOperationsHTTP1
 
-public func addOperations<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
-        where SelectorType.ContextType == MyApplicationContext,
-              SelectorType.OperationIdentifer == MyOperations {
-    
-    let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
-    selector.addHandlerForOperationProvider(.theOperation, httpMethod: .POST,
-                                            operationProvider: MyApplicationContext.handleTheOperation,
-                                            allowedErrors: allowedErrorsForTheOperation)
+public enum MyOperations: String, Hashable, CustomStringConvertible {
+    case theOperation = "TheOperation"
+
+    public var description: String {
+        return rawValue
+    }
+
+    public var operationPath: String {
+        switch self {
+        case .theOperation:
+            return "/theOperation"
+        }
+    }
+}
+
+public extension MyOperations {
+    static func addToSmokeServer<SelectorType: SmokeHTTP1HandlerSelector>(selector: inout SelectorType)
+            where SelectorType.ContextType == MyApplicationContext,
+                  SelectorType.OperationIdentifer == MyOperations {
+        
+        let allowedErrorsForTheOperation: [(MyApplicationErrors, Int)] = [(.unknownResource, 404)]
+        selector.addHandlerForOperationProvider(.theOperation, httpMethod: .POST,
+                                                operationProvider: MyApplicationContext.handleTheOperation,
+                                                allowedErrors: allowedErrorsForTheOperation)
+    }
 }
 ```
 
@@ -208,31 +225,24 @@ The final step is to setup an application as an operation server.
 
 ```swift
 import Foundation
-import SmokeOperationsHTTP1
 import SmokeOperationsHTTP1Server
 import AsyncHTTPClient
 import NIO
 import SmokeHTTP1
 
-typealias MyOperationDelegate = JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>
-
-struct MyPerInvocationContextInitializer: SmokeServerPerInvocationContextInitializer {
-    typealias SelectorType =
-        StandardSmokeHTTP1HandlerSelector<MyApplicationContext, MyOperationDelegate,
-                                          MyOperations>
-    // add any application-wide context
-    let handlerSelector: SelectorType
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
+    typealias ContextType = MyApplicationContext
+    typealias OperationIdentifer = MyOperations
+    
+    let serverName = "MyService"
+    // specify the operations initializer
+    let operationsInitializer: OperationsInitializerType = MyOperations.addToSmokeServer
 
     /**
      On application startup.
      */
-    init(eventLoop: EventLoop) throws {
+    init(eventLoopGroup: EventLoopGroup) throws {
         // set up any of the application-wide context
-    
-        var selector = SelectorType(defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
-        addOperations(selector: &selector)
-
-        self.handlerSelector = selector
     }
 
     /**
@@ -259,6 +269,49 @@ You can now run the application and the server will start up on port 8080. The a
 `SmokeHTTP1Server.runAsOperationServer` call. When the server has been fully shutdown and has
 completed all requests, `onShutdown` will be called. In this function you can close/shutdown
 any clients or credentials that were created on application startup.
+
+## Step 6: Add Reporting Configuration (Optional)
+
+An optional configuration step is to setup the reporting configuration for metrics emitted by the Smoke Framework.
+This involves overriding the default `reportingConfiguration` attribute on the initializer. For the metrics to be
+emitted, a `swift-metrics` backend - such as [CloudWatchMetricsFactory](https://github.com/amzn/smoke-aws/blob/main/Sources/SmokeAWSMetrics/CloudWatchMetricsFactory.swift) - will need to be initialized.
+
+```swift
+...
+
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
+    typealias ContextType = MyApplicationContext
+    typealias OperationIdentifer = MyOperations
+    
+    let reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
+    let serverName = "MyService"
+    // specify the operations initializer
+    let operationsInitializer: OperationsInitializerType = MyOperations.addToSmokeServer
+
+    /**
+     On application startup.
+     */
+    init(eventLoopGroup: EventLoopGroup) throws {
+        // set up any of the application-wide context
+        
+        // for the server, only report the latency metrics
+        // only report 5XX error counts for TheOperation (even if additional operations are added in the future)
+        // only report 4XX error counts for operations other than TheOperation (as they are added in the future)
+        self.reportingConfiguration = SmokeReportingConfiguration(
+            successCounterMatchingRequests: .none,
+            failure5XXCounterMatchingRequests: .onlyForOperations([.theOperation]),
+            failure4XXCounterMatchingRequests: .exceptForOperations([.theOperation]),
+            latencyTimerMatchingRequests: .all,
+            serviceLatencyTimerMatchingRequests: .all,
+            outwardServiceCallLatencyTimerMatchingRequests: .all,
+            outwardServiceCallRetryWaitTimerMatchingRequests: .all)
+    }
+
+    ...
+}
+
+SmokeHTTP1Server.runAsOperationServer(MyPerInvocationContextInitializer.init)
+```
 
 # Further Concepts
 
