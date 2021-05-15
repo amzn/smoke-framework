@@ -92,6 +92,7 @@ let package = Package(
         .target(
             name: "_SmokeOperationsHTTP1Concurrency", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
+                .target(name: "_SmokeOperationsConcurrency"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
