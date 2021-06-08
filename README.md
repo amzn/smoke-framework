@@ -3,9 +3,9 @@
 <img src="https://travis-ci.com/amzn/smoke-framework.svg?branch=master" alt="Build - Master Branch">
 </a>
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-5.1|5.2|5.3|5.4-orange.svg?style=flat" alt="Swift 5.1, 5.2, 5.3 and 5.4 Tested">
+<img src="https://img.shields.io/badge/swift-5.2|5.3|5.4-orange.svg?style=flat" alt="Swift 5.2, 5.3 and 5.4 Tested">
 </a>
-<img src="https://img.shields.io/badge/ubuntu-16.04|18.04|20.04-yellow.svg?style=flat" alt="Ubuntu 16.04, 18.04 and 20.04 Tested">
+<img src="https://img.shields.io/badge/ubuntu-18.04|20.04-yellow.svg?style=flat" alt="Ubuntu 16.04 and 20.04 Tested">
 <img src="https://img.shields.io/badge/CentOS-8-yellow.svg?style=flat" alt="CentOS 8 Tested">
 <img src="https://img.shields.io/badge/AmazonLinux-2-yellow.svg?style=flat" alt="Amazon Linux 2 Tested">
 <a href="https://gitter.im/SmokeServerSide">
@@ -59,8 +59,6 @@ These steps assume you have just created a new swift application using `swift pa
 The Smoke Framework uses the Swift Package Manager. To use the framework, add the following dependency
 to your Package.swift-
 
-For swift-tools version 5.2 and greater-
-
 ```swift
 dependencies: [
     .package(url: "https://github.com/amzn/smoke-framework.git", from: "2.0.0")
@@ -70,18 +68,6 @@ dependencies: [
     ..., 
     .product(name: "SmokeOperationsHTTP1Server", package: "smoke-framework"),
 ]),
-```
-
-For swift-tools version 5.1 and prior-
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/amzn/smoke-framework.git", from: "2.0.0")
-]
-
-.target(
-    name: ...,
-    dependencies: [..., "SmokeOperationsHTTP1Server"]),
 ```
 
 
@@ -110,8 +96,6 @@ swiftLanguageVersions: [.v5]
 
 Specify the platforms supported by the application-
 
-#### For Swift 5.2
-
 ```swift
 name: "XXX",
 platforms: [
@@ -120,15 +104,6 @@ platforms: [
 products: [
 ```
 
-#### For Swift 5.1 or Swift 5.0
-
-```swift
-name: "XXX",
-platforms: [
-  .macOS(.v10_12), .iOS(.v10)
-],
-products: [
-```
 
 ## Step 2: Add a Context Type
 

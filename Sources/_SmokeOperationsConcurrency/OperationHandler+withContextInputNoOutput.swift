@@ -53,7 +53,7 @@ public extension OperationHandler {
         func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
                                  responseHandler: ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-            detach {
+            Task.detached {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
                     try await operation(input, context, invocationContext.invocationReporting)
