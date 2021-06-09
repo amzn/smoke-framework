@@ -38,6 +38,7 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
             reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,

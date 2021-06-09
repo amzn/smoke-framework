@@ -35,6 +35,7 @@ public extension SmokeHTTP1HandlerSelector {
           from the operation and their error codes.
         - inputLocation: the location in the incoming http request to decode the input from.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
@@ -73,6 +74,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
@@ -111,6 +113,7 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
         ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
@@ -139,6 +142,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
         ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: HTTP1OperationDelegate>(
