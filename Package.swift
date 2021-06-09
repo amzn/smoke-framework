@@ -18,7 +18,7 @@ import PackageDescription
 let package = Package(
     name: "smoke-framework",
     platforms: [
-      .macOS(.v10_13), .iOS(.v10)
+        .macOS(.v10_13), .iOS(.v10), .tvOS(.v10), .watchOS(.v3)
     ],
     products: [
         .library(

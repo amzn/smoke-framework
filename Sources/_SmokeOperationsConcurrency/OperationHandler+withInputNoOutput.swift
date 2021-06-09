@@ -38,6 +38,7 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
+    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
             reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
@@ -57,6 +58,7 @@ public extension OperationHandler {
         func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
                                  responseHandler: ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+#if os(Linux) || os(Windows)
             Task.detached {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
@@ -78,6 +80,30 @@ public extension OperationHandler {
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
             }
+#else
+            // TODO: Workaround for XCode 13 Beta 1; remove when concurrency spelling has stablized
+            asyncDetached {
+                let handlerResult: NoOutputOperationHandlerResult<ErrorType>
+                do {
+                    try await operation(input, context)
+                    
+                    handlerResult = .success
+                } catch let smokeReturnableError as SmokeReturnableError {
+                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                } catch SmokeOperationsError.validationError(reason: let reason) {
+                    handlerResult = .validationError(reason)
+                } catch {
+                    handlerResult = .internalServerError(error)
+                }
+                
+                OperationHandler.handleNoOutputOperationHandlerResult(
+                    handlerResult: handlerResult,
+                    operationDelegate: operationDelegate,
+                    requestHead: requestHead,
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
+            }
+#endif
         }
         
         self.init(serverName: serverName,
