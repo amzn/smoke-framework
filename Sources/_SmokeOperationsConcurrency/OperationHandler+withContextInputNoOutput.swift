@@ -54,6 +54,7 @@ public extension OperationHandler {
         func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
                                  responseHandler: ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+#if os(Linux) || os(Windows)
             Task.detached {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
@@ -75,6 +76,30 @@ public extension OperationHandler {
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
             }
+#else
+            // TODO: Workaround for XCode 13 Beta 1; remove when concurrency spelling has stablized
+            asyncDetached {
+                let handlerResult: NoOutputOperationHandlerResult<ErrorType>
+                do {
+                    try await operation(input, context, invocationContext.invocationReporting)
+                    
+                    handlerResult = .success
+                } catch let smokeReturnableError as SmokeReturnableError {
+                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                } catch SmokeOperationsError.validationError(reason: let reason) {
+                    handlerResult = .validationError(reason)
+                } catch {
+                    handlerResult = .internalServerError(error)
+                }
+                
+                OperationHandler.handleNoOutputOperationHandlerResult(
+                    handlerResult: handlerResult,
+                    operationDelegate: operationDelegate,
+                    requestHead: requestHead,
+                    responseHandler: responseHandler,
+                    invocationContext: invocationContext)
+            }
+#endif
         }
         
         self.init(serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,

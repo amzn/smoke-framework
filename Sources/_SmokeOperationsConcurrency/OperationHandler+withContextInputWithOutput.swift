@@ -57,6 +57,7 @@ public extension OperationHandler {
         func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
                                  responseHandler: OperationDelegateType.ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+#if os(Linux) || os(Windows)
             Task.detached {
                 let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                 do {
@@ -79,6 +80,31 @@ public extension OperationHandler {
                     outputHandler: outputHandler,
                     invocationContext: invocationContext)
             }
+#else
+            // TODO: Workaround for XCode 13 Beta 1; remove when concurrency spelling has stablized
+            asyncDetached {
+                let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
+                do {
+                    let output = try await operation(input, context, invocationContext.invocationReporting)
+                    
+                    handlerResult = .success(output)
+                } catch let smokeReturnableError as SmokeReturnableError {
+                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                } catch SmokeOperationsError.validationError(reason: let reason) {
+                    handlerResult = .validationError(reason)
+                } catch {
+                    handlerResult = .internalServerError(error)
+                }
+                
+                OperationHandler.handleWithOutputOperationHandlerResult(
+                    handlerResult: handlerResult,
+                    operationDelegate: operationDelegate,
+                    requestHead: requestHead,
+                    responseHandler: responseHandler,
+                    outputHandler: outputHandler,
+                    invocationContext: invocationContext)
+            }
+#endif
         }
         
         self.init(serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
