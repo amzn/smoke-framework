@@ -28,7 +28,8 @@ public extension SmokeHTTP1HandlerSelector {
      Adds a handler for the specified uri and http method.
  
      - Parameters:
-        - uri: The uri to add the handler for.
+        - operationIdentifer: The identifer for the handler being added.
+        - httpMethod: The HTTP method this handler will respond to.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
@@ -65,7 +66,8 @@ public extension SmokeHTTP1HandlerSelector {
      Adds a handler for the specified uri and http method.
  
      - Parameters:
-        - uri: The uri to add the handler for.
+        - operationIdentifer: The identifer for the handler being added.
+        - httpMethod: The HTTP method this handler will respond to.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
@@ -107,7 +109,8 @@ public extension SmokeHTTP1HandlerSelector {
      Adds a handler for the specified uri and http method.
  
      - Parameters:
-        - uri: The uri to add the handler for.
+        - operationIdentifer: The identifer for the handler being added.
+        - httpMethod: The HTTP method this handler will respond to.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
@@ -134,7 +137,8 @@ public extension SmokeHTTP1HandlerSelector {
      Adds a handler for the specified uri and http method.
  
      - Parameters:
-        - uri: The uri to add the handler for.
+        - operationIdentifer: The identifer for the handler being added.
+        - httpMethod: The HTTP method this handler will respond to.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.

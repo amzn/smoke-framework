@@ -112,8 +112,8 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
      Adds a handler for the specified uri and http method.
  
      - Parameters:
-        - uri: The uri to add the handler for.
-        - httpMethod: the http method to add the handler for.
+        - operationIdentifer: The identifer for the handler being added.
+        - httpMethod: The HTTP method this handler will respond to.
         - handler: the handler to add.
      */
     public mutating func addHandlerForOperation(_ operationIdentifer: OperationIdentifer,
