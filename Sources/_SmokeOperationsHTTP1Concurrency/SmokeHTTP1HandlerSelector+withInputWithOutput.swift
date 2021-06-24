@@ -15,7 +15,7 @@
 // _SmokeOperationsHTTP1Concurrency
 //
 
-#if compiler(>=5.5) && $AsyncAwait
+#if compiler(>=5.5)
 
 import Foundation
 import SmokeOperations
@@ -37,7 +37,7 @@ public extension SmokeHTTP1HandlerSelector {
         - inputLocation: the location in the incoming http request to decode the input from.
         - outputLocation: the location in the outgoing http response to place the encoded output.
      */
-    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
+    @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableCodable, OutputType: ValidatableCodable,
         ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
@@ -93,7 +93,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
-    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
+    @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableCodable, OutputType: ValidatableCodable,
         ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
@@ -147,7 +147,7 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
      */
-    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
+    @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
         OutputType: ValidatableOperationHTTP1OutputProtocol,
         ErrorType: ErrorIdentifiableByDescription>(
@@ -180,7 +180,7 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
-    @available(macOS 9999, iOS 9999, watchOS 9999, tvOS 9999, *)
+    @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
         OutputType: ValidatableOperationHTTP1OutputProtocol,
         ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
