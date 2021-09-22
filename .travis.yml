@@ -5,22 +5,28 @@ matrix:
       dist: bionic
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.4.0-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+      env: DOCKER_IMAGE_TAG=swift:5.5.0-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: bionic
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.4.0-focal ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
+      env: DOCKER_IMAGE_TAG=swift:5.5.0-focal ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
     - os: linux
       dist: bionic
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.4.0-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+      env: DOCKER_IMAGE_TAG=swift:5.5.0-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
     - os: linux
       dist: bionic
       sudo: required
       services: docker
-      env: DOCKER_IMAGE_TAG=swift:5.4.0-centos8 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+      env: DOCKER_IMAGE_TAG=swift:5.5.0-centos8 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
+
+    - os: linux
+      dist: bionic
+      sudo: required
+      services: docker
+      env: DOCKER_IMAGE_TAG=swift:5.4.3-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
       
     - os: linux
       dist: bionic
@@ -33,13 +39,6 @@ matrix:
       sudo: required
       services: docker
       env: DOCKER_IMAGE_TAG=swift:5.2.5-bionic ONLY_RUN_SWIFT_LINT=no USE_APT_GET=yes
-
-    # Verify next version of Swift (5.5)
-    - os: linux
-      dist: bionic
-      sudo: required
-      services: docker
-      env: DOCKER_IMAGE_TAG=swiftlang/swift:nightly-5.5-amazonlinux2 ONLY_RUN_SWIFT_LINT=no USE_APT_GET=no
 
     # Use a docker image that contains the SwiftLint executable the verify the code against the linter.
     - os: linux

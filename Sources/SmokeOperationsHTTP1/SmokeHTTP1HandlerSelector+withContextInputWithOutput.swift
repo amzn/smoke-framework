@@ -11,11 +11,11 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeHTTP1HandlerSelector+withContextInputNoOutput.swift
-// _SmokeOperationsHTTP1Concurrency
+// SmokeHTTP1HandlerSelector+withContextInputWithOutput.swift
+// SmokeOperationsHTTP1
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import SmokeOperations
@@ -35,14 +35,17 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - inputLocation: the location in the incoming http request to decode the input from.
+        - outputLocation: the location in the outgoing http response to place the encoded output.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
+    mutating func addHandlerForOperation<InputType: ValidatableCodable, OutputType: ValidatableCodable,
+        ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> ()),
+        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> OutputType),
         allowedErrors: [(ErrorType, Int)],
-        inputLocation: OperationInputHTTPLocation) {
+        inputLocation: OperationInputHTTPLocation,
+        outputLocation: OperationOutputHTTPLocation) {
         
         // don't capture self
         let delegateToUse = defaultOperationDelegate
@@ -53,10 +56,22 @@ public extension SmokeHTTP1HandlerSelector {
                 location: inputLocation)
         }
         
+        func outputHandler(requestHead: DefaultOperationDelegateType.RequestHeadType,
+                           output: OutputType,
+                           responseHandler: DefaultOperationDelegateType.ResponseHandlerType,
+                           invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+            delegateToUse.handleResponseForOperation(requestHead: requestHead,
+                                                     location: outputLocation,
+                                                     output: output,
+                                                     responseHandler: responseHandler,
+                                                     invocationContext: invocationContext)
+        }
+        
         let handler = OperationHandler(
             serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
             inputProvider: inputProvider,
             operation: operation,
+            outputHandler: outputHandler,
             allowedErrors: allowedErrors,
             operationDelegate: defaultOperationDelegate)
         
@@ -73,17 +88,19 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - inputLocation: the location in the incoming http request to decode the input from.
+        - outputLocation: the location in the outgoing http response to place the encoded output.
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    mutating func addHandlerForOperation<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: HTTP1OperationDelegate>(
+    mutating func addHandlerForOperation<InputType: ValidatableCodable, OutputType: ValidatableCodable,
+        ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> ()),
+        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> OutputType),
         allowedErrors: [(ErrorType, Int)],
         inputLocation: OperationInputHTTPLocation,
+        outputLocation: OperationOutputHTTPLocation,
         operationDelegate: OperationDelegateType)
         where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
         DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
@@ -96,10 +113,22 @@ public extension SmokeHTTP1HandlerSelector {
                     location: inputLocation)
             }
             
+            func outputHandler(requestHead: OperationDelegateType.RequestHeadType,
+                               output: OutputType,
+                               responseHandler: OperationDelegateType.ResponseHandlerType,
+                               invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+                operationDelegate.handleResponseForOperation(requestHead: requestHead,
+                                                             location: outputLocation,
+                                                             output: output,
+                                                             responseHandler: responseHandler,
+                                                             invocationContext: invocationContext)
+            }
+            
             let handler = OperationHandler(
             serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
                 inputProvider: inputProvider,
                 operation: operation,
+                outputHandler: outputHandler,
                 allowedErrors: allowedErrors,
                 operationDelegate: operationDelegate)
             
@@ -118,16 +147,18 @@ public extension SmokeHTTP1HandlerSelector {
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
+        OutputType: ValidatableOperationHTTP1OutputProtocol,
         ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> ()),
+        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> OutputType),
         allowedErrors: [(ErrorType, Int)]) {
         
         let handler = OperationHandler(
             serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
             inputProvider: defaultOperationDelegate.getInputForOperation,
             operation: operation,
+            outputHandler: defaultOperationDelegate.handleResponseForOperation,
             allowedErrors: allowedErrors,
             operationDelegate: defaultOperationDelegate)
         
@@ -148,11 +179,11 @@ public extension SmokeHTTP1HandlerSelector {
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperation<InputType: ValidatableOperationHTTP1InputProtocol,
-        ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: HTTP1OperationDelegate>(
+        OutputType: ValidatableOperationHTTP1OutputProtocol,
+        ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> ()),
+        operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> OutputType),
         allowedErrors: [(ErrorType, Int)],
         operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
@@ -163,6 +194,7 @@ public extension SmokeHTTP1HandlerSelector {
             serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
             inputProvider: operationDelegate.getInputForOperation,
             operation: operation,
+            outputHandler: operationDelegate.handleResponseForOperation,
             allowedErrors: allowedErrors,
             operationDelegate: operationDelegate)
         

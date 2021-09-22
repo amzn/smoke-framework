@@ -11,21 +11,20 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// OperationHandler+withInputWithOutput.swift
-// _SmokeOperationsConcurrency
+// OperationHandler+withInputNoOutput.swift
+// SmokeOperations
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import Logging
 import SmokeOperations
-import _Concurrency
 
 public extension OperationHandler {
     /**
-      Initializer for async operation handler that has input returns
-      a result body.
+       Initializer for async operation handler that has input returns
+       a result with an empty body.
      
      - Parameters:
         - serverName: the name of the server this operation is part of.
@@ -33,20 +32,17 @@ public extension OperationHandler {
         - reportingConfiguration: the configuration for how operations on this server should be reported on.
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
-        - outputHandler: function that completes the response with the provided output.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: OperationDelegate>(
+    init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
             reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
-            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping (InputType, ContextType) async throws -> OutputType,
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
+            inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
+            operation: @escaping ((InputType, ContextType) async throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
@@ -55,18 +51,18 @@ public extension OperationHandler {
         
         /**
          * The wrapped input handler takes the provided operation handler and wraps it so that if it
-         * returns, the responseHandler is called with the result. If the provided operation
+         * returns, the responseHandler is called to indicate success. If the provided operation
          * throws an error, the responseHandler is called with that error.
          */
-        func wrappedInputHandler (input: InputType, requestHead: RequestHeadType, context: ContextType,
-                                  responseHandler: OperationDelegateType.ResponseHandlerType,
-                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+        func wrappedInputHandler(input: InputType, requestHead: RequestHeadType, context: ContextType,
+                                 responseHandler: ResponseHandlerType,
+                                 invocationContext: SmokeInvocationContext<InvocationReportingType>) {
             Task {
-                let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
+                let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
-                    let output = try await operation(input, context)
+                    try await operation(input, context)
                     
-                    handlerResult = .success(output)
+                    handlerResult = .success
                 } catch let smokeReturnableError as SmokeReturnableError {
                     handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
                 } catch SmokeOperationsError.validationError(reason: let reason) {
@@ -75,12 +71,11 @@ public extension OperationHandler {
                     handlerResult = .internalServerError(error)
                 }
                 
-                OperationHandler.handleWithOutputOperationHandlerResult(
+                OperationHandler.handleNoOutputOperationHandlerResult(
                     handlerResult: handlerResult,
                     operationDelegate: operationDelegate,
                     requestHead: requestHead,
                     responseHandler: responseHandler,
-                    outputHandler: outputHandler,
                     invocationContext: invocationContext)
             }
         }
