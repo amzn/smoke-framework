@@ -19,7 +19,6 @@
 
 import Foundation
 import Logging
-import SmokeOperations
 
 public extension OperationHandler {
     /**

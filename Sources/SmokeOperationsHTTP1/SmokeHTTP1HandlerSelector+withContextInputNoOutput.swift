@@ -21,7 +21,6 @@ import Foundation
 import SmokeOperations
 import NIOHTTP1
 import Logging
-import SmokeOperationsHTTP1
 
 public extension SmokeHTTP1HandlerSelector {
     /**
