@@ -19,7 +19,6 @@
 
 import Foundation
 import SmokeOperations
-import _SmokeOperationsConcurrency
 import NIOHTTP1
 import Logging
 import SmokeOperationsHTTP1
