@@ -12,17 +12,15 @@
 // permissions and limitations under the License.
 //
 // SmokeHTTP1HandlerSelector+withInputWithOutput.swift
-// _SmokeOperationsHTTP1Concurrency
+// SmokeOperationsHTTP1
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import SmokeOperations
-import _SmokeOperationsConcurrency
 import NIOHTTP1
 import Logging
-import SmokeOperationsHTTP1
 
 public extension SmokeHTTP1HandlerSelector {
     /**

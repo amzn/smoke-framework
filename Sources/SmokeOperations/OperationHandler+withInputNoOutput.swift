@@ -11,16 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// OperationHandler+withContextInputNoOutput.swift
-// _SmokeOperationsConcurrency
+// OperationHandler+withInputNoOutput.swift
+// SmokeOperations
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import Logging
-import SmokeOperations
-import _Concurrency
 
 public extension OperationHandler {
     /**
@@ -28,6 +26,9 @@ public extension OperationHandler {
        a result with an empty body.
      
      - Parameters:
+        - serverName: the name of the server this operation is part of.
+        - operationIdentifer: the identifer for the operation being handled.
+        - reportingConfiguration: the configuration for how operations on this server should be reported on.
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
@@ -37,9 +38,10 @@ public extension OperationHandler {
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer, reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
+            serverName: String, operationIdentifer: OperationIdentifer,
+            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
             inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping ((InputType, ContextType, InvocationReportingType) async throws -> ()),
+            operation: @escaping ((InputType, ContextType) async throws -> ()),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where RequestHeadType == OperationDelegateType.RequestHeadType,
@@ -57,7 +59,7 @@ public extension OperationHandler {
             Task {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
-                    try await operation(input, context, invocationContext.invocationReporting)
+                    try await operation(input, context)
                     
                     handlerResult = .success
                 } catch let smokeReturnableError as SmokeReturnableError {
@@ -77,7 +79,9 @@ public extension OperationHandler {
             }
         }
         
-        self.init(serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
+        self.init(serverName: serverName,
+                  operationIdentifer: operationIdentifer,
+                  reportingConfiguration: reportingConfiguration,
                   inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,
                   operationDelegate: operationDelegate,

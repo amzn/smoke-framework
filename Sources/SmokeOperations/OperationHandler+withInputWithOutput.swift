@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 // OperationHandler+withInputWithOutput.swift
-// _SmokeOperationsConcurrency
+// SmokeOperations
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import Logging
-import SmokeOperations
-import _Concurrency
 
 public extension OperationHandler {
     /**

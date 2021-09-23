@@ -11,18 +11,16 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeHTTP1HandlerSelector+fromProviderWithInputNoOutput.swift
-// _SmokeOperationsHTTP1Concurrency
+// SmokeHTTP1HandlerSelector+fromProviderWithInputWithOutput.swift
+// SmokeOperationsHTTP1
 //
 
-#if compiler(>=5.5)
+#if compiler(>=5.5) && canImport(_Concurrency)
 
 import Foundation
 import SmokeOperations
-import _SmokeOperationsConcurrency
 import NIOHTTP1
 import Logging
-import SmokeOperationsHTTP1
 
 public extension SmokeHTTP1HandlerSelector {
     /**
@@ -35,24 +33,28 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - inputLocation: the location in the incoming http request to decode the input from.
+        - outputLocation: the location in the outgoing http response to place the encoded output.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
+    mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, OutputType: ValidatableCodable,
+            ErrorType: ErrorIdentifiableByDescription>(
             _ operationIdentifer: OperationIdentifer,
             httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> Void)),
+            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> OutputType)),
             allowedErrors: [(ErrorType, Int)],
-            inputLocation: OperationInputHTTPLocation) {
-        func operation(input: InputType, context: ContextType) async throws {
+            inputLocation: OperationInputHTTPLocation,
+            outputLocation: OperationOutputHTTPLocation) {
+        func operation(input: InputType, context: ContextType) async throws -> OutputType {
             let innerOperation = operationProvider(context)
-            try await innerOperation(input)
+            return try await innerOperation(input)
         }
         
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
                                allowedErrors: allowedErrors,
-                               inputLocation: inputLocation)
+                               inputLocation: inputLocation,
+                               outputLocation: outputLocation)
     }
     
     /**
@@ -65,31 +67,34 @@ public extension SmokeHTTP1HandlerSelector {
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
         - inputLocation: the location in the incoming http request to decode the input from.
+        - outputLocation: the location in the outgoing http response to place the encoded output.
         - operationDelegate: an operation-specific delegate to use when
           handling the operation.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: HTTP1OperationDelegate>(
+    mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, OutputType: ValidatableCodable,
+            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
             _ operationIdentifer: OperationIdentifer,
             httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> Void)),
+            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> OutputType)),
             allowedErrors: [(ErrorType, Int)],
             inputLocation: OperationInputHTTPLocation,
+            outputLocation: OperationOutputHTTPLocation,
             operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
     DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        func operation(input: InputType, context: ContextType) async throws {
+        func operation(input: InputType, context: ContextType) async throws -> OutputType {
             let innerOperation = operationProvider(context)
-            try await innerOperation(input)
+            return try await innerOperation(input)
         }
-        
+            
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
                                allowedErrors: allowedErrors,
                                inputLocation: inputLocation,
+                               outputLocation: outputLocation,
                                operationDelegate: operationDelegate)
     }
     
@@ -104,14 +109,16 @@ public extension SmokeHTTP1HandlerSelector {
           from the operation and their error codes.
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    mutating func addHandlerForOperationProvider<InputType: ValidatableOperationHTTP1InputProtocol, ErrorType: ErrorIdentifiableByDescription>(
+    mutating func addHandlerForOperationProvider<InputType: ValidatableOperationHTTP1InputProtocol,
+            OutputType: ValidatableOperationHTTP1OutputProtocol,
+            ErrorType: ErrorIdentifiableByDescription>(
             _ operationIdentifer: OperationIdentifer,
             httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> Void)),
+            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> OutputType)),
             allowedErrors: [(ErrorType, Int)]) {
-        func operation(input: InputType, context: ContextType) async throws {
+        func operation(input: InputType, context: ContextType) async throws -> OutputType {
             let innerOperation = operationProvider(context)
-            try await innerOperation(input)
+            return try await innerOperation(input)
         }
         
         addHandlerForOperation(operationIdentifer,
@@ -134,26 +141,25 @@ public extension SmokeHTTP1HandlerSelector {
      */
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     mutating func addHandlerForOperationProvider<InputType: ValidatableOperationHTTP1InputProtocol,
-            ErrorType: ErrorIdentifiableByDescription,
-            OperationDelegateType: HTTP1OperationDelegate>(
+            OutputType: ValidatableOperationHTTP1OutputProtocol,
+            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
             _ operationIdentifer: OperationIdentifer,
             httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> Void)),
+            operationProvider: @escaping ((ContextType) -> ((InputType) async throws -> OutputType)),
             allowedErrors: [(ErrorType, Int)],
             operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
     DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        func operation(input: InputType, context: ContextType) async throws {
+        func operation(input: InputType, context: ContextType) async throws -> OutputType {
             let innerOperation = operationProvider(context)
-            try await innerOperation(input)
+            return try await innerOperation(input)
         }
         
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
-                               allowedErrors: allowedErrors,
-                               operationDelegate: operationDelegate)
+                               allowedErrors: allowedErrors)
     }
 }
 
