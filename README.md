@@ -1,6 +1,6 @@
 <p align="center">
-<a href="https://travis-ci.com/amzn/smoke-framework">
-<img src="https://travis-ci.com/amzn/smoke-framework.svg?branch=master" alt="Build - Master Branch">
+<a href="https://github.com/amzn/smoke-framework/actions">
+<img src="https://github.com/amzn/smoke-framework/actions/workflows/swift.yml/badge.svg?branch=main" alt="Build - Main Branch">
 </a>
 <a href="http://swift.org">
 <img src="https://img.shields.io/badge/swift-5.2|5.3|5.4|5.5-orange.svg?style=flat" alt="Swift 5.2, 5.3, 5.4 and 5.5 Tested">
