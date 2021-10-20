@@ -33,7 +33,8 @@ public extension SmokeHTTP1Server {
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = SmokeReportingConfiguration(),
         eventLoopProvider: EventLoopProvider = .spawnNewThreads,
-        shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
+        shutdownOnSignal: ShutdownOnSignal = .sigint,
+        shutdownOnSignals: [ShutdownOnSignal] = [.sigint]) throws -> SmokeHTTP1Server
     where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
@@ -46,7 +47,8 @@ public extension SmokeHTTP1Server {
                                                   invocationStrategy: invocationStrategy,
                                                   defaultLogger: defaultLogger,
                                                   eventLoopProvider: eventLoopProvider,
-                                                  shutdownOnSignal: shutdownOnSignal)
+                                                  shutdownOnSignal: shutdownOnSignal,
+                                                  shutdownOnSignals: shutdownOnSignals)
             
             try server.start()
             
@@ -62,7 +64,8 @@ public extension SmokeHTTP1Server {
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = SmokeReportingConfiguration(),
         eventLoopProvider: EventLoopProvider = .spawnNewThreads,
-        shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
+        shutdownOnSignal: ShutdownOnSignal = .sigint,
+        shutdownOnSignals: [ShutdownOnSignal] = [.sigint]) throws -> SmokeHTTP1Server
     where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
         SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
@@ -75,7 +78,8 @@ public extension SmokeHTTP1Server {
                                                   invocationStrategy: invocationStrategy,
                                                   defaultLogger: defaultLogger,
                                                   eventLoopProvider: eventLoopProvider,
-                                                  shutdownOnSignal: shutdownOnSignal)
+                                                  shutdownOnSignal: shutdownOnSignal,
+                                                  shutdownOnSignals: shutdownOnSignals)
             
             try server.start()
             

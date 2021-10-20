@@ -96,7 +96,8 @@ public extension SmokeHTTP1Server {
                                                     invocationStrategy: initalizer.invocationStrategy,
                                                     defaultLogger: initalizer.defaultLogger,
                                                     eventLoopProvider: eventLoopProvider,
-                                                    shutdownOnSignal: initalizer.shutdownOnSignal)
+                                                    shutdownOnSignal: initalizer.shutdownOnSignal,
+                                                    shutdownOnSignals: initalizer.shutdownOnSignals)
               do {
                   try server.start()
                   
@@ -156,7 +157,8 @@ public extension SmokeHTTP1Server {
                                                     invocationStrategy: initalizer.invocationStrategy,
                                                     defaultLogger: initalizer.defaultLogger,
                                                     eventLoopProvider: eventLoopProvider,
-                                                    shutdownOnSignal: initalizer.shutdownOnSignal)
+                                                    shutdownOnSignal: initalizer.shutdownOnSignal,
+                                                    shutdownOnSignals: initalizer.shutdownOnSignals)
               do {
                   try server.start()
                   
@@ -219,7 +221,8 @@ public extension SmokeHTTP1Server {
                                               invocationStrategy: initalizer.invocationStrategy,
                                               defaultLogger: initalizer.defaultLogger,
                                               eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignal: initalizer.shutdownOnSignal)
+                                              shutdownOnSignal: initalizer.shutdownOnSignal,
+                                              shutdownOnSignals: initalizer.shutdownOnSignals)
         do {
             try server.start()
               
@@ -282,7 +285,8 @@ public extension SmokeHTTP1Server {
                                               invocationStrategy: initalizer.invocationStrategy,
                                               defaultLogger: initalizer.defaultLogger,
                                               eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignal: initalizer.shutdownOnSignal)
+                                              shutdownOnSignal: initalizer.shutdownOnSignal,
+                                              shutdownOnSignals: initalizer.shutdownOnSignals)
         do {
             try server.start()
             

@@ -22,7 +22,9 @@ import SmokeHTTP1
 public protocol SmokeServerPerInvocationContextInitializer: SmokePerInvocationContextInitializer {
     
     var port: Int { get }
+    // To be deprecated in favor of shutdownOnSignals.
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal { get }
+    var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
 }
 
@@ -31,8 +33,13 @@ public extension SmokeServerPerInvocationContextInitializer {
         return ServerDefaults.defaultPort
     }
     
+    // To be deprecated in favor of shutdownOnSignals.
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal {
         return .sigint
+    }
+    
+    var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
+        return [.sigint]
     }
     
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {

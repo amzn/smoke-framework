@@ -30,7 +30,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     let port: Int
     
     let quiesce: ServerQuiescingHelper
-    let signalSource: DispatchSourceSignal?
+    let signalSources: [DispatchSourceSignal]
     let fullyShutdownPromise: EventLoopPromise<Void>
     let handler: HTTP1RequestHandlerType
     let invocationStrategy: InvocationStrategy
@@ -70,7 +70,10 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         - eventLoopProvider: Provides the event loop to be used by the server.
                              If not specified, the server will create a new multi-threaded event loop
                              with the number of threads specified by `System.coreCount`.
-        - shutdownOnSignal: Specifies if the server should be shutdown when a signal is received.
+        - shutdownOnSignal: To be deprecated in favor of shutdownOnSignals.
+                            Specifies if the server should be shutdown when a signal is received.
+                            If not specified, the server will be shutdown if a SIGINT is received.
+        - shutdownOnSignals: Specifies if the server should be shutdown when one of the given signals is received.
                             If not specified, the server will be shutdown if a SIGINT is received.
      */
     public init(handler: HTTP1RequestHandlerType,
@@ -79,7 +82,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
                 defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.SmokeHTTP1Server"),
                 shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
                 eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
-                shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal = .sigint) {
+                shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal = .sigint,
+                shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] = [.sigint]) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
@@ -97,29 +101,33 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             self.ownEventLoopGroup = false
         }
         
-        let newSignalSource: (DispatchSourceSignal, Int32)?
-        switch shutdownOnSignal {
-        case .none:
-           newSignalSource = nil
-        case .sigint:
-            newSignalSource = (DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue), SIGINT)
-        case .sigterm:
-            newSignalSource = (DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue), SIGTERM)
+        // for backwards compatibility, use shutdownOnSignal if user provides an override
+        let updatedShutdownOnSignals = shutdownOnSignal == .sigint ? shutdownOnSignals : [shutdownOnSignal]
+        
+        let newSignalSources: [(DispatchSourceSignal, Int32)] = updatedShutdownOnSignals.compactMap { shutdownOnSignal in
+            switch shutdownOnSignal {
+            case .none:
+                return nil
+            case .sigint:
+                return (DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue), SIGINT)
+            case .sigterm:
+                return (DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue), SIGTERM)
+            }
         }
         
         self.quiesce = ServerQuiescingHelper(group: eventLoopGroup)
         self.fullyShutdownPromise = eventLoopGroup.next().makePromise()
-        self.signalSource = newSignalSource?.0
+        self.signalSources = newSignalSources.map { $0.0 }
         self.shutdownDispatchGroup = DispatchGroup()
         // enter the DispatchGroup during initialization so waiting for the
         // shutdown of an initalized or started server will wait
         shutdownDispatchGroup.enter()
         
-        if let (newSignalSource, signalValue) = newSignalSource {
-            newSignalSource.setEventHandler { [unowned self] in
-                self.signalSource?.cancel()
-                defaultLogger.error("Received signal, initiating shutdown which should complete after the last request finished.")
-
+        newSignalSources.forEach { (signalSource, signalValue) in
+            signalSource.setEventHandler { [unowned self] in
+                self.signalSources.forEach { $0.cancel() }
+                defaultLogger.info("Received signal, initiating shutdown which should complete after the last request finished.")
+                
                 do {
                     try self.shutdown()
                 } catch {
@@ -127,7 +135,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
                 }
             }
             signal(signalValue, SIG_IGN)
-            newSignalSource.resume()
+            signalSource.resume()
         }
     }
     
@@ -168,27 +176,6 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
         
         channel = try bootstrap.bind(host: ServerDefaults.defaultHost, port: port).wait()
-        
-        fullyShutdownPromise.futureResult.whenComplete { [unowned self] _ in
-            do {
-                let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
-                
-                // execute all the completion handlers
-                shutdownCompletionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
-                
-                if self.ownEventLoopGroup {
-                    try self.eventLoopGroup.syncShutdownGracefully()
-                }
-                
-                // release any waiters for shutdown
-                self.shutdownDispatchGroup.leave()
-            } catch {
-                self.defaultLogger.error("Server unable to shutdown cleanly following full shutdown.")
-            }
-            
-            self.defaultLogger.info("SmokeHTTP1Server shutdown.")
-        }
-        
         defaultLogger.info("SmokeHTTP1Server started on port \(port).")
     }
     
@@ -227,6 +214,26 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
         
         if handlerQueuedForFutureShutdownComplete {
+            try fullyShutdownPromise.futureResult.wait()
+            
+            do {
+                let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
+                
+                // execute all the completion handlers
+                shutdownCompletionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
+                
+                if self.ownEventLoopGroup {
+                    try self.eventLoopGroup.syncShutdownGracefully()
+                }
+                
+                // release any waiters for shutdown
+                self.shutdownDispatchGroup.leave()
+            } catch {
+                self.defaultLogger.error("Server unable to shutdown cleanly following full shutdown.")
+            }
+            
+            self.defaultLogger.info("SmokeHTTP1Server shutdown.")
+            
             shutdownDispatchGroup.wait()
         } else {
             // the server is already shutdown, immediately call the handler
