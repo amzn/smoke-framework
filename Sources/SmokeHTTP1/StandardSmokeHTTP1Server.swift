@@ -70,9 +70,6 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         - eventLoopProvider: Provides the event loop to be used by the server.
                              If not specified, the server will create a new multi-threaded event loop
                              with the number of threads specified by `System.coreCount`.
-        - shutdownOnSignal: To be deprecated in favor of shutdownOnSignals.
-                            Specifies if the server should be shutdown when a signal is received.
-                            If not specified, the server will be shutdown if a SIGINT is received.
         - shutdownOnSignals: Specifies if the server should be shutdown when one of the given signals is received.
                             If not specified, the server will be shutdown if a SIGINT is received.
      */
@@ -82,7 +79,6 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
                 defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.SmokeHTTP1Server"),
                 shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
                 eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
-                shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal = .sigint,
                 shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] = [.sigint]) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.SmokeHTTP1Server.SignalHandlingQueue")
         
@@ -101,17 +97,14 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             self.ownEventLoopGroup = false
         }
         
-        // for backwards compatibility, use shutdownOnSignal if user provides an override
-        let updatedShutdownOnSignals = shutdownOnSignal == .sigint ? shutdownOnSignals : [shutdownOnSignal]
-        
-        let newSignalSources: [(DispatchSourceSignal, Int32)] = updatedShutdownOnSignals.compactMap { shutdownOnSignal in
+        let newSignalSources: [(DispatchSourceSignal, Int32, SmokeHTTP1Server.ShutdownOnSignal)] = shutdownOnSignals.compactMap { shutdownOnSignal in
             switch shutdownOnSignal {
             case .none:
                 return nil
             case .sigint:
-                return (DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue), SIGINT)
+                return (DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue), SIGINT, .sigint)
             case .sigterm:
-                return (DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue), SIGTERM)
+                return (DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue), SIGTERM, .sigterm)
             }
         }
         
@@ -123,10 +116,10 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         // shutdown of an initalized or started server will wait
         shutdownDispatchGroup.enter()
         
-        newSignalSources.forEach { (signalSource, signalValue) in
+        newSignalSources.forEach { (signalSource, signalValue, shutdownOnSignal) in
             signalSource.setEventHandler { [unowned self] in
                 self.signalSources.forEach { $0.cancel() }
-                defaultLogger.info("Received signal, initiating shutdown which should complete after the last request finished.")
+                defaultLogger.info("Received \(shutdownOnSignal) signal, initiating shutdown which should complete after the last request finished.")
                 
                 do {
                     try self.shutdown()
@@ -137,6 +130,46 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             signal(signalValue, SIG_IGN)
             signalSource.resume()
         }
+    }
+    
+    /**
+     Initializer.
+ 
+     - Parameters:
+        - handler: the HTTPRequestHandler to handle incoming requests.
+        - port: Optionally the localhost port for the server to listen on.
+                If not specified, defaults to 8080.
+        - invocationStrategy: Optionally the invocation strategy for incoming requests.
+                              If not specified, the handler for incoming requests will
+                              be invoked on DispatchQueue.global().
+        - shutdownCompletionHandlerInvocationStrategy: Optionally the invocation strategy for shutdown completion handlers.
+                                                       If not specified, the shutdown completion handlers will
+                                                       be invoked on DispatchQueue.global() synchronously so that callers
+                                                       to `waitUntilShutdown*` will not unblock until all completion handlers
+                                                       have finished.
+        - eventLoopProvider: Provides the event loop to be used by the server.
+                             If not specified, the server will create a new multi-threaded event loop
+                             with the number of threads specified by `System.coreCount`.
+        - shutdownOnSignal: To be deprecated in favor of shutdownOnSignals.
+                            Specifies if the server should be shutdown when a signal is received.
+                            If not specified, the server will be shutdown if a SIGINT is received.
+     */
+    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
+    public convenience init(handler: HTTP1RequestHandlerType,
+                            port: Int = ServerDefaults.defaultPort,
+                            invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+                            defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.SmokeHTTP1Server"),
+                            shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
+                            eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
+                            shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal) {
+        self.init(
+            handler: handler,
+            port: port,
+            invocationStrategy: invocationStrategy,
+            defaultLogger: defaultLogger,
+            shutdownCompletionHandlerInvocationStrategy: shutdownCompletionHandlerInvocationStrategy,
+            eventLoopProvider: eventLoopProvider,
+            shutdownOnSignals: [shutdownOnSignal])
     }
     
     /**

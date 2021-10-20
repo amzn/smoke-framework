@@ -22,7 +22,7 @@ import SmokeHTTP1
 public protocol SmokeServerStaticContextInitializer: SmokeStaticContextInitializer {
     
     var port: Int { get }
-    // To be deprecated in favor of shutdownOnSignals.
+    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal { get }
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
@@ -33,13 +33,13 @@ public extension SmokeServerStaticContextInitializer {
         return ServerDefaults.defaultPort
     }
     
-    // To be deprecated in favor of shutdownOnSignals.
+    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal {
         return .sigint
     }
     
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
-        return [.sigint]
+        return [shutdownOnSignal]
     }
     
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {
