@@ -180,10 +180,14 @@ public struct StandardHTTP1ResponseHandler<
             
             if status.code >= 200 && status.code < 300 {
                 invocationContext.successCounter?.increment()
-            } else if status.code >= 400 && status.code < 500 {
-                invocationContext.failure4XXCounter?.increment()
-            } else {
-                invocationContext.failure5XXCounter?.increment()
+            } else if status.code >= 400 {
+                if status.code < 500 {
+                    invocationContext.failure4XXCounter?.increment()
+                } else {
+                    invocationContext.failure5XXCounter?.increment()
+                }
+                
+                invocationContext.specificFailureStatusCounters?[status.code]?.increment()
             }
         }
         

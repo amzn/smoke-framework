@@ -18,6 +18,19 @@ import Foundation
 import Logging
 import Metrics
 
+private let namespaceDimension = "Namespace"
+private let operationNameDimension = "Operation Name"
+private let metricNameDimension = "Metric Name"
+
+private let successCountMetric = "successCount"
+private let failure5XXCountMetric = "failure5XXCount"
+private let failure4XXCountMetric = "failure4XXCount"
+private let specificFailureStatusCountMetricFormat = "failure%dCount"
+private let latencyTimeMetric = "latencyTime"
+private let serviceLatencyTimeMetric = "serviceLatencyTime"
+private let outwardsServiceCallLatencySumMetric = "outwardsServiceCallLatencySum"
+private let outwardsServiceCallRetryWaitSumMetric = "outwardsServiceCallRetryWaitSum"
+
 /**
   Stores the counters for reporting on a particular operation.
  */
@@ -25,22 +38,11 @@ public struct SmokeOperationReporting {
     public let successCounter: Metrics.Counter?
     public let failure5XXCounter: Metrics.Counter?
     public let failure4XXCounter: Metrics.Counter?
+    public let specificFailureStatusCounters: [UInt: Metrics.Counter]?
     public let latencyTimer: Metrics.Timer?
     public let serviceLatencyTimer: Metrics.Timer?
     public let outwardsServiceCallLatencySumTimer: Metrics.Timer?
     public let outwardsServiceCallRetryWaitSumTimer: Metrics.Timer?
-    
-    private let namespaceDimension = "Namespace"
-    private let operationNameDimension = "Operation Name"
-    private let metricNameDimension = "Metric Name"
-    
-    private let successCountMetric = "successCount"
-    private let failure5XXCountMetric = "failure5XXCount"
-    private let failure4XXCountMetric = "failure4XXCount"
-    private let latencyTimeMetric = "latencyTime"
-    private let serviceLatencyTimeMetric = "serviceLatencyTime"
-    private let outwardsServiceCallLatencySumMetric = "outwardsServiceCallLatencySum"
-    private let outwardsServiceCallRetryWaitSumMetric = "outwardsServiceCallRetryWaitSum"
     
     public init<OperationIdentifer: OperationIdentity>(serverName: String, request: RequestType<OperationIdentifer>,
                                                        configuration: SmokeReportingConfiguration<OperationIdentifer>) {
@@ -74,6 +76,22 @@ public struct SmokeOperationReporting {
                                         dimensions: failure4XXCounterDimensions)
         } else {
             failure4XXCounter = nil
+        }
+        
+        if configuration.reportSpecificFailureStatusesForRequest(request),
+           let specificFailureStatusesToReport = configuration.specificFailureStatusesToReport {
+            let countersWithStatusCodes: [(UInt, Counter)] = specificFailureStatusesToReport.map { statusCode in
+                let metricName = String(format: specificFailureStatusCountMetricFormat, statusCode)
+                let specificFailureStatusDimensions = [(namespaceDimension, serverName),
+                                                       (operationNameDimension, operationName),
+                                                       (metricNameDimension, metricName)]
+                let specificFailureStatusCounter = Counter(label: "\(serverName).\(operationName).\(metricName)",
+                                                           dimensions: specificFailureStatusDimensions)
+                return (statusCode, specificFailureStatusCounter)
+            }
+            specificFailureStatusCounters = Dictionary(uniqueKeysWithValues: countersWithStatusCodes)
+        } else {
+            specificFailureStatusCounters = nil
         }
         
         if configuration.reportLatencyForRequest(request) {
