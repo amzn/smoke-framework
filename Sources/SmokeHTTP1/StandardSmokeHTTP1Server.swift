@@ -48,6 +48,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     private var shutdownCompletionHandlers: [() -> Void] = []
     private var serverState: State = .initialized
     private var stateLock: NSLock = NSLock()
+    private var shutdownLock: NSLock = NSLock()
     
     let eventLoopGroup: EventLoopGroup
     let ownEventLoopGroup: Bool
@@ -228,9 +229,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
      have been executed.
      */
     public func waitUntilShutdown() throws {
-        if !isShutdown() {
-            shutdownDispatchGroup.wait()
-        }
+        try fullyShutdownPromise.futureResult.wait()
+        completeShutdownProcess()
     }
     
     /**
@@ -248,7 +248,23 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         
         if handlerQueuedForFutureShutdownComplete {
             try fullyShutdownPromise.futureResult.wait()
-            
+            completeShutdownProcess()
+        } else {
+            // the server is already shutdown, immediately call the handler
+            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
+        }
+    }
+    
+    /**
+    Update server state, execute shutdown completion handlers, and shutdown event loop group if necessary.
+     */
+    private func completeShutdownProcess() {
+        shutdownLock.lock()
+        defer {
+            shutdownLock.unlock()
+        }
+        
+        if !isShutdown() {
             do {
                 let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
                 
@@ -266,12 +282,9 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             }
             
             self.defaultLogger.info("SmokeHTTP1Server shutdown.")
-            
-            shutdownDispatchGroup.wait()
-        } else {
-            // the server is already shutdown, immediately call the handler
-            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
         }
+        
+        shutdownDispatchGroup.wait()
     }
     
     /**
