@@ -79,7 +79,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         }
     }
     
-    public let specificFailureStatusesToReport: [UInt]?
+    public let specificFailureStatusesToReport: Set<UInt>?
     
     private let successCounterMatchingRequests: MatchingRequests
     private let failure5XXCounterMatchingRequests: MatchingRequests
@@ -114,7 +114,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
                 failure5XXCounterMatchingRequests: MatchingRequests,
                 failure4XXCounterMatchingRequests: MatchingRequests,
                 specificFailureStatusCounterMatchingRequests: MatchingRequests,
-                specificFailureStatusesToReport: [UInt],
+                specificFailureStatusesToReport: Set<UInt>,
                 latencyTimerMatchingRequests: MatchingRequests,
                 serviceLatencyTimerMatchingRequests: MatchingRequests = .none,
                 outwardServiceCallLatencyTimerMatchingRequests: MatchingRequests = .none,
