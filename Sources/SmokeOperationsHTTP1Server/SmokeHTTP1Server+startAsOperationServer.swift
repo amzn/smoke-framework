@@ -33,26 +33,83 @@ public extension SmokeHTTP1Server {
         defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = SmokeReportingConfiguration(),
         eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+        shutdownOnSignals: [ShutdownOnSignal] = [.sigint]) throws -> SmokeHTTP1Server
+    where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
+          SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+          SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+            StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        let handler = OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>(
+            handlerSelector: handlerSelector,
+            context: context, serverName: serverName, reportingConfiguration: reportingConfiguration)
+        let server = StandardSmokeHTTP1Server(handler: handler,
+                                              port: port,
+                                              invocationStrategy: invocationStrategy,
+                                              defaultLogger: defaultLogger,
+                                              eventLoopProvider: eventLoopProvider,
+                                              shutdownOnSignals: shutdownOnSignals)
+        
+        try server.start()
+        
+        return SmokeHTTP1Server(wrappedServer: server)
+    }
+    
+    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
+    static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector, TraceContextType>(
+        withHandlerSelector handlerSelector: SelectorType,
+        andContext context: SelectorType.ContextType,
+        andPort port: Int = ServerDefaults.defaultPort,
+        serverName: String = "Server",
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+        defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
+        reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = SmokeReportingConfiguration(),
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads,
         shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
     where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-        SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
-        SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-        StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
-            let handler = OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>(
-                handlerSelector: handlerSelector,
-                context: context, serverName: serverName, reportingConfiguration: reportingConfiguration)
-                let server = StandardSmokeHTTP1Server(handler: handler,
-                                                  port: port,
-                                                  invocationStrategy: invocationStrategy,
-                                                  defaultLogger: defaultLogger,
-                                                  eventLoopProvider: eventLoopProvider,
-                                                  shutdownOnSignal: shutdownOnSignal)
-            
-            try server.start()
-            
-            return SmokeHTTP1Server(wrappedServer: server)
+          SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+          SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+            StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        try startAsOperationServer(
+            withHandlerSelector: handlerSelector,
+            andContext: context,
+            andPort: port,
+            serverName: serverName,
+            invocationStrategy: invocationStrategy,
+            defaultLogger: defaultLogger,
+            reportingConfiguration: reportingConfiguration,
+            eventLoopProvider: eventLoopProvider,
+            shutdownOnSignals: [shutdownOnSignal])
     }
-  
+    
+    static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector, TraceContextType>(
+        withHandlerSelector handlerSelector: SelectorType,
+        andContextProvider contextProvider: @escaping (SmokeServerInvocationReporting<TraceContextType>) -> SelectorType.ContextType,
+        andPort port: Int = ServerDefaults.defaultPort,
+        serverName: String = "Server",
+        invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
+        defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1Server"),
+        reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = SmokeReportingConfiguration(),
+        eventLoopProvider: EventLoopProvider = .spawnNewThreads,
+        shutdownOnSignals: [ShutdownOnSignal] = [.sigint]) throws -> SmokeHTTP1Server
+    where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
+          SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+          SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+            StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        let handler = OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>(
+            handlerSelector: handlerSelector,
+            contextProvider: contextProvider, serverName: serverName, reportingConfiguration: reportingConfiguration)
+        let server = StandardSmokeHTTP1Server(handler: handler,
+                                              port: port,
+                                              invocationStrategy: invocationStrategy,
+                                              defaultLogger: defaultLogger,
+                                              eventLoopProvider: eventLoopProvider,
+                                              shutdownOnSignals: shutdownOnSignals)
+        
+        try server.start()
+        
+        return SmokeHTTP1Server(wrappedServer: server)
+    }
+    
+    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector, TraceContextType>(
         withHandlerSelector handlerSelector: SelectorType,
         andContextProvider contextProvider: @escaping (SmokeServerInvocationReporting<TraceContextType>) -> SelectorType.ContextType,
@@ -64,21 +121,18 @@ public extension SmokeHTTP1Server {
         eventLoopProvider: EventLoopProvider = .spawnNewThreads,
         shutdownOnSignal: ShutdownOnSignal = .sigint) throws -> SmokeHTTP1Server
     where SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-        SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
-        SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-        StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
-            let handler = OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>(
-                handlerSelector: handlerSelector,
-                contextProvider: contextProvider, serverName: serverName, reportingConfiguration: reportingConfiguration)
-                let server = StandardSmokeHTTP1Server(handler: handler,
-                                                  port: port,
-                                                  invocationStrategy: invocationStrategy,
-                                                  defaultLogger: defaultLogger,
-                                                  eventLoopProvider: eventLoopProvider,
-                                                  shutdownOnSignal: shutdownOnSignal)
-            
-            try server.start()
-            
-            return SmokeHTTP1Server(wrappedServer: server)
+          SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+          SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+            StandardHTTP1ResponseHandler<SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        try startAsOperationServer(
+            withHandlerSelector: handlerSelector,
+            andContextProvider: contextProvider,
+            andPort: port,
+            serverName: serverName,
+            invocationStrategy: invocationStrategy,
+            defaultLogger: defaultLogger,
+            reportingConfiguration: reportingConfiguration,
+            eventLoopProvider: eventLoopProvider,
+            shutdownOnSignals: [shutdownOnSignal])
     }
 }
