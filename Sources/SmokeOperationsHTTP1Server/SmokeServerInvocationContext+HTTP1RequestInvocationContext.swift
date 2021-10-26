@@ -43,6 +43,10 @@ extension SmokeInvocationContext: HTTP1RequestInvocationContext where
         return self.requestReporting.failure4XXCounter
     }
     
+    public var specificFailureStatusCounters: [UInt: Metrics.Counter]? {
+        return self.requestReporting.specificFailureStatusCounters
+    }
+    
     public var latencyTimer: Metrics.Timer? {
         return self.requestReporting.latencyTimer
     }
