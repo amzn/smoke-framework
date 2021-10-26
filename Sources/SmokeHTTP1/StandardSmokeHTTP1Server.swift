@@ -48,7 +48,6 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     private var shutdownCompletionHandlers: [() -> Void] = []
     private var serverState: State = .initialized
     private var stateLock: NSLock = NSLock()
-    private var shutdownLock: NSLock = NSLock()
     
     let eventLoopGroup: EventLoopGroup
     let ownEventLoopGroup: Bool
@@ -221,50 +220,9 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         
         if doShutdownServer {
             quiesce.initiateShutdown(promise: fullyShutdownPromise)
-        }
-    }
-    
-    /**
-     Blocks until the server has been shutdown and all completion handlers
-     have been executed.
-     */
-    public func waitUntilShutdown() throws {
-        try fullyShutdownPromise.futureResult.wait()
-        completeShutdownProcess()
-    }
-    
-    /**
-     Blocks until the server has been shutdown and all completion handlers
-     have been executed. The provided closure will be added to the list of
-     completion handlers to be executed on shutdown. If the server is already
-     shutdown, the provided closure will be immediately executed.
-     
-     - Parameters:
-        - onShutdown: the closure to be executed after the server has been
-                      fully shutdown.
-     */
-    public func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
-        let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
-        
-        if handlerQueuedForFutureShutdownComplete {
+            
             try fullyShutdownPromise.futureResult.wait()
-            completeShutdownProcess()
-        } else {
-            // the server is already shutdown, immediately call the handler
-            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
-        }
-    }
-    
-    /**
-    Update server state, execute shutdown completion handlers, and shutdown event loop group if necessary.
-     */
-    private func completeShutdownProcess() {
-        shutdownLock.lock()
-        defer {
-            shutdownLock.unlock()
-        }
-        
-        if !isShutdown() {
+            
             do {
                 let shutdownCompletionHandlers = self.updateStateOnShutdownComplete()
                 
@@ -283,8 +241,37 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             
             self.defaultLogger.info("SmokeHTTP1Server shutdown.")
         }
+    }
+    
+    /**
+     Blocks until the server has been shutdown and all completion handlers
+     have been executed.
+     */
+    public func waitUntilShutdown() throws {
+        if !isShutdown() {
+            shutdownDispatchGroup.wait()
+        }
+    }
+    
+    /**
+     Blocks until the server has been shutdown and all completion handlers
+     have been executed. The provided closure will be added to the list of
+     completion handlers to be executed on shutdown. If the server is already
+     shutdown, the provided closure will be immediately executed.
+     
+     - Parameters:
+        - onShutdown: the closure to be executed after the server has been
+                      fully shutdown.
+     */
+    public func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
+        let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
         
-        shutdownDispatchGroup.wait()
+        if handlerQueuedForFutureShutdownComplete {
+            shutdownDispatchGroup.wait()
+        } else {
+            // the server is already shutdown, immediately call the handler
+            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
+        }
     }
     
     /**
