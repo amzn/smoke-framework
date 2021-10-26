@@ -42,7 +42,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
     public typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
         
     let handlerSelector: SelectorType
-    let context: PerInvocationContext<SelectorType.ContextType, InvocationReportingType>
+    let context: PerInvocationContext<SelectorType.ContextType, InvocationReportingType, SelectorType.OperationIdentifer>
     let pingOperationReporting: SmokeOperationReporting
     let unknownOperationReporting: SmokeOperationReporting
     let errorDeterminingOperationReporting: SmokeOperationReporting
@@ -62,7 +62,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
     }
     
     public init(handlerSelector: SelectorType,
-         contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
+                contextProvider: @escaping (InvocationReportingType, SelectorType.OperationIdentifer) -> SelectorType.ContextType,
          serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.handlerSelector = handlerSelector
         self.context = .provider(contextProvider)

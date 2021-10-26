@@ -41,6 +41,8 @@ public protocol SmokePerInvocationContextInitializerV2 {
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> { get }
         
     func getInvocationContext(invocationReporting: InvocationReportingType) -> SelectorType.ContextType
+    func getInvocationContext(invocationReporting: InvocationReportingType,
+                              operationIdentifier: SelectorType.OperationIdentifer) -> SelectorType.ContextType
     
     func onShutdown() throws
 }
@@ -60,5 +62,10 @@ public extension SmokePerInvocationContextInitializerV2 {
     
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> {
         return SmokeReportingConfiguration()
+    }
+    
+    func getInvocationContext(invocationReporting: InvocationReportingType,
+                              operationIdentifier: SelectorType.OperationIdentifer) -> SelectorType.ContextType {
+        return getInvocationContext(invocationReporting: invocationReporting)
     }
 }

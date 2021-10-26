@@ -37,3 +37,11 @@ extension Encodable where Self: SmokeReturnableError {
         return try errorEncoder.encode(self, logger: logger)
     }
 }
+
+public protocol SmokeKnownError: SmokeReturnableError {
+    func isErrorType(errorIdentity: SmokeKnownErrorIdentifiers) -> Bool
+}
+
+public enum SmokeKnownErrorIdentifiers {
+    case unrecognizedErrorFromExternalCall
+}
