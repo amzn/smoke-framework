@@ -20,7 +20,7 @@ jobs:
           swift-version: ${{ matrix.swift }}
       - uses: actions/checkout@v2
       - name: Build
-        run: swift build
+        run: swift build -c release
       - name: Run tests
         run: swift test
   OlderVersionBuild:
@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        swift: ["5.4.3", "5.3.3", "5.2.5"]
+        swift: ["5.4.3", "5.3.3"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: marcprux/setup-swift@a990bc57c514a77d232b645843ade099af21aa5e
@@ -36,7 +36,7 @@ jobs:
           swift-version: ${{ matrix.swift }}
       - uses: actions/checkout@v2
       - name: Build
-        run: swift build
+        run: swift build -c release
       - name: Run tests
         run: swift test
   SwiftLint:
