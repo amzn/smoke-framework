@@ -15,7 +15,7 @@
 // SmokeOperations
 //
 
-#if compiler(>=5.5) && canImport(_Concurrency)
+#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
 
 import Foundation
 import Logging
@@ -36,7 +36,6 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
-    @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
     init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
             serverName: String, operationIdentifer: OperationIdentifer,
             reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
