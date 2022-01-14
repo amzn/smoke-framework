@@ -339,7 +339,8 @@ public extension SmokeHTTP1Server {
         
         let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
             handlerSelector: handlerSelector,
-            context: initalizer.getInvocationContext(), serverName: initalizer.serverName,
+            context: initalizer.getInvocationContext(),
+            serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
@@ -398,7 +399,8 @@ public extension SmokeHTTP1Server {
         
         let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
             handlerSelector: handlerSelector,
-            contextProvider: initalizer.getInvocationContext, serverName: initalizer.serverName,
+            contextProvider: initalizer.getInvocationContext,
+            serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
