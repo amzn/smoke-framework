@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokePerInvocationContextInitializerV3.swift
+// SmokeAsyncPerInvocationContextInitializer.swift
 // SmokeOperationsHTTP1
 //
 
@@ -25,9 +25,9 @@ import Logging
 /**
   A protocol for initialization SmokeFramework-based applications that require a per-invocation context.
  
-  This is a third generation initializer that supports async shutdown.
+  This initializer supports async shutdown.
  */
-public protocol SmokePerInvocationContextInitializerV3 {
+public protocol SmokeAsyncPerInvocationContextInitializer {
     associatedtype SelectorType: SmokeHTTP1HandlerSelector
     
     typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
@@ -45,7 +45,7 @@ public protocol SmokePerInvocationContextInitializerV3 {
     func onShutdown() async throws
 }
 
-public extension SmokePerInvocationContextInitializerV3 {
+public extension SmokeAsyncPerInvocationContextInitializer {
     var serverName: String {
         return "Server"
     }

@@ -301,7 +301,7 @@ public extension SmokeHTTP1Server {
     }
     
 #if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-    static func runAsOperationServer<InitializerType: SmokeServerStaticContextInitializerV3, TraceContextType>(
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer, TraceContextType>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
     where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
           InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
@@ -360,7 +360,7 @@ public extension SmokeHTTP1Server {
         }
     }
     
-    static func runAsOperationServer<InitializerType: SmokeServerPerInvocationContextInitializerV3, TraceContextType>(
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer, TraceContextType>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
     where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
           InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,

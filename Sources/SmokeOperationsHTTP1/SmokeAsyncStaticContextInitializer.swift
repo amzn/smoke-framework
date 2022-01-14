@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeStaticContextInitializerV3.swift
+// SmokeAsyncStaticContextInitializer.swift
 // SmokeOperationsHTTP1
 //
 
@@ -25,9 +25,9 @@ import Logging
 /**
   A protocol for initialization SmokeFramework-based applications that require a static context.
 
-  This is a third generation initializer that supports async shutdown.
+  This initializer supports async shutdown.
  */
-public protocol SmokeStaticContextInitializerV3 {
+public protocol SmokeAsyncStaticContextInitializer {
     associatedtype SelectorType: SmokeHTTP1HandlerSelector
     
     var handlerSelectorProvider: (() -> SelectorType) { get }
@@ -44,7 +44,7 @@ public protocol SmokeStaticContextInitializerV3 {
     func onShutdown() async throws
 }
 
-public extension SmokeStaticContextInitializerV3 {
+public extension SmokeAsyncStaticContextInitializer {
     var serverName: String {
         return "Server"
     }

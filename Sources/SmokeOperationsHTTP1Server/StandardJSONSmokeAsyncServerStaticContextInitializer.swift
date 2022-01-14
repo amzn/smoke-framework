@@ -26,7 +26,7 @@ import SmokeOperations
  
   This reduces the configuration required for applications that use these standard components.
  */
-public protocol StandardJSONSmokeAsyncServerStaticContextInitializer: SmokeServerStaticContextInitializerV3
+public protocol StandardJSONSmokeAsyncServerStaticContextInitializer: SmokeAsyncServerStaticContextInitializer
         where SelectorType ==
                 StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>,
                                                   OperationIdentifer> {
