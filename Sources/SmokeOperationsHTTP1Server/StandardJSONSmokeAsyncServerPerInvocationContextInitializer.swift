@@ -20,6 +20,8 @@ import SmokeOperationsHTTP1
 import SmokeHTTP1
 import SmokeOperations
 
+#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
+
 /**
   A protocol that is derived from `SmokeAsyncServerPerInvocationContextInitializerV3` that uses the `StandardSmokeHTTP1HandlerSelector`
   type as the `SelectorType` and `JSONPayloadHTTP1OperationDelegate` as the `DefaultOperationDelegateType`.
@@ -51,3 +53,5 @@ public extension StandardJSONSmokeAsyncServerPerInvocationContextInitializer {
         return JSONPayloadHTTP1OperationDelegate()
     }
 }
+
+#endif
