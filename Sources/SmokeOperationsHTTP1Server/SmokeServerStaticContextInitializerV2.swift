@@ -38,6 +38,7 @@ public extension SmokeServerStaticContextInitializerV2 {
         return .sigint
     }
     
+    @available(swift, deprecated: 3.0, message: "To avoid a breaking change, by default shutdownOnSignals() is a singleton list of `shutdownOnSignal`")
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
         return [shutdownOnSignal]
     }

@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeServerStaticContextInitializer.swift
+// SmokeAsyncServerStaticContextInitializer.swift
 // SmokeOperationsHTTP1Server
 //
 
@@ -19,31 +19,26 @@ import Foundation
 import SmokeOperationsHTTP1
 import SmokeHTTP1
 
-public protocol SmokeServerStaticContextInitializer: SmokeStaticContextInitializer {
+#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
+
+public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     
     var port: Int { get }
-    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
-    var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal { get }
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
 }
 
-public extension SmokeServerStaticContextInitializer {
+public extension SmokeAsyncServerPerInvocationContextInitializer {
     var port: Int {
         return ServerDefaults.defaultPort
     }
     
-    @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
-    var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal {
-        return .sigint
-    }
-    
-    @available(swift, deprecated: 3.0, message: "To avoid a breaking change, by default shutdownOnSignals() is a singleton list of `shutdownOnSignal`")
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
-        return [shutdownOnSignal]
+        return [.sigint]
     }
     
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {
         return .spawnNewThreads
     }
 }
+#endif
