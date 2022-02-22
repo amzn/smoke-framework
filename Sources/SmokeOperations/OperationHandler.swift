@@ -29,7 +29,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         = (_ input: InputType, _ requestHead: RequestHeadType, _ context: ContextType,
         _ responseHandler: ResponseHandlerType, _ invocationContext: SmokeInvocationContext<InvocationReportingType>) -> ()
     public typealias OperationResultDataInputFunction
-        = (_ requestHead: RequestHeadType, _ body: Data?, _ context: PerInvocationContext<ContextType, InvocationReportingType>,
+        = (_ requestHead: RequestHeadType, _ body: Data?, _ context: PerInvocationContext<ContextType, InvocationReportingType, OperationIdentifer>,
         _ responseHandler: ResponseHandlerType, _ invocationStrategy: InvocationStrategy,
         _ requestLogger: Logger, _ internalRequestId: String, _ invocationReportingProvider: (Logger) -> InvocationReportingType) -> ()
     
@@ -39,7 +39,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
      * Handle for an operation handler delegates the input to the wrapped handling function
      * constructed at initialization time.
      */
-    public func handle(_ requestHead: RequestHeadType, body: Data?, withContext context: PerInvocationContext<ContextType, InvocationReportingType>,
+    public func handle(_ requestHead: RequestHeadType, body: Data?, withContext context: PerInvocationContext<ContextType, InvocationReportingType, OperationIdentifer>,
                        responseHandler: ResponseHandlerType, invocationStrategy: InvocationStrategy,
                        requestLogger: Logger, internalRequestId: String,
                        invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
@@ -53,8 +53,11 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         case error(description: String, reportableType: String?, invocationContext: SmokeInvocationContext<InvocationReportingType>)
         
         func handle<OperationDelegateType: OperationDelegate>(
-                requestHead: RequestHeadType, context: PerInvocationContext<ContextType, InvocationReportingType>,
-                responseHandler: ResponseHandlerType, operationDelegate: OperationDelegateType)
+            requestHead: RequestHeadType,
+            context: PerInvocationContext<ContextType, InvocationReportingType, OperationIdentifer>,
+            responseHandler: ResponseHandlerType,
+            operationDelegate: OperationDelegateType,
+            operationIdentifier: OperationIdentifer)
             where RequestHeadType == OperationDelegateType.RequestHeadType,
             InvocationReportingType == OperationDelegateType.InvocationReportingType,
             ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
@@ -103,7 +106,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 case .static(let staticContext):
                     contextForInvocation = staticContext
                 case .provider(let contextProvider):
-                    contextForInvocation = contextProvider(invocationContext.invocationReporting)
+                    contextForInvocation = contextProvider(invocationContext.invocationReporting, operationIdentifier)
                 }
                 
                 inputHandler(input, requestHead, contextForInvocation, responseHandler, invocationContext)
@@ -212,14 +215,16 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                     requestHead: requestHead,
                     context: context,
                     responseHandler: responseHandler,
-                    operationDelegate: operationDelegate)
+                    operationDelegate: operationDelegate,
+                    operationIdentifier: operationIdentifer)
             } else {
                 invocationStrategy.invoke {
                     inputDecodeResult.handle(
                         requestHead: requestHead,
                         context: context,
                         responseHandler: responseHandler,
-                        operationDelegate: operationDelegate)
+                        operationDelegate: operationDelegate,
+                        operationIdentifier: operationIdentifer)
                 }
             }
         }

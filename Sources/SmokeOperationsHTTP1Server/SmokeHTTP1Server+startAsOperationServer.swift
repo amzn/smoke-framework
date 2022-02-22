@@ -112,7 +112,7 @@ public extension SmokeHTTP1Server {
     @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     static func startAsOperationServer<SelectorType: SmokeHTTP1HandlerSelector, TraceContextType>(
         withHandlerSelector handlerSelector: SelectorType,
-        andContextProvider contextProvider: @escaping (SmokeServerInvocationReporting<TraceContextType>) -> SelectorType.ContextType,
+        andContextProvider contextProvider: @escaping (SmokeServerInvocationReporting<TraceContextType>, SelectorType.OperationIdentifer) -> SelectorType.ContextType,
         andPort port: Int = ServerDefaults.defaultPort,
         serverName: String = "Server",
         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),

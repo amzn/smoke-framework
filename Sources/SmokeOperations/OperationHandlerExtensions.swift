@@ -66,6 +66,12 @@ public extension OperationHandler {
                 return OperationFailure(code: code,
                                         error: error)
             }
+        
+            if let knownError = error as? SmokeKnownError,
+               knownError.isErrorType(errorIdentity: .unrecognizedErrorFromExternalCall) {
+                return OperationFailure(code: 500,
+                                        error: error)
+            }
             
             return nil
     }

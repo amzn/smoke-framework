@@ -56,7 +56,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
     }
     
     init(handlerSelector: SelectorType,
-         contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
+         contextProvider: @escaping (InvocationReportingType, SelectorType.OperationIdentifer) -> SelectorType.ContextType,
          serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,

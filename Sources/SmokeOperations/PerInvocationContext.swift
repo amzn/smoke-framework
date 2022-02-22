@@ -17,7 +17,13 @@
 
 import Foundation
 
-public enum PerInvocationContext<ContextType, InvocationReportingType> {
+public enum PerInvocationContext<ContextType, InvocationReportingType, OperationIdentity> {
     case `static`(ContextType)
-    case provider((InvocationReportingType) -> ContextType)
+    case provider((InvocationReportingType, OperationIdentity) -> ContextType)
+}
+
+public protocol OperationAwarePerInvocationContext {
+    associatedtype OperationIdentity
+    
+    var operationIdentifier: OperationIdentity? { get }
 }
