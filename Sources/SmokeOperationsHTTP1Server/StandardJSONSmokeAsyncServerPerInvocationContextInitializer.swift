@@ -33,7 +33,7 @@ public protocol StandardJSONSmokeAsyncServerPerInvocationContextInitializer: Smo
                 StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>,
                                                   OperationIdentifer> {
     associatedtype ContextType
-    associatedtype OperationIdentifer: OperationIdentity
+    associatedtype OperationIdentifer
     
     typealias OperationsInitializerType = ((inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void)
 }
