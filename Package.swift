@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.4
 //
 // Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //

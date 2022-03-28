@@ -31,7 +31,11 @@ public protocol StandardJSONSmokeServerPerInvocationContextInitializer: SmokeSer
                 StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>,
                                                   OperationIdentifer> {
     associatedtype ContextType
+#if swift(>=5.6)
+    associatedtype OperationIdentifer
+#else
     associatedtype OperationIdentifer: OperationIdentity
+#endif
     
     typealias OperationsInitializerType = ((inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void)
 }
