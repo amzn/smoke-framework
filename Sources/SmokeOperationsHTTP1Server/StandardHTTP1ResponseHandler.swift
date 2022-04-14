@@ -78,7 +78,7 @@ public struct StandardHTTP1ResponseHandler<
     public func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                          responseComponents: HTTP1ServerResponseComponents) {
         let bodySize = handleComplete(invocationContext: invocationContext, status: status,
-                                      responseComponents: responseComponents, completeSilently: false)
+                                      responseComponents: responseComponents, reportCompletion: true)
         
         invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
@@ -93,7 +93,7 @@ public struct StandardHTTP1ResponseHandler<
     public func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                  responseComponents: HTTP1ServerResponseComponents) {
         let bodySize = handleComplete(invocationContext: invocationContext, status: status,
-                                      responseComponents: responseComponents, completeSilently: true)
+                                      responseComponents: responseComponents, reportCompletion: false)
         
         invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
@@ -107,7 +107,7 @@ public struct StandardHTTP1ResponseHandler<
     
     private func handleComplete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                 responseComponents: HTTP1ServerResponseComponents,
-                                completeSilently: Bool) -> Int {
+                                reportCompletion: Bool) -> Int {
         var headers = HTTPHeaders()
         
         let buffer: ByteBuffer?
@@ -138,7 +138,7 @@ public struct StandardHTTP1ResponseHandler<
             headers.add(name: header.0, value: header.1)
         }
         
-        if !completeSilently {
+        if reportCompletion {
             invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
         }
         
