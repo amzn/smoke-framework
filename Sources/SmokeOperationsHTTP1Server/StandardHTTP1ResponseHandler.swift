@@ -77,9 +77,10 @@ public struct StandardHTTP1ResponseHandler<
     
     public func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                          responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
+        let bodySize = handleComplete(invocationContext: invocationContext, status: status,
+                                      responseComponents: responseComponents, completeSilently: false)
         
-        invocationContext.logger.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
     
     public func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -91,9 +92,10 @@ public struct StandardHTTP1ResponseHandler<
     
     public func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                  responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
+        let bodySize = handleComplete(invocationContext: invocationContext, status: status,
+                                      responseComponents: responseComponents, completeSilently: true)
         
-        invocationContext.logger.debug("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
     }
     
     public func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -104,7 +106,8 @@ public struct StandardHTTP1ResponseHandler<
     }
     
     private func handleComplete(invocationContext: InvocationContext, status: HTTPResponseStatus,
-                                responseComponents: HTTP1ServerResponseComponents) -> Int {
+                                responseComponents: HTTP1ServerResponseComponents,
+                                completeSilently: Bool) -> Int {
         var headers = HTTPHeaders()
         
         let buffer: ByteBuffer?
@@ -135,7 +138,9 @@ public struct StandardHTTP1ResponseHandler<
             headers.add(name: header.0, value: header.1)
         }
         
-        invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
+        if !completeSilently {
+            invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
+        }
         
         if let smokeInwardsRequestContext = self.smokeInwardsRequestContext {
             let requestLatency = Date().timeIntervalSince(smokeInwardsRequestContext.requestStart).milliseconds
@@ -171,7 +176,7 @@ public struct StandardHTTP1ResponseHandler<
                 logComponents.append("\(retriedServiceCalls.count) outward service calls were retried.")
             }
             
-            invocationContext.logger.info("\(logComponents.joined(separator: " "))")
+            invocationContext.logger.trace("\(logComponents.joined(separator: " "))")
             
             invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
             invocationContext.serviceLatencyTimer?.recordMilliseconds(serviceOnlyLatency)

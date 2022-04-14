@@ -79,7 +79,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
     
     public func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
         var logElements: [String] = []
-        logElements.append("Incoming \(requestHead.method) request received.")
+        logElements.append("Incoming \(requestHead.method) request received for uri \(requestHead.uri).")
         
         if let externalRequestId = self.externalRequestId {
             logElements.append("Received \(requestIdHeader) header '\(externalRequestId)'")
