@@ -25,7 +25,7 @@ import Logging
 
 public extension Lambda {
     static func runAsOperationLambda<InitializerType: SmokeAsyncStaticContextInitializer>(
-        _ factory: @escaping (EventLoop) async throws -> InitializerType)
+        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType)
         where InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == Lambda.Context,
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType == StandardLambdaHTTP1ProxyResponseHandler {
@@ -50,7 +50,7 @@ public extension Lambda {
     }
   
     static func runAsOperationLambda<InitializerType: SmokeAsyncPerInvocationContextInitializer>(
-        _ factory: @escaping (EventLoop) async throws -> InitializerType)
+        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType)
         where InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
         InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == Lambda.Context,
         InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType == StandardLambdaHTTP1ProxyResponseHandler {
