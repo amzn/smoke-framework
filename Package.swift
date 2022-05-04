@@ -31,6 +31,9 @@ let package = Package(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
         .library(
+            name: "SmokeOperationsHTTP1LambdaProxy",
+            targets: ["SmokeOperationsHTTP1LambdaProxy"]),
+        .library(
             name: "_SmokeOperationsHTTP1Concurrency",
             targets: ["_SmokeOperationsHTTP1Concurrency"]),
         .library(
@@ -55,6 +58,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
+        .package(url: "https://github.com/swift-server/swift-aws-lambda-runtime.git", from: "0.1.0"),
     ],
     targets: [
         .target(
@@ -88,6 +92,12 @@ let package = Package(
                 .product(name: "HTTPPathCoding", package: "smoke-http"),
                 .product(name: "HTTPHeadersCoding", package: "smoke-http"),
                 .product(name: "SmokeHTTPClient", package: "smoke-http"),
+            ]),
+        .target(
+            name: "SmokeOperationsHTTP1LambdaProxy", dependencies: [
+                .target(name: "SmokeOperationsHTTP1"),
+                .product(name: "AWSLambdaRuntime", package: "swift-aws-lambda-runtime"),
+                .product(name: "AWSLambdaEvents", package: "swift-aws-lambda-runtime"),
             ]),
         .target(
             name: "_SmokeOperationsHTTP1Concurrency", dependencies: [
