@@ -266,7 +266,7 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
                    responseHandler: responseHandler,
                    invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
                    internalRequestId: "internalRequestId",
-                   invocationReportingProvider: invocationReportingProvider)
+                   invocationReportingProvider: invocationReportingProvider, reportRequest: { })
     
     return responseHandler.response!
 }

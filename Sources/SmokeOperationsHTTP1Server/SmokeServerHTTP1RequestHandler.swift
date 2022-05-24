@@ -79,14 +79,17 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
         var decoratedRequestLogger: Logger = requestLogger
-        traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                               logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
         
         func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
             return SmokeServerInvocationReporting(logger: logger,
                                                   internalRequestId: internalRequestId, traceContext: traceContext,
                                                   eventLoop: eventLoop,
                                                   outwardsRequestAggregator: outwardsRequestAggregator)
+        }
+        
+        func reportRequest() {
+            traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
+                                                   logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
         }
         
         // let it be handled
@@ -96,6 +99,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
                                             invocationStrategy: invocationStrategy,
                                             requestLogger: requestLogger,
                                             internalRequestId: internalRequestId,
-                                            invocationReportingProvider: invocationReportingProvider)
+                                            invocationReportingProvider: invocationReportingProvider,
+                                            reportRequest: reportRequest)
     }
 }

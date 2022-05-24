@@ -68,13 +68,13 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
             guard let tokenizedHandler = getTokenizedHandler(uri: uri,
                                                              httpMethod: httpMethod, requestLogger: requestLogger) else {
                 throw SmokeOperationsError.invalidOperation(reason:
-                    "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+                    "Invalid operation with uri '\(uri)', method '\(httpMethod)'")
                 }
             
                 return tokenizedHandler
         }
         
-        requestLogger.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+        requestLogger.info("Operation handler '\(handler.operationIdentifer)' selected for uri '\(uri)', method '\(httpMethod)'")
         
         return (handler, .null)
     }

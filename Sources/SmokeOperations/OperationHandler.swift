@@ -34,6 +34,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         _ requestLogger: Logger, _ internalRequestId: String, _ invocationReportingProvider: (Logger) -> InvocationReportingType) -> ()
     
     private let operationFunction: OperationResultDataInputFunction
+    public let operationIdentifer: OperationIdentifer
     
     /**
      * Handle for an operation handler delegates the input to the wrapped handling function
@@ -124,6 +125,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
                 operationFunction: @escaping OperationResultDataInputFunction) {
         self.operationFunction = operationFunction
+        self.operationIdentifer = operationIdentifer
     }
     
     /**
@@ -225,5 +227,6 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         }
         
         self.operationFunction = newFunction
+        self.operationIdentifer = operationIdentifer
     }
 }

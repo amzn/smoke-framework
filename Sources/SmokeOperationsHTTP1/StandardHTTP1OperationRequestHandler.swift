@@ -78,7 +78,8 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
-                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType,
+                       reportRequest: () -> ()) {
         func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting)
                 -> SmokeInvocationContext<InvocationReportingType> {
             var decoratedRequestLogger: Logger = requestLogger
@@ -99,6 +100,8 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
             
             return
         }
+        
+        reportRequest()
         
         let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
         let path = String(uriComponents[0])
