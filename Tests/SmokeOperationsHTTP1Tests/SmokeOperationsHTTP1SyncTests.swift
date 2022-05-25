@@ -14,107 +14,52 @@
 // SmokeOperationsSyncTests.swift
 // SmokeOperationsTests
 //
+
 import XCTest
 @testable import SmokeOperationsHTTP1
 import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 
-func handleExampleOperationVoid(input: ExampleInput, context: ExampleContext) throws {
+private func handleExampleOperationVoid(input: ExampleInput, context: ExampleContext) throws {
     // This function intentionally left blank.
 }
 
-func handleExampleHTTP1OperationVoid(input: ExampleHTTP1Input, context: ExampleContext) throws {
+private func handleExampleHTTP1OperationVoid(input: ExampleHTTP1Input, context: ExampleContext) throws {
     input.validateForTest()
 }
 
-func handleBadOperationVoid(input: ExampleInput, context: ExampleContext) throws {
+private func handleBadOperationVoid(input: ExampleInput, context: ExampleContext) throws {
     throw MyError.theError(reason: "Is bad!")
 }
 
-func handleBadHTTP1OperationVoid(input: ExampleHTTP1Input, context: ExampleContext) throws {
+private func handleBadHTTP1OperationVoid(input: ExampleHTTP1Input, context: ExampleContext) throws {
     input.validateForTest()
     throw MyError.theError(reason: "Is bad!")
 }
 
-func handleExampleOperation(input: ExampleInput, context: ExampleContext) throws -> OutputAttributes {
+private func handleExampleOperation(input: ExampleInput, context: ExampleContext) throws -> OutputAttributes {
     return OutputAttributes(bodyColor: input.theID == "123456789012" ? .blue : .yellow,
                             isGreat: true)
 }
 
-func handleExampleHTTP1Operation(input: ExampleHTTP1Input, context: ExampleContext) throws -> OutputHTTP1Attributes {
+private func handleExampleHTTP1Operation(input: ExampleHTTP1Input, context: ExampleContext) throws -> OutputHTTP1Attributes {
     input.validateForTest()
     return OutputHTTP1Attributes(bodyColor: input.theID == "123456789012" ? .blue : .yellow,
                                  isGreat: true,
                                  theHeader: input.theHeader)
 }
 
-func handleBadOperation(input: ExampleInput, context: ExampleContext) throws -> OutputAttributes {
+private func handleBadOperation(input: ExampleInput, context: ExampleContext) throws -> OutputAttributes {
     throw MyError.theError(reason: "Is bad!")
 }
 
-func handleBadHTTP1Operation(input: ExampleHTTP1Input, context: ExampleContext) throws -> OutputHTTP1Attributes {
+private func handleBadHTTP1Operation(input: ExampleHTTP1Input, context: ExampleContext) throws -> OutputHTTP1Attributes {
     input.validateForTest()
     throw MyError.theError(reason: "Is bad!")
 }
 
-enum TestOperations: String, OperationIdentity {
-    case exampleOperation
-    case exampleOperationWithToken
-    case exampleGetOperation
-    case exampleGetOperationWithToken
-    case exampleNoBodyOperation
-    case exampleNoBodyOperationWithToken
-    case badOperation
-    case badOperationWithToken
-    case badOperationVoidResponse
-    case badOperationVoidResponseWithToken
-    case badOperationWithThrow
-    case badOperationWithThrowWithToken
-    case badOperationVoidResponseWithThrow
-    case badOperationVoidResponseWithThrowWithToken
-    
-    var description: String {
-        return rawValue
-    }
-    
-    var operationPath: String {
-        switch self {
-        case .exampleOperation:
-            return "exampleoperation"
-        case .exampleOperationWithToken:
-            return "exampleoperation/{theToken}"
-        case .exampleGetOperation:
-            return "examplegetoperation"
-        case .exampleGetOperationWithToken:
-            return "examplegetoperation/{theToken}"
-        case .exampleNoBodyOperation:
-            return "examplenobodyoperation"
-        case .exampleNoBodyOperationWithToken:
-            return "examplenobodyoperation/{theToken}"
-        case .badOperation:
-            return "badoperation"
-        case .badOperationWithToken:
-            return "badoperation/{theToken}"
-        case .badOperationVoidResponse:
-            return "badoperationvoidresponse"
-        case .badOperationVoidResponseWithToken:
-            return "badoperationvoidresponse/{theToken}"
-        case .badOperationWithThrow:
-            return "badoperationwiththrow"
-        case .badOperationWithThrowWithToken:
-            return "badoperationwiththrow/{theToken}"
-        case .badOperationVoidResponseWithThrow:
-            return "badoperationvoidresponsewiththrow"
-        case .badOperationVoidResponseWithThrowWithToken:
-            return "badoperationvoidresponsewiththrow/{theToken}"
-        }
-    }
-}
-
-typealias TestJSONPayloadHTTP1OperationDelegate = GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestInvocationReporting>
-
-fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, TestJSONPayloadHTTP1OperationDelegate, TestOperations> = {
+private let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, TestJSONPayloadHTTP1OperationDelegate, TestOperations> = {
     var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, TestJSONPayloadHTTP1OperationDelegate, TestOperations>(
         defaultOperationDelegate: GenericJSONPayloadHTTP1OperationDelegate())
     newHandlerSelector.addHandlerForOperation(
@@ -180,10 +125,10 @@ fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContex
 
 class SmokeOperationsHTTP1SyncTests: XCTestCase {
     
-    func testExampleHandler() throws {
-        let response = verifyPathOutput(uri: "exampleOperation",
-                                        body: serializedInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testExampleHandler() async throws {
+        let response = await verifyPathOutput(uri: "exampleOperation",
+                                              body: serializedInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         
         XCTAssertEqual(response.status.code, 200)
@@ -194,11 +139,11 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual(expectedOutput, output)
     }
     
-    func testExampleHandlerWithTokenHeaderQuery() throws {
-        let response = verifyPathOutput(uri: "exampleoperation/suchToken?theParameter=muchParameter",
-                                        body: serializedInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector,
-                                        additionalHeaders: [("theHeader", "headerValue")])
+    func testExampleHandlerWithTokenHeaderQuery() async throws {
+        let response = await verifyPathOutput(uri: "exampleoperation/suchToken?theParameter=muchParameter",
+                                              body: serializedInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector,
+                                              additionalHeaders: [("theHeader", "headerValue")])
 
         
         XCTAssertEqual(response.status.code, 200)
@@ -209,31 +154,31 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual(expectedOutput, output)
     }
 
-    func testExampleVoidHandler() {
-        let response = verifyPathOutput(uri: "exampleNoBodyOperation",
-                                        body: serializedInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testExampleVoidHandler() async {
+        let response = await verifyPathOutput(uri: "exampleNoBodyOperation",
+                                              body: serializedInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         let body = response.responseComponents.body
         XCTAssertEqual(response.status.code, 200)
         XCTAssertNil(body)
     }
     
-    func testExampleVoidHandlerWithTokenHeaderQuery() {
-        let response = verifyPathOutput(uri: "exampleNoBodyOperation/suchToken?theParameter=muchParameter",
-                                        body: serializedInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector,
-                                        additionalHeaders: [("theHeader", "headerValue")])
+    func testExampleVoidHandlerWithTokenHeaderQuery() async {
+        let response = await verifyPathOutput(uri: "exampleNoBodyOperation/suchToken?theParameter=muchParameter",
+                                              body: serializedInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector,
+                                              additionalHeaders: [("theHeader", "headerValue")])
 
         let body = response.responseComponents.body
         XCTAssertEqual(response.status.code, 200)
         XCTAssertNil(body)
     }
   
-    func testInputValidationError() throws {
-        let response = verifyPathOutput(uri: "exampleOperation",
-                                        body: serializedInvalidInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testInputValidationError() async throws {
+        let response = await verifyPathOutput(uri: "exampleOperation",
+                                              body: serializedInvalidInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         
         XCTAssertEqual(response.status.code, 400)
@@ -244,11 +189,11 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("ValidationError", output.type)
     }
     
-    func testInputValidationErrorWithTokenHeaderQuery() throws {
-        let response = verifyPathOutput(uri: "exampleOperation/suchToken?theParameter=muchParameter",
-                                        body: serializedInvalidInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector,
-                                        additionalHeaders: [("theHeader", "headerValue")])
+    func testInputValidationErrorWithTokenHeaderQuery() async throws {
+        let response = await verifyPathOutput(uri: "exampleOperation/suchToken?theParameter=muchParameter",
+                                              body: serializedInvalidInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector,
+                                              additionalHeaders: [("theHeader", "headerValue")])
         
         
         XCTAssertEqual(response.status.code, 400)
@@ -259,10 +204,10 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("ValidationError", output.type)
     }
    
-    func testOutputValidationError() throws {
-        let response = verifyPathOutput(uri: "exampleOperation",
-                                        body: serializedAlternateInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testOutputValidationError() async throws {
+        let response = await verifyPathOutput(uri: "exampleOperation",
+                                              body: serializedAlternateInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         
         XCTAssertEqual(response.status.code, 500)
@@ -273,11 +218,11 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InternalError", output.type)
     }
     
-    func testOutputValidationErrorWithTokenHeaderQuery() throws {
-        let response = verifyPathOutput(uri: "exampleOperation/suchToken?theParameter=muchParameter",
-                                        body: serializedAlternateInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector,
-                                        additionalHeaders: [("theHeader", "headerValue")])
+    func testOutputValidationErrorWithTokenHeaderQuery() async throws {
+        let response = await verifyPathOutput(uri: "exampleOperation/suchToken?theParameter=muchParameter",
+                                              body: serializedAlternateInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector,
+                                              additionalHeaders: [("theHeader", "headerValue")])
         
         
         XCTAssertEqual(response.status.code, 500)
@@ -288,24 +233,24 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InternalError", output.type)
     }
     
-    func testThrownErrorWithTokenHeaderQuery() throws {
-        try verifyErrorResponse(uri: "badOperationVoidResponse/suchToken?theParameter=muchParameter",
-                                handlerSelector: handlerSelector,
-                                additionalHeaders: [("theHeader", "headerValue")])
-        try verifyErrorResponse(uri: "badOperation/suchToken?theParameter=muchParameter",
-                                handlerSelector: handlerSelector,
-                                additionalHeaders: [("theHeader", "headerValue")])
+    func testThrownErrorWithTokenHeaderQuery() async throws {
+        try await verifyErrorResponse(uri: "badOperationVoidResponse/suchToken?theParameter=muchParameter",
+                                      handlerSelector: handlerSelector,
+                                      additionalHeaders: [("theHeader", "headerValue")])
+        try await verifyErrorResponse(uri: "badOperation/suchToken?theParameter=muchParameter",
+                                      handlerSelector: handlerSelector,
+                                      additionalHeaders: [("theHeader", "headerValue")])
     }
     
-    func testThrownError() throws {
-        try verifyErrorResponse(uri: "badOperationVoidResponse", handlerSelector: handlerSelector)
-        try verifyErrorResponse(uri: "badOperation", handlerSelector: handlerSelector)
+    func testThrownError() async throws {
+        try await verifyErrorResponse(uri: "badOperationVoidResponse", handlerSelector: handlerSelector)
+        try await verifyErrorResponse(uri: "badOperation", handlerSelector: handlerSelector)
     }
     
-    func testInvalidOperation() throws {
-        let response = verifyPathOutput(uri: "unknownOperation",
-                                        body: serializedAlternateInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testInvalidOperation() async throws {
+        let response = await verifyPathOutput(uri: "unknownOperation",
+                                              body: serializedAlternateInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         
         XCTAssertEqual(response.status.code, 400)
@@ -316,11 +261,11 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InvalidOperation", output.type)
     }
     
-    func testInvalidOperationWithTokenHeaderQuery() throws {
-        let response = verifyPathOutput(uri: "unknownOperation/suchToken?theParameter=muchParameter",
-                                        body: serializedAlternateInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector,
-                                        additionalHeaders: [("theHeader", "headerValue")])
+    func testInvalidOperationWithTokenHeaderQuery() async throws {
+        let response = await verifyPathOutput(uri: "unknownOperation/suchToken?theParameter=muchParameter",
+                                              body: serializedAlternateInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector,
+                                              additionalHeaders: [("theHeader", "headerValue")])
         
         
         XCTAssertEqual(response.status.code, 400)
@@ -331,10 +276,10 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InvalidOperation", output.type)
     }
     
-    func testIncorrectHTTPMethodOperation() throws {
-        let response = verifyPathOutput(uri: "examplegetoperation",
-                                        body: serializedAlternateInput.data(using: .utf8)!,
-                                        handlerSelector: handlerSelector)
+    func testIncorrectHTTPMethodOperation() async throws {
+        let response = await verifyPathOutput(uri: "examplegetoperation",
+                                              body: serializedAlternateInput.data(using: .utf8)!,
+                                              handlerSelector: handlerSelector)
 
         
         XCTAssertEqual(response.status.code, 400)
@@ -345,11 +290,11 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InvalidOperation", output.type)
     }
     
-    func testIncorrectHTTPMethodOperationWithTokenHeaderQuery() throws {
-         let response = verifyPathOutput(uri: "examplegetoperation/suchToken?theParameter=muchParameter",
-                                         body: serializedInput.data(using: .utf8)!,
-                                         handlerSelector: handlerSelector,
-                                         additionalHeaders: [("theHeader", "headerValue")])
+    func testIncorrectHTTPMethodOperationWithTokenHeaderQuery() async throws {
+         let response = await verifyPathOutput(uri: "examplegetoperation/suchToken?theParameter=muchParameter",
+                                               body: serializedInput.data(using: .utf8)!,
+                                               handlerSelector: handlerSelector,
+                                               additionalHeaders: [("theHeader", "headerValue")])
         
         XCTAssertEqual(response.status.code, 400)
         let body = response.responseComponents.body!
@@ -358,22 +303,4 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         
         XCTAssertEqual("InvalidOperation", output.type)
     }
-
-    static var allTests = [
-        ("testExampleHandler", testExampleHandler),
-        ("testExampleHandlerWithTokenHeaderQuery", testExampleHandlerWithTokenHeaderQuery),
-        ("testExampleVoidHandler", testExampleVoidHandler),
-        ("testExampleVoidHandlerWithTokenHeaderQuery", testExampleVoidHandlerWithTokenHeaderQuery),
-        ("testInputValidationError", testInputValidationError),
-        ("testInputValidationErrorWithTokenHeaderQuery", testInputValidationErrorWithTokenHeaderQuery),
-        ("testOutputValidationError", testOutputValidationError),
-        ("testOutputValidationErrorWithTokenHeaderQuery", testOutputValidationErrorWithTokenHeaderQuery),
-        ("testThrownError", testThrownError),
-        ("testThrownErrorWithTokenHeaderQuery", testThrownErrorWithTokenHeaderQuery),
-        ("testInvalidOperation", testInvalidOperation),
-        ("testInvalidOperationWithTokenHeaderQuery", testInvalidOperationWithTokenHeaderQuery),
-        ("testIncorrectHTTPMethodOperation", testIncorrectHTTPMethodOperation),
-        ("testIncorrectHTTPMethodOperationWithTokenHeaderQuery",
-         testIncorrectHTTPMethodOperationWithTokenHeaderQuery)
-    ]
 }
