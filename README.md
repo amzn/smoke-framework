@@ -3,7 +3,7 @@
 <img src="https://github.com/amzn/smoke-framework/actions/workflows/swift.yml/badge.svg?branch=main" alt="Build - Main Branch">
 </a>
 <a href="http://swift.org">
-<img src="https://img.shields.io/badge/swift-5.4|5.5|5.6-orange.svg?style=flat" alt="Swift 5.4, 5.5 and 5.6 Tested">
+<img src="https://img.shields.io/badge/swift-5.5|5.6-orange.svg?style=flat" alt="Swift 5.5 and 5.6 Tested">
 </a>
 <img src="https://img.shields.io/badge/ubuntu-18.04|20.04-yellow.svg?style=flat" alt="Ubuntu 16.04 and 20.04 Tested">
 <img src="https://img.shields.io/badge/CentOS-8-yellow.svg?style=flat" alt="CentOS 8 Tested">

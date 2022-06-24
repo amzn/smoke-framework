@@ -1,4 +1,4 @@
-// swift-tools-version:5.4
+// swift-tools-version:5.5
 //
 // Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
@@ -25,14 +25,8 @@ let package = Package(
             name: "SmokeOperations",
             targets: ["SmokeOperations"]),
         .library(
-            name: "_SmokeOperationsConcurrency",
-            targets: ["_SmokeOperationsConcurrency"]),
-        .library(
             name: "SmokeOperationsHTTP1",
             targets: ["SmokeOperationsHTTP1"]),
-        .library(
-            name: "_SmokeOperationsHTTP1Concurrency",
-            targets: ["_SmokeOperationsHTTP1Concurrency"]),
         .library(
             name: "SmokeOperationsHTTP1Server",
             targets: ["SmokeOperationsHTTP1Server"]),
@@ -42,12 +36,6 @@ let package = Package(
         .library(
             name: "SmokeHTTP1",
             targets: ["SmokeHTTP1"]),
-        .library(
-            name: "SmokeAsync",
-            targets: ["SmokeAsync"]),
-        .library(
-            name: "SmokeAsyncHTTP1",
-            targets: ["SmokeAsyncHTTP1"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -78,10 +66,6 @@ let package = Package(
                 .target(name: "SmokeInvocation"),
             ]),
         .target(
-            name: "_SmokeOperationsConcurrency", dependencies: [
-                .target(name: "SmokeOperations"),
-            ]),
-        .target(
             name: "SmokeOperationsHTTP1", dependencies: [
                 .target(name: "SmokeOperations"),
                 .product(name: "QueryCoding", package: "smoke-http"),
@@ -90,26 +74,9 @@ let package = Package(
                 .product(name: "SmokeHTTPClient", package: "smoke-http"),
             ]),
         .target(
-            name: "_SmokeOperationsHTTP1Concurrency", dependencies: [
-                .target(name: "SmokeOperationsHTTP1"),
-                .target(name: "_SmokeOperationsConcurrency"),
-            ]),
-        .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
                 .target(name: "SmokeHTTP1"),
-            ]),
-        .target(
-            name: "SmokeAsync", dependencies: [
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "NIO", package: "swift-nio"),
-                .target(name: "SmokeOperations"),
-            ]),
-        .target(
-            name: "SmokeAsyncHTTP1", dependencies: [
-                .product(name: "NIOHTTP1", package: "swift-nio"),
-                .target(name: "SmokeAsync"),
-                .target(name: "SmokeOperationsHTTP1"),
             ]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [

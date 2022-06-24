@@ -14,6 +14,7 @@
 // TestConfiguration.swift
 // SmokeOperationsTests
 //
+
 import Foundation
 import SmokeOperations
 import NIOHTTP1
@@ -22,6 +23,62 @@ import SmokeInvocation
 import NIO
 @testable import SmokeOperationsHTTP1
 import XCTest
+
+enum TestOperations: String, OperationIdentity {
+    case exampleOperation
+    case exampleOperationWithToken
+    case exampleGetOperation
+    case exampleGetOperationWithToken
+    case exampleNoBodyOperation
+    case exampleNoBodyOperationWithToken
+    case badOperation
+    case badOperationWithToken
+    case badOperationVoidResponse
+    case badOperationVoidResponseWithToken
+    case badOperationWithThrow
+    case badOperationWithThrowWithToken
+    case badOperationVoidResponseWithThrow
+    case badOperationVoidResponseWithThrowWithToken
+    
+    var description: String {
+        return rawValue
+    }
+    
+    var operationPath: String {
+        switch self {
+        case .exampleOperation:
+            return "exampleoperation"
+        case .exampleOperationWithToken:
+            return "exampleoperation/{theToken}"
+        case .exampleGetOperation:
+            return "examplegetoperation"
+        case .exampleGetOperationWithToken:
+            return "examplegetoperation/{theToken}"
+        case .exampleNoBodyOperation:
+            return "examplenobodyoperation"
+        case .exampleNoBodyOperationWithToken:
+            return "examplenobodyoperation/{theToken}"
+        case .badOperation:
+            return "badoperation"
+        case .badOperationWithToken:
+            return "badoperation/{theToken}"
+        case .badOperationVoidResponse:
+            return "badoperationvoidresponse"
+        case .badOperationVoidResponseWithToken:
+            return "badoperationvoidresponse/{theToken}"
+        case .badOperationWithThrow:
+            return "badoperationwiththrow"
+        case .badOperationWithThrowWithToken:
+            return "badoperationwiththrow/{theToken}"
+        case .badOperationVoidResponseWithThrow:
+            return "badoperationvoidresponsewiththrow"
+        case .badOperationVoidResponseWithThrowWithToken:
+            return "badoperationvoidresponsewiththrow/{theToken}"
+        }
+    }
+}
+
+typealias TestJSONPayloadHTTP1OperationDelegate = GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestInvocationReporting>
 
 struct ExampleContext {
 }
@@ -56,16 +113,17 @@ struct TestInvocationReporting: InvocationReporting {
 }
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {
-    var response: OperationResponse?
+    let continuation: UnsafeContinuation<OperationResponse, Never>
     
-    init() {
-        
+    init(continuation: UnsafeContinuation<OperationResponse, Never>) {
+        self.continuation = continuation
     }
     
     func complete(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
-        response = OperationResponse(status: status,
-                                     responseComponents: responseComponents)
+        let response = OperationResponse(status: status,
+                                         responseComponents: responseComponents)
+        self.continuation.resume(returning: response)
     }
     
     func completeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
@@ -239,7 +297,7 @@ struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatab
 
 func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     handlerSelector: SelectorType,
-                                    additionalHeaders: [(String, String)] = []) -> OperationResponse
+                                    additionalHeaders: [(String, String)] = []) async -> OperationResponse
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
@@ -255,34 +313,34 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     additionalHeaders.forEach { header in
         httpRequestHead.headers.add(name: header.0, value: header.1)
     }
-    
-    let responseHandler = TestHttpResponseHandler()
-        
+            
     func invocationReportingProvider(logger: Logger) -> TestInvocationReporting {
         return TestInvocationReporting()
     }
-    
-    handler.handle(requestHead: httpRequestHead, body: body,
-                   responseHandler: responseHandler,
-                   invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
-                   internalRequestId: "internalRequestId",
-                   invocationReportingProvider: invocationReportingProvider, reportRequest: { })
-    
-    return responseHandler.response!
+        
+    return await withUnsafeContinuation { continuation in
+        let responseHandler = TestHttpResponseHandler(continuation: continuation)
+        
+        handler.handle(requestHead: httpRequestHead, body: body,
+                       responseHandler: responseHandler,
+                       invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
+                       internalRequestId: "internalRequestId",
+                       invocationReportingProvider: invocationReportingProvider, reportRequest: { })
+    }
 }
 
 func verifyErrorResponse<SelectorType>(uri: String,
                                        handlerSelector: SelectorType,
-                                       additionalHeaders: [(String, String)] = []) throws
+                                       additionalHeaders: [(String, String)] = []) async throws
 where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     TestHttpResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
     TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
     SelectorType.OperationIdentifer == TestOperations {
-    let response = verifyPathOutput(uri: uri,
-                                    body: serializedAlternateInput.data(using: .utf8)!,
-                                    handlerSelector: handlerSelector,
-                                    additionalHeaders: additionalHeaders)
+    let response = await verifyPathOutput(uri: uri,
+                                          body: serializedAlternateInput.data(using: .utf8)!,
+                                          handlerSelector: handlerSelector,
+                                          additionalHeaders: additionalHeaders)
     
     
     XCTAssertEqual(response.status.code, 400)
