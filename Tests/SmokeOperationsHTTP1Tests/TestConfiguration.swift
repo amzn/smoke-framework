@@ -113,9 +113,9 @@ struct TestInvocationReporting: InvocationReporting {
 }
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {
-    let continuation: UnsafeContinuation<OperationResponse, Never>
+    let continuation: CheckedContinuation<OperationResponse, Never>
     
-    init(continuation: UnsafeContinuation<OperationResponse, Never>) {
+    init(continuation: CheckedContinuation<OperationResponse, Never>) {
         self.continuation = continuation
     }
     
@@ -318,7 +318,7 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
         return TestInvocationReporting()
     }
         
-    return await withUnsafeContinuation { continuation in
+    return await withCheckedContinuation { continuation in
         let responseHandler = TestHttpResponseHandler(continuation: continuation)
         
         handler.handle(requestHead: httpRequestHead, body: body,

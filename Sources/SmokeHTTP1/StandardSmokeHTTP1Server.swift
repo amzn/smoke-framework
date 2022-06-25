@@ -25,7 +25,7 @@ import SmokeInvocation
 private struct ServerShutdownDetails {
     let completionHandlers: [() -> Void]
 #if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-    let awaitingContinuations: [UnsafeContinuation<Void, Error>]
+    let awaitingContinuations: [CheckedContinuation<Void, Error>]
 #endif
 }
 
@@ -54,7 +54,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     }
     private var shutdownCompletionHandlers: [() -> Void] = []
 #if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-    private var shutdownWaitingContinuations: [UnsafeContinuation<Void, Error>] = []
+    private var shutdownWaitingContinuations: [CheckedContinuation<Void, Error>] = []
 #endif
     private var serverState: State = .initialized
     private var stateLock: NSLock = NSLock()
@@ -270,7 +270,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     
 #if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
     public func untilShutdown() async throws {
-        return try await withUnsafeThrowingContinuation { cont in
+        return try await withCheckedThrowingContinuation { cont in
             if !addContinuationIfShutdown(newContinuation: cont) {
                 // continuation will be resumed when the server shuts down
             } else {
@@ -443,7 +443,7 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
     }
     
 #if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-    public func addContinuationIfShutdown(newContinuation: UnsafeContinuation<Void, Error>) -> Bool {
+    public func addContinuationIfShutdown(newContinuation: CheckedContinuation<Void, Error>) -> Bool {
         stateLock.lock()
         defer {
             stateLock.unlock()
