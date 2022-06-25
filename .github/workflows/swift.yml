@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ smoke-framework-2.x ]
   pull_request:
-    branches: [ main ]
+    branches: [ smoke-framework-2.x ]
       
 jobs:
   LatestVersionBuild:
