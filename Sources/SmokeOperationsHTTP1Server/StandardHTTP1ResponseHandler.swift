@@ -80,7 +80,9 @@ public struct StandardHTTP1ResponseHandler<
         let bodySize = handleComplete(invocationContext: invocationContext, status: status,
                                       responseComponents: responseComponents, reportCompletion: true)
         
-        invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.logger.trace("Http response sent.",
+                                       metadata: ["status": "\(status.code)",
+                                                  "bodyBytesCount": "\(bodySize)"])
     }
     
     public func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -95,7 +97,9 @@ public struct StandardHTTP1ResponseHandler<
         let bodySize = handleComplete(invocationContext: invocationContext, status: status,
                                       responseComponents: responseComponents, reportCompletion: false)
         
-        invocationContext.logger.trace("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        invocationContext.logger.trace("Http response sent.",
+                                       metadata: ["status": "\(status.code)",
+                                                  "bodyBytesCount": "\(bodySize)"])
     }
     
     public func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -155,30 +159,17 @@ public struct StandardHTTP1ResponseHandler<
                 let retriedServiceCalls = smokeInwardsRequestContext.retriableOutputRequestRecords.filter { requestRecord in
                     return requestRecord.outputRequests.count > 1
                 }
-                let serviceOnlyLatency = requestLatency - serviceCallLatency - retryWaitLatency
                 
-                var logComponents: [String] = []
+                let logMetadata: Logger.Metadata = [
+                    "requestLatencyMS": "\(requestLatency)",
+                    "serviceCallCount":"\(serviceCallCount)",
+                    "serviceCallLatencyMS": "\(serviceCallLatency)",
+                    "retryServiceCallCount": "\(retriedServiceCalls)",
+                    "retryWaitLatencyMS": "\(retryWaitLatency)"]
                 
-                if serviceCallCount == 0 {
-                    let logMessage = "Request completed in \(requestLatency) ms; (no service calls)."
-                    logComponents.append("\(logMessage)")
-                } else {
-                    let logMessage = "Request completed in \(requestLatency) ms; "
-                        + "\(serviceOnlyLatency) ms excluding service calls (there was \(serviceCallCount); "
-                        + "\(serviceCallLatency) ms service call latency, \(retryWaitLatency) ms retry backoff)."
-                    logComponents.append("\(logMessage)")
-                }
-                
-                if retriedServiceCalls.count == 1 {
-                    logComponents.append("1 outward service call was retried.")
-                } else {
-                    logComponents.append("\(retriedServiceCalls.count) outward service calls were retried.")
-                }
-                
-                invocationContext.logger.info("\(logComponents.joined(separator: " "))")
+                invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
                 
                 invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
-                invocationContext.serviceLatencyTimer?.recordMilliseconds(serviceOnlyLatency)
                 invocationContext.outwardsServiceCallLatencySumTimer?.recordMilliseconds(serviceCallLatency)
                 invocationContext.outwardsServiceCallRetryWaitSumTimer?.recordMilliseconds(retryWaitLatency)
                 
