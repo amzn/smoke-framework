@@ -74,7 +74,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
                 return tokenizedHandler
         }
         
-        requestLogger.debug("Operation handler selected.",
+        requestLogger.trace("Operation handler selected.",
                             metadata: ["operationIdentifer": "\(handler.operationIdentifer)",
                                        "uri": "\(uri)",
                                        "method": "\(httpMethod)"])
