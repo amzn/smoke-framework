@@ -130,7 +130,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             level = .info
         }
         
-        logger.log(level: level, "Incoming response sent.", metadata: logMetadata)
+        logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)
     }
 }
     

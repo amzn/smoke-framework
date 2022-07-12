@@ -77,12 +77,8 @@ public struct StandardHTTP1ResponseHandler<
     
     public func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                          responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status,
-                                      responseComponents: responseComponents, reportCompletion: true)
-        
-        invocationContext.logger.trace("Http response sent.",
-                                       metadata: ["status": "\(status.code)",
-                                                  "bodyBytesCount": "\(bodySize)"])
+        handleComplete(invocationContext: invocationContext, status: status,
+                       responseComponents: responseComponents, reportCompletion: true)
     }
     
     public func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -94,12 +90,8 @@ public struct StandardHTTP1ResponseHandler<
     
     public func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                  responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status,
-                                      responseComponents: responseComponents, reportCompletion: false)
-        
-        invocationContext.logger.trace("Http response sent.",
-                                       metadata: ["status": "\(status.code)",
-                                                  "bodyBytesCount": "\(bodySize)"])
+        handleComplete(invocationContext: invocationContext, status: status,
+                       responseComponents: responseComponents, reportCompletion: false)
     }
     
     public func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -111,7 +103,7 @@ public struct StandardHTTP1ResponseHandler<
     
     private func handleComplete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                 responseComponents: HTTP1ServerResponseComponents,
-                                reportCompletion: Bool) -> Int {
+                                reportCompletion: Bool) {
         var headers = HTTPHeaders()
         
         let buffer: ByteBuffer?
@@ -164,7 +156,7 @@ public struct StandardHTTP1ResponseHandler<
                     "requestLatencyMS": "\(requestLatency)",
                     "serviceCallCount":"\(serviceCallCount)",
                     "serviceCallLatencyMS": "\(serviceCallLatency)",
-                    "retryServiceCallCount": "\(retriedServiceCalls)",
+                    "retryServiceCallCount": "\(retriedServiceCalls.count)",
                     "retryWaitLatencyMS": "\(retryWaitLatency)"]
                 
                 invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
@@ -211,8 +203,6 @@ public struct StandardHTTP1ResponseHandler<
         // write the response end and flush
         context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
                           promise: promise)
-        
-        return bodySize
     }
 }
 
