@@ -78,27 +78,27 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
     }
     
     public func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
-        var logElements: [String] = []
-        logElements.append("Incoming \(requestHead.method) request received for uri \(requestHead.uri).")
+        var logMetadata: Logger.Metadata = ["method": "\(requestHead.method)",
+                                            "uri": "\(requestHead.uri)"]
         
         if let externalRequestId = self.externalRequestId {
-            logElements.append("Received \(requestIdHeader) header '\(externalRequestId)'")
-            
             logger[metadataKey: requestIdHeader] = "\(externalRequestId)"
         }
         
         if let traceId = self.traceId {
-            logElements.append("Received \(traceIdHeader) header '\(traceId)'")
-            
             logger[metadataKey: traceIdHeader] = "\(traceId)"
         }
         
         if let bodyData = bodyData {
-            logElements.append("Received body with size \(bodyData.count): \(bodyData.debugString)")
+            logMetadata["bodyBytesCount"] = "\(bodyData.count)"
+            
+            if logger.logLevel <= .debug {
+                logMetadata["bodyData"] = "\(bodyData.debugString)"
+            }
         }
         
         // log details about the incoming request
-        logger.info("\(logElements.joined(separator: " "))")
+        logger.info("Incoming request received.", metadata: logMetadata)
     }
     
     public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
@@ -111,32 +111,45 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             httpHeaders.add(name: traceIdHeader, value: traceId)
         }
         
-        var logElements: [String] = []
-        logElements.append("Incoming request responded with status \(status).")
+        var logMetadata: Logger.Metadata = ["status": "\(status)"]
         
         if let body = body {
-            logElements.append("Sent body with content type '\(body.contentType)', size \(body.data.count): \(body.data.debugString)")
+            logMetadata["contentType"] = "\(body.contentType)"
+            logMetadata["bodyBytesCount"] = "\(body.data.count)"
+            
+            if logger.logLevel <= .debug {
+                logMetadata["bodyData"] = "\(body.data.debugString)"
+            }
         }
         
-        // log details about the response to the incoming request
-        let logLine = logElements.joined(separator: " ")
+        let level: Logger.Level
         // log at error if this is a server error
         if status.code >= 500 && status.code < 600 {
-            logger.error("\(logLine)")
+            level = .error
         } else {
-            logger.info("\(logLine)")
+            level = .info
         }
+        
+        logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)
     }
 }
     
 extension SmokeInvocationTraceContext: InvocationTraceContext {
     public typealias OutwardsRequestContext = String
     
-        public func handleOutwardsRequestStart(method: HTTPMethod, uri: String, logger: Logger, internalRequestId: String,
-                                               headers: inout HTTPHeaders, bodyData: Data) -> String {
+    public func handleOutwardsRequestStart(method: HTTPMethod, uri: String, logger: Logger, internalRequestId: String,
+                                           headers: inout HTTPHeaders, bodyData: Data) -> String {
+        var logMetadata: Logger.Metadata = ["method": "\(method)",
+                                            "uri": "\(uri)",
+                                            "bodyBytesCount": "\(bodyData.count)"]
+        
+        if logger.logLevel == .trace {
+            logMetadata["bodyData"] = "\(bodyData.debugString)"
+        }
+            
         // log details about the outgoing request
-        logger.info("Starting outgoing \(method) request to endpoint '\(uri)'.")
-        logger.debug("Outgoing request body with size \(bodyData.count): \(bodyData.debugString)")
+        logger.info("Starting outgoing request.",
+                    metadata: logMetadata)
         
         // pass the internal request id to the downstream caller
         headers.add(name: requestIdHeader, value: internalRequestId)
@@ -151,53 +164,59 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
     
      public func handleOutwardsRequestSuccess(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
                                               response: HTTPClient.Response, bodyData: Data?) {
-        let logLine = getLogLine(successfullyCompletedRequest: true, response: response, bodyData: bodyData)
-        
-        logger.info("\(logLine)")
-        
-        if let bodyData = bodyData {
-            logger.debug("Outgoing response body: \(bodyData.debugString)")
-        }
+         logOutwardsRequestCompletion(logger: logger, level: .info, successfullyCompletedRequest: true,
+                                      response: response, bodyData: bodyData)
     }
     
     public func handleOutwardsRequestFailure(outwardsRequestContext: String?, logger: Logger, internalRequestId: String,
                                              response: HTTPClient.Response?, bodyData: Data?, error: Error) {
-        let logLine = getLogLine(successfullyCompletedRequest: false, response: response, bodyData: bodyData)
+        let level: Logger.Level
         
         // log at error if this is a server error
         if let response = response, response.status.code >= 500 && response.status.code < 600 {
-            logger.error("\(logLine)")
+            level = .error
         } else {
-            logger.info("\(logLine)")
+            level = .info
         }
         
-        if let bodyData = bodyData {
-            logger.debug("Outgoing response body: \(bodyData.debugString)")
-        }
+        logOutwardsRequestCompletion(logger: logger, level: level, successfullyCompletedRequest: false,
+                                     response: response, bodyData: bodyData)
     }
     
-    private func getLogLine(successfullyCompletedRequest: Bool, response: HTTPClient.Response?, bodyData: Data?) -> String {
-        var logElements: [String] = []
-        let completionString = successfullyCompletedRequest ? "Successfully" : "Unsuccessfully"
-        logElements.append("\(completionString) completed outgoing request.")
+    private func logOutwardsRequestCompletion(logger: Logger, level: Logger.Level, successfullyCompletedRequest: Bool,
+                                              response: HTTPClient.Response?, bodyData: Data?) {
+        var logMetadata: Logger.Metadata = [:]
+        
+        if successfullyCompletedRequest {
+            logMetadata["result"] = "success"
+        } else {
+            logMetadata["result"] = "failure"
+        }
         
         if let code = response?.status.code {
-            logElements.append("Returned status code: \(code)")
+            logMetadata["status"] = "\(code)"
         }
         
         if let requestIds = response?.headers[requestIdHeader], !requestIds.isEmpty {
-            logElements.append("Returned \(requestIdHeader) header '\(requestIds.joined(separator: ","))'")
+            requestIds.enumerated().forEach { (index, header) in
+                logMetadata["\(requestIdHeader)(index)"] = "\(header)"
+            }
         }
         
         if let traceIds = response?.headers[traceIdHeader], !traceIds.isEmpty {
-            logElements.append("Returned \(traceIdHeader) header '\(traceIds.joined(separator: ","))'")
+            traceIds.enumerated().forEach { (index, header) in
+                logMetadata["\(traceIdHeader)(index)"] = "\(header)"
+            }
         }
         
         if let bodyData = bodyData {
-            logElements.append("Returned body with size \(bodyData.count)")
+            logMetadata["bodyBytesCount"] = "\(bodyData.count)"
+            
+            if logger.logLevel == .trace {
+                logMetadata["bodyData"] = "\(bodyData.debugString)"
+            }
         }
         
-        // log details about the response to the outgoing request
-        return logElements.joined(separator: " ")
+        logger.log(level: level, "Outgoing request completed.", metadata: logMetadata)
     }
 }

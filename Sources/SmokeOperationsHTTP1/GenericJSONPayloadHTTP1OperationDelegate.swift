@@ -136,7 +136,8 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             do {
                 encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(bodyEncodable)
             } catch {
-                invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response: \(error)")
+                invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response.",
+                                                                   metadata: ["cause": "\(String(describing: error))"])
                 
                 handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
                 return
@@ -153,7 +154,8 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             do {
                 headers = try HTTPHeadersEncoder().encode(additionalHeadersEncodable)
             } catch {
-                invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response: \(error)")
+                invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response.",
+                                                                   metadata: ["cause": "\(String(describing: error))"])
                 
                 handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
                 return
@@ -236,7 +238,8 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
         do {
             encodedOutput = try operationFailure.error.encode(errorEncoder: JSONErrorEncoder(), logger: logger)
         } catch {
-            logger.error("Serialization error: unable to encode response: \(error)")
+            logger.error("Serialization error: unable to encode response.",
+                         metadata: ["cause": "\(String(describing: error))"])
             
             handleResponseForInternalServerError(requestHead: requestHead,
                                                  responseHandler: responseHandler, invocationContext: invocationContext)

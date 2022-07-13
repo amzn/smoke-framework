@@ -42,7 +42,8 @@ public extension SmokeHTTP1Server {
         } catch {
             let logger = Logger.init(label: "application.initialization")
             
-            logger.error("Unable to initialize application from factory due to error - \(error).")
+            logger.error("Unable to initialize application from factory.",
+                         metadata: ["cause": "\(String(describing: error))"])
             
             return
         }
@@ -83,7 +84,8 @@ public extension SmokeHTTP1Server {
             
             try await eventLoopGroup.shutdownGracefully()
         } catch {
-            logger.error("Operations Server lifecycle error: '\(error)'")
+            logger.error("Operations Server lifecycle error.",
+                         metadata: ["cause": "\(String(describing: error))"])
         }
     }
     
@@ -102,7 +104,8 @@ public extension SmokeHTTP1Server {
         } catch {
             let logger = Logger.init(label: "application.initialization")
             
-            logger.error("Unable to initialize application from factory due to error - \(error).")
+            logger.error("Unable to initialize application from factory.",
+                         metadata: ["cause": "\(String(describing: error))"])
             
             return
         }
@@ -143,7 +146,8 @@ public extension SmokeHTTP1Server {
             
             try await eventLoopGroup.shutdownGracefully()
         } catch {
-            logger.error("Operations Server lifecycle error: '\(error)'")
+            logger.error("Operations Server lifecycle error.",
+                         metadata: ["cause": "\(String(describing: error))"])
         }
     }
 }
