@@ -239,19 +239,20 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         case .head(let requestHead):
             let logger = self.state.requestReceived(requestHead: requestHead)
 
-            logger.debug("Request head received.")
+            logger.trace("Request head received.")
         case .body(var byteBuffer):
             let byteBufferSize = byteBuffer.readableBytes
             let newData = byteBuffer.readData(length: byteBufferSize)
             
             let logger = self.state.partialBodyReceived(bodyPart: newData)
 
-            logger.debug("Request body part of \(byteBufferSize) bytes received.")
+            logger.trace("Request body part received.",
+                         metadata: ["receivedBytes": "\(byteBufferSize)"])
         case .end:
             // this signals that the head and all possible body parts have been received
             let pendingResponse = self.state.requestFullyReceived()
             
-            pendingResponse.logger.debug("Request end received.")
+            pendingResponse.logger.trace("Request end received.")
 
             handleCompleteRequest(context: context, pendingResponse: pendingResponse)
         }
@@ -266,7 +267,8 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         let bodyData = pendingResponse.bodyData
         let requestHead = pendingResponse.requestHead
         
-        logger.debug("Handling request body with \(bodyData?.count ?? 0) size.")
+        logger.trace("Handling request body.",
+                     metadata: ["bodyBytesCount": "\(bodyData?.count ?? 0)"])
         
         func onComplete() {
             self.state.responseFullSent()

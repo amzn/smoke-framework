@@ -64,7 +64,8 @@ extension JSONEncoder {
                     encodedError = try createEncoder().encode(payload)
                 }
             } catch {
-                logger.error("Unable to encode error message: \(error)")
+                logger.error("Unable to encode error message.",
+                             metadata: ["cause": "\(String(describing: error))"])
                 
                 encodedError = encodedInternalError
             }
