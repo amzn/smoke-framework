@@ -77,9 +77,8 @@ public struct StandardHTTP1ResponseHandler<
     
     public func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                          responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
-        
-        invocationContext.logger.info("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        handleComplete(invocationContext: invocationContext, status: status,
+                       responseComponents: responseComponents, reportRequest: true)
     }
     
     public func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -91,9 +90,8 @@ public struct StandardHTTP1ResponseHandler<
     
     public func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                  responseComponents: HTTP1ServerResponseComponents) {
-        let bodySize = handleComplete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
-        
-        invocationContext.logger.debug("Http response send: status '\(status.code)', body size '\(bodySize)'")
+        handleComplete(invocationContext: invocationContext, status: status,
+                       responseComponents: responseComponents, reportRequest: false)
     }
     
     public func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
@@ -104,7 +102,7 @@ public struct StandardHTTP1ResponseHandler<
     }
     
     private func handleComplete(invocationContext: InvocationContext, status: HTTPResponseStatus,
-                                responseComponents: HTTP1ServerResponseComponents) -> Int {
+                                responseComponents: HTTP1ServerResponseComponents, reportRequest: Bool) {
         var headers = HTTPHeaders()
         
         let buffer: ByteBuffer?
@@ -135,9 +133,11 @@ public struct StandardHTTP1ResponseHandler<
             headers.add(name: header.0, value: header.1)
         }
         
-        invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
+        if reportRequest {
+            invocationContext.handleInwardsRequestComplete(httpHeaders: &headers, status: status, body: responseComponents.body)
+        }
         
-        if let smokeInwardsRequestContext = self.smokeInwardsRequestContext {
+        if let smokeInwardsRequestContext = self.smokeInwardsRequestContext, reportRequest {
             let requestLatency = Date().timeIntervalSince(smokeInwardsRequestContext.requestStart).milliseconds
             let serviceCallCount = smokeInwardsRequestContext.retriableOutputRequestRecords.count
             let serviceCallLatency = smokeInwardsRequestContext.retriableOutputRequestRecords.reduce(0) { (retriableRequestSum, retriableRequestRecord) in
@@ -151,30 +151,17 @@ public struct StandardHTTP1ResponseHandler<
             let retriedServiceCalls = smokeInwardsRequestContext.retriableOutputRequestRecords.filter { requestRecord in
                 return requestRecord.outputRequests.count > 1
             }
-            let serviceOnlyLatency = requestLatency - serviceCallLatency - retryWaitLatency
             
-            var logComponents: [String] = []
+            let logMetadata: Logger.Metadata = [
+                "requestLatencyMS": "\(requestLatency)",
+                "serviceCallCount":"\(serviceCallCount)",
+                "serviceCallLatencyMS": "\(serviceCallLatency)",
+                "retryServiceCallCount": "\(retriedServiceCalls.count)",
+                "retryWaitLatencyMS": "\(retryWaitLatency)"]
             
-            if serviceCallCount == 0 {
-                let logMessage = "Request completed in \(requestLatency) ms; (no service calls)."
-                logComponents.append("\(logMessage)")
-            } else {
-                let logMessage = "Request completed in \(requestLatency) ms; "
-                    + "\(serviceOnlyLatency) ms excluding service calls (there was \(serviceCallCount); "
-                    + "\(serviceCallLatency) ms service call latency, \(retryWaitLatency) ms retry backoff)."
-                logComponents.append("\(logMessage)")
-            }
-            
-            if retriedServiceCalls.count == 1 {
-                logComponents.append("1 outward service call was retried.")
-            } else {
-                logComponents.append("\(retriedServiceCalls.count) outward service calls were retried.")
-            }
-            
-            invocationContext.logger.info("\(logComponents.joined(separator: " "))")
+            invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
             
             invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
-            invocationContext.serviceLatencyTimer?.recordMilliseconds(serviceOnlyLatency)
             invocationContext.outwardsServiceCallLatencySumTimer?.recordMilliseconds(serviceCallLatency)
             invocationContext.outwardsServiceCallRetryWaitSumTimer?.recordMilliseconds(retryWaitLatency)
             
@@ -215,8 +202,6 @@ public struct StandardHTTP1ResponseHandler<
         // write the response end and flush
         context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
                           promise: promise)
-        
-        return bodySize
     }
 }
 

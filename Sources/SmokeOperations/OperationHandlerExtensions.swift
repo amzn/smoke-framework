@@ -14,7 +14,6 @@
 // OperationHandlerExtensions.swift
 // SmokeOperations
 //
-
 import Foundation
 import Logging
 
@@ -95,7 +94,8 @@ public extension OperationHandler {
         
             switch handlerResult {
             case .internalServerError(let error):
-                logger.error("Unexpected failure: \(error)")
+                logger.error("Unexpected failure.",
+                             metadata: ["cause": "\(String(describing: error))"])
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
                     responseHandler: responseHandler,
@@ -110,7 +110,8 @@ public extension OperationHandler {
                             responseHandler: responseHandler,
                             invocationContext: invocationContext)
                 } else {
-                    logger.error("Unexpected error type returned: \(error)")
+                    logger.error("Unexpected error type returned.",
+                                 metadata: ["cause": "\(String(describing: error))"])
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
                         responseHandler: responseHandler,
@@ -157,7 +158,8 @@ public extension OperationHandler {
         
             switch handlerResult {
             case .internalServerError(let error):
-                logger.error("Unexpected failure: \(error)")
+                logger.error("Unexpected failure.",
+                             metadata: ["cause": "\(String(describing: error))"])
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
                     responseHandler: responseHandler,
@@ -172,7 +174,8 @@ public extension OperationHandler {
                             responseHandler: responseHandler,
                             invocationContext: invocationContext)
                 } else {
-                    logger.error("Unexpected error type returned: \(error)")
+                    logger.error("Unexpected error type returned.",
+                                 metadata: ["cause": "\(String(describing: error))"])
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
                         responseHandler: responseHandler,
@@ -184,7 +187,8 @@ public extension OperationHandler {
                     
                     outputHandler(requestHead, output, responseHandler, invocationContext)
                 } catch {
-                    logger.error("Serialization error: unable to get response: \(error)")
+                    logger.error("Serialization error: unable to get response.",
+                                 metadata: ["cause": "\(String(describing: error))"])
                     
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,

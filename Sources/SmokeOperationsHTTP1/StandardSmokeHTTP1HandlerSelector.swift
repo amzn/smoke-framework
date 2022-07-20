@@ -74,7 +74,10 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
                 return tokenizedHandler
         }
         
-        requestLogger.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+        requestLogger.trace("Operation handler selected.",
+                            metadata: ["operationIdentifer": "\(handler.operationIdentifer)",
+                                       "uri": "\(uri)",
+                                       "method": "\(httpMethod)"])
         
         return (handler, .null)
     }
@@ -95,10 +98,16 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
             do {
                 shape = try pathSegments.getShapeForTemplate(templateSegments: handler.templateSegments)
             } catch HTTPPathDecoderErrors.pathDoesNotMatchTemplate(let reason) {
-                requestLogger.error("Path '\(uri)' did not match template '\(handler.template)': \(reason)")
+                requestLogger.error("Path did not match template.",
+                                    metadata: ["uri": "\(uri)",
+                                               "template": "\(handler.template)",
+                                               "reason": "\(reason)"])
                 continue
             } catch {
-                requestLogger.error("Path '\(uri)' did not match template '\(handler.template)': \(error)")
+                requestLogger.error("Path did not match template.",
+                                    metadata: ["uri": "\(uri)",
+                                               "template": "\(handler.template)",
+                                               "cause": "\(String(describing: error))"])
                 continue
             }
             

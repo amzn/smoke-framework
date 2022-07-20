@@ -127,7 +127,8 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                 invocationContext: invocationContext)
             return
         } catch {
-            requestLogger.error("Unexpected handler selection error: \(error))")
+            requestLogger.error("Unexpected handler selection error.",
+                                metadata: ["cause": "\(String(describing: error))"])
             let smokeHTTP1RequestHead = SmokeHTTP1RequestHead(httpRequestHead: requestHead,
                                                               query: query,
                                                               pathShape: .null)

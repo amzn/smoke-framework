@@ -129,12 +129,14 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
         newSignalSources.forEach { (signalSource, signalValue, shutdownOnSignal) in
             signalSource.setEventHandler { [unowned self] in
                 self.signalSources.forEach { $0.cancel() }
-                defaultLogger.info("Received \(shutdownOnSignal) signal, initiating shutdown which should complete after the last request finished.")
+                defaultLogger.info("Received signal, initiating shutdown which should complete after the last request finished.",
+                                   metadata: ["signal": "\(shutdownOnSignal)"])
                 
                 do {
                     try self.shutdown()
                 } catch {
-                    defaultLogger.error("Unable to shutdown server on signalSource: \(error)")
+                    defaultLogger.error("Unable to shutdown server on signalSource.",
+                                        metadata: ["cause": "\(String(describing: error))"])
                 }
             }
             signal(signalValue, SIG_IGN)
@@ -188,7 +190,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
      either shutdown() is called or the surrounding application is being terminated.
      */
     public func start() throws {
-        defaultLogger.info("SmokeHTTP1Server starting on port \(port).")
+        defaultLogger.info("SmokeHTTP1Server starting.",
+                           metadata: ["port": "\(self.port)"])
         
         guard updateOnStart() else {
             // nothing to do; already started
@@ -219,7 +222,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
             .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
         
         channel = try bootstrap.bind(host: ServerDefaults.defaultHost, port: port).wait()
-        defaultLogger.info("SmokeHTTP1Server started on port \(port).")
+        defaultLogger.info("SmokeHTTP1Server started.",
+                           metadata: ["port": "\(self.port)"])
     }
     
     /**
@@ -251,7 +255,8 @@ public class StandardSmokeHTTP1Server<HTTP1RequestHandlerType: HTTP1RequestHandl
                 // release any waiters for shutdown
                 self.shutdownDispatchGroup.leave()
             } catch {
-                self.defaultLogger.error("Server unable to shutdown cleanly following full shutdown.")
+                self.defaultLogger.error("Server unable to shutdown cleanly following full shutdown.",
+                                         metadata: ["cause": "\(String(describing: error))"])
             }
             
             self.defaultLogger.info("SmokeHTTP1Server shutdown.")

@@ -79,8 +79,10 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
         var decoratedRequestLogger: Logger = requestLogger
-        traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                               logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
+        if requestHead.uri != "/ping" {
+            traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
+                                                   logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
+        }
         
         func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
             return SmokeServerInvocationReporting(logger: logger,
