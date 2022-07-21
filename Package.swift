@@ -54,7 +54,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0"..<"3.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
-        .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
+        .package(url: "https://github.com/amzn/smoke-http.git", from: "2.13.2"),
     ],
     targets: [
         .target(

@@ -31,22 +31,55 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
     private(set) var retriableOutputRequestRecords: [RetriableOutputRequestRecord]
     private(set) var retryAttemptRecords: [RetryAttemptRecord]
     
+    internal let accessQueue = DispatchQueue(
+                label: "com.amazon.SmokeFramework.StandardSmokeInwardsRequestContext.accessQueue",
+                target: DispatchQueue.global())
+    
     init(requestStart: Date) {
         self.requestStart = requestStart
         self.retriableOutputRequestRecords = []
         self.retryAttemptRecords = []
     }
     
+    func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord, onCompletion: @escaping () -> ()) {
+        self.accessQueue.async {
+            let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
+            
+            self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
+            
+            onCompletion()
+        }
+    }
+    
+    func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord, onCompletion: @escaping () -> ()) {
+        self.accessQueue.async {
+            self.retryAttemptRecords.append(retryAttemptRecord)
+            
+            onCompletion()
+        }
+    }
+    
+    func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord, onCompletion: @escaping () -> ()) {
+        self.accessQueue.async {
+            self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
+            
+            onCompletion()
+        }
+    }
+    
+    @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord) {
         let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
         
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
     }
     
+    @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord) {
         self.retryAttemptRecords.append(retryAttemptRecord)
     }
     
+    @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord) {
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
     }
