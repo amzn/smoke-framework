@@ -90,10 +90,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         
         if let bodyData = bodyData {
             logMetadata["bodyBytesCount"] = "\(bodyData.count)"
-            
-            if logger.logLevel <= .debug {
-                logMetadata["bodyData"] = "\(bodyData.debugString)"
-            }
+            logMetadata["bodyData"] = "\(bodyData.debugString)"
         }
         
         // log details about the incoming request
@@ -115,10 +112,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         if let body = body {
             logMetadata["contentType"] = "\(body.contentType)"
             logMetadata["bodyBytesCount"] = "\(body.data.count)"
-            
-            if logger.logLevel <= .debug {
-                logMetadata["bodyData"] = "\(body.data.debugString)"
-            }
+            logMetadata["bodyData"] = "\(body.data.debugString)"
         }
         
         let level: Logger.Level
