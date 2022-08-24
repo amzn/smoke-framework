@@ -30,7 +30,8 @@ public protocol InvocationReportingWithTraceContext: InvocationReporting {
 /**
  A context related to reporting on the invocation of the SmokeFramework.
  */
-public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext>: InvocationReportingWithTraceContext {
+public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext>: InvocationReportingWithTraceContext,
+                                                                                       HTTPClientInvocationAttributes {
     public let logger: Logger
     public let eventLoop: EventLoop?
     public let outwardsRequestAggregator: OutwardsRequestAggregator?
