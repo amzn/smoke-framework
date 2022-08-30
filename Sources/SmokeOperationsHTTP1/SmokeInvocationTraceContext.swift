@@ -107,7 +107,8 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             httpHeaders.add(name: traceIdHeader, value: traceId)
         }
         
-        var logMetadata: Logger.Metadata = ["status": "\(status)"]
+        var logMetadata: Logger.Metadata = ["status": "\(status.reasonPhrase)",
+                                            "statusCode": "\(status.code)"]
         
         if let body = body {
             logMetadata["contentType"] = "\(body.contentType)"
@@ -186,8 +187,9 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
             logMetadata["result"] = "failure"
         }
         
-        if let code = response?.status.code {
-            logMetadata["status"] = "\(code)"
+        if let status = response?.status {
+            logMetadata["statusCode"] = "\(status.code)"
+            logMetadata["status"] = "\(status.reasonPhrase)"
         }
         
         if let requestIds = response?.headers[requestIdHeader], !requestIds.isEmpty {
