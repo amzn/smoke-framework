@@ -64,9 +64,9 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 let logger = invocationContext.invocationReporting.logger
                 
                 if let reportableType = reportableType {
-                    logger.error("DecodingError [\(reportableType): \(description)")
+                    logger.info("DecodingError [\(reportableType): \(description)")
                 } else {
-                    logger.error("DecodingError: \(description)")
+                    logger.info("DecodingError: \(description)")
                 }
                 
                 operationDelegate.handleResponseForDecodingError(
@@ -80,7 +80,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                     // attempt to validate the input
                     try input.validate()
                 } catch SmokeOperationsError.validationError(let reason) {
-                    logger.warning("ValidationError: \(reason)")
+                    logger.info("ValidationError: \(reason)")
                     
                     operationDelegate.handleResponseForValidationError(
                         requestHead: requestHead,
@@ -89,7 +89,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                         invocationContext: invocationContext)
                     return
                 } catch {
-                    logger.warning("ValidationError: \(error)")
+                    logger.info("ValidationError: \(error)")
                     
                     operationDelegate.handleResponseForValidationError(
                         requestHead: requestHead,
