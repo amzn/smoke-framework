@@ -173,29 +173,56 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                                                                      requestReporting: operationReporting)
                 
                 inputDecodeResult = .ok(input: input, inputHandler: inputHandler, invocationContext: invocationContext)
-            } catch DecodingError.keyNotFound(_, let context) {
+            } catch DecodingError.keyNotFound(let codingKey, let context) {
                 let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
                                                                                 requestLogger: requestLogger,
                                                                                 internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let codingPath = context.codingPath + [codingKey]
+                let description = "Key not found \(codingPath.pathDescription)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.valueNotFound(_, let context) {
                 let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
                                                                                 requestLogger: requestLogger,
                                                                                 internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let codingPath = context.codingPath
+                let description = "Required value not found \(codingPath.pathDescription)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
-            } catch DecodingError.typeMismatch(_, let context) {
+            } catch DecodingError.typeMismatch(let expectedType, let context) {
                 let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
                                                                                 requestLogger: requestLogger,
                                                                                 internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let codingPath = context.codingPath
+                let expectedTypeString: String
+                if expectedType == [String: Any].self {
+                    expectedTypeString = "Structure"
+                } else {
+                    expectedTypeString = String(describing: expectedType)
+                }
+                let description = "Incorrect type \(codingPath.pathDescription). Expected \(expectedTypeString)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.dataCorrupted(let context) {
                 let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
                                                                                 requestLogger: requestLogger,
                                                                                 internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let codingPath = context.codingPath
+                let description: String
+                if codingPath.isEmpty {
+                    // the data provided is not valid input
+                    description = context.debugDescription
+                } else {
+                    description = "Data corrupted \(codingPath.pathDescription). \(context.debugDescription)."
+                }
+                inputDecodeResult = .error(description: description, reportableType: nil,
+                                           invocationContext: invocationContext)
+            } catch SmokeOperationsError.validationError(reason: let reason) {
+                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
+                                                                                requestLogger: requestLogger,
+                                                                                internalRequestId: internalRequestId)
+
+                inputDecodeResult = .error(description: reason, reportableType: "SmokeOperationsError",
                                            invocationContext: invocationContext)
             } catch {
                 let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
@@ -228,5 +255,84 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         
         self.operationFunction = newFunction
         self.operationIdentifer = operationIdentifer
+    }
+}
+
+extension Array where Element == CodingKey {
+    var pathDescription: String {
+        if self.isEmpty {
+            return "at base of structure"
+        }
+        return "at path '\(self.stringRepresentation)'"
+    }
+    
+    var stringRepresentation: String {
+        let initialValue: ([CodingPathSegment], CodingPathSegment?) = ([], nil)
+        let finalValue = self.reduce(initialValue) { partialResult, codingKey in
+            let keyType = codingKey.type
+            
+            switch keyType {
+            case .attribute(let attribute):
+                let updatedPastSegments: [CodingPathSegment]
+                if let currentSegment = partialResult.1 {
+                    updatedPastSegments = partialResult.0 + [currentSegment]
+                } else {
+                    updatedPastSegments = partialResult.0
+                }
+                
+                // create a new path segment
+                return (updatedPastSegments, CodingPathSegment(attribute: attribute))
+            case .index(let index):
+                var updatedPathSegment = partialResult.1 ?? CodingPathSegment()
+                updatedPathSegment.indicies.append(index)
+                
+                // update the current path segment
+                return (partialResult.0, updatedPathSegment)
+            }
+        }
+
+        let segments: [CodingPathSegment]
+        if let currentSegment = finalValue.1 {
+            segments = finalValue.0 + [currentSegment]
+        } else {
+            segments = finalValue.0
+        }
+        
+        return segments.map { $0.stringRepresentation }.joined(separator: ".")
+    }
+}
+
+enum CodingKeyType {
+    case attribute(String)
+    case index(Int)
+}
+
+struct CodingPathSegment {
+    let attribute: String?
+    var indicies: [Int]
+    
+    init(attribute: String? = nil, indicies: [Int] = []) {
+        self.attribute = attribute
+        self.indicies = indicies
+    }
+    
+    var stringRepresentation: String {
+        let indiciesRepresentation = self.indicies.map { "[\($0)]"}.joined()
+        
+        if let attribute = self.attribute {
+            return "\(attribute)\(indiciesRepresentation)"
+        } else {
+            return indiciesRepresentation
+        }
+    }
+}
+
+extension CodingKey {
+    var type: CodingKeyType {
+        if let intValue = self.intValue {
+            return .index(intValue)
+        }
+        
+        return .attribute(self.stringValue)
     }
 }
