@@ -156,6 +156,11 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         
         let newFunction: OperationResultDataInputFunction = { (requestHead, body, context, responseHandler,
                                                                invocationStrategy, requestLogger, internalRequestId, invocationReportingProvider) in
+            func getInvocationContextForThisAnonymousRequest() -> SmokeInvocationContext<InvocationReportingType> {
+                return getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
+                                                               requestLogger: requestLogger, internalRequestId: internalRequestId)
+            }
+            
             let inputDecodeResult: InputDecodeResult<InputType>
             do {
                 // decode the response within the event loop of the server to limit the number of request
@@ -174,60 +179,39 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 
                 inputDecodeResult = .ok(input: input, inputHandler: inputHandler, invocationContext: invocationContext)
             } catch DecodingError.keyNotFound(let codingKey, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
                 let codingPath = context.codingPath + [codingKey]
                 let description = "Key not found \(codingPath.pathDescription)."
                 inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.valueNotFound(_, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                let codingPath = context.codingPath
-                let description = "Required value not found \(codingPath.pathDescription)."
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                let description = "Required value not found \(context.codingPath.pathDescription)."
                 inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.typeMismatch(let expectedType, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                let codingPath = context.codingPath
-                let expectedTypeString: String
-                if expectedType == [String: Any].self {
-                    expectedTypeString = "Structure"
-                } else {
-                    expectedTypeString = String(describing: expectedType)
-                }
-                let description = "Incorrect type \(codingPath.pathDescription). Expected \(expectedTypeString)."
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                // Special case for a dictionary, return as "Structure"
+                let expectedTypeString = (expectedType == [String: Any].self) ? "Structure" : String(describing: expectedType)
+                let description = "Incorrect type \(context.codingPath.pathDescription). Expected \(expectedTypeString)."
                 inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.dataCorrupted(let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                let codingPath = context.codingPath
-                let description: String
-                if codingPath.isEmpty {
-                    // the data provided is not valid input
-                    description = context.debugDescription
-                } else {
-                    description = "Data corrupted \(codingPath.pathDescription). \(context.debugDescription)."
-                }
-                inputDecodeResult = .error(description: description, reportableType: nil,
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                inputDecodeResult = .error(description: context.dataCorruptionPathDescription, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch SmokeOperationsError.validationError(reason: let reason) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
 
                 inputDecodeResult = .error(description: reason, reportableType: "SmokeOperationsError",
                                            invocationContext: invocationContext)
             } catch {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
                 let errorType = type(of: error)
                 inputDecodeResult = .error(description: "\(error)", reportableType: "\(errorType)",
                                            invocationContext: invocationContext)
@@ -258,7 +242,18 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
     }
 }
 
-extension Array where Element == CodingKey {
+private extension DecodingError.Context {
+    var dataCorruptionPathDescription: String {
+        if self.codingPath.isEmpty {
+            // the data provided is not valid input
+            return self.debugDescription
+        } else {
+            return "Data corrupted \(self.codingPath.pathDescription). \(self.debugDescription)."
+        }
+    }
+}
+
+private extension Array where Element == CodingKey {
     var pathDescription: String {
         if self.isEmpty {
             return "at base of structure"
@@ -302,12 +297,12 @@ extension Array where Element == CodingKey {
     }
 }
 
-enum CodingKeyType {
+private enum CodingKeyType {
     case attribute(String)
     case index(Int)
 }
 
-struct CodingPathSegment {
+private struct CodingPathSegment {
     let attribute: String?
     var indicies: [Int]
     
@@ -327,7 +322,7 @@ struct CodingPathSegment {
     }
 }
 
-extension CodingKey {
+private extension CodingKey {
     var type: CodingKeyType {
         if let intValue = self.intValue {
             return .index(intValue)
