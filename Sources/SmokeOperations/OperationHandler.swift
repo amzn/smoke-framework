@@ -156,6 +156,11 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         
         let newFunction: OperationResultDataInputFunction = { (requestHead, body, context, responseHandler,
                                                                invocationStrategy, requestLogger, internalRequestId, invocationReportingProvider) in
+            func getInvocationContextForThisAnonymousRequest() -> SmokeInvocationContext<InvocationReportingType> {
+                return getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
+                                                               requestLogger: requestLogger, internalRequestId: internalRequestId)
+            }
+            
             let inputDecodeResult: InputDecodeResult<InputType>
             do {
                 // decode the response within the event loop of the server to limit the number of request
@@ -173,34 +178,40 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                                                                      requestReporting: operationReporting)
                 
                 inputDecodeResult = .ok(input: input, inputHandler: inputHandler, invocationContext: invocationContext)
-            } catch DecodingError.keyNotFound(_, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+            } catch DecodingError.keyNotFound(let codingKey, let context) {
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                let codingPath = context.codingPath + [codingKey]
+                let description = "Key not found \(codingPath.pathDescription)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.valueNotFound(_, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                let description = "Required value not found \(context.codingPath.pathDescription)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
-            } catch DecodingError.typeMismatch(_, let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+            } catch DecodingError.typeMismatch(let expectedType, let context) {
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                // Special case for a dictionary, return as "Structure"
+                let expectedTypeString = (expectedType == [String: Any].self) ? "Structure" : String(describing: expectedType)
+                let description = "Incorrect type \(context.codingPath.pathDescription). Expected \(expectedTypeString)."
+                inputDecodeResult = .error(description: description, reportableType: nil,
                                            invocationContext: invocationContext)
             } catch DecodingError.dataCorrupted(let context) {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
-                inputDecodeResult = .error(description: context.debugDescription, reportableType: nil,
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
+                inputDecodeResult = .error(description: context.dataCorruptionPathDescription, reportableType: nil,
+                                           invocationContext: invocationContext)
+            } catch SmokeOperationsError.validationError(reason: let reason) {
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+
+                inputDecodeResult = .error(description: reason, reportableType: "SmokeOperationsError",
                                            invocationContext: invocationContext)
             } catch {
-                let invocationContext = getInvocationContextForAnonymousRequest(invocationReportingProvider: invocationReportingProvider,
-                                                                                requestLogger: requestLogger,
-                                                                                internalRequestId: internalRequestId)
+                let invocationContext = getInvocationContextForThisAnonymousRequest()
+                
                 let errorType = type(of: error)
                 inputDecodeResult = .error(description: "\(error)", reportableType: "\(errorType)",
                                            invocationContext: invocationContext)
@@ -228,5 +239,95 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         
         self.operationFunction = newFunction
         self.operationIdentifer = operationIdentifer
+    }
+}
+
+private extension DecodingError.Context {
+    var dataCorruptionPathDescription: String {
+        if self.codingPath.isEmpty {
+            // the data provided is not valid input
+            return self.debugDescription
+        } else {
+            return "Data corrupted \(self.codingPath.pathDescription). \(self.debugDescription)."
+        }
+    }
+}
+
+private extension Array where Element == CodingKey {
+    var pathDescription: String {
+        if self.isEmpty {
+            return "at base of structure"
+        }
+        return "at path '\(self.stringRepresentation)'"
+    }
+    
+    var stringRepresentation: String {
+        let initialValue: ([CodingPathSegment], CodingPathSegment?) = ([], nil)
+        let finalValue = self.reduce(initialValue) { partialResult, codingKey in
+            let keyType = codingKey.type
+            
+            switch keyType {
+            case .attribute(let attribute):
+                let updatedPastSegments: [CodingPathSegment]
+                if let currentSegment = partialResult.1 {
+                    updatedPastSegments = partialResult.0 + [currentSegment]
+                } else {
+                    updatedPastSegments = partialResult.0
+                }
+                
+                // create a new path segment
+                return (updatedPastSegments, CodingPathSegment(attribute: attribute))
+            case .index(let index):
+                var updatedPathSegment = partialResult.1 ?? CodingPathSegment()
+                updatedPathSegment.indicies.append(index)
+                
+                // update the current path segment
+                return (partialResult.0, updatedPathSegment)
+            }
+        }
+
+        let segments: [CodingPathSegment]
+        if let currentSegment = finalValue.1 {
+            segments = finalValue.0 + [currentSegment]
+        } else {
+            segments = finalValue.0
+        }
+        
+        return segments.map { $0.stringRepresentation }.joined(separator: ".")
+    }
+}
+
+private enum CodingKeyType {
+    case attribute(String)
+    case index(Int)
+}
+
+private struct CodingPathSegment {
+    let attribute: String?
+    var indicies: [Int]
+    
+    init(attribute: String? = nil, indicies: [Int] = []) {
+        self.attribute = attribute
+        self.indicies = indicies
+    }
+    
+    var stringRepresentation: String {
+        let indiciesRepresentation = self.indicies.map { "[\($0)]"}.joined()
+        
+        if let attribute = self.attribute {
+            return "\(attribute)\(indiciesRepresentation)"
+        } else {
+            return indiciesRepresentation
+        }
+    }
+}
+
+private extension CodingKey {
+    var type: CodingKeyType {
+        if let intValue = self.intValue {
+            return .index(intValue)
+        }
+        
+        return .attribute(self.stringValue)
     }
 }
