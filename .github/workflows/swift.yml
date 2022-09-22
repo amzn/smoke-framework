@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-18.04]
-        swift: ["5.6.1"]
+        swift: ["5.7"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: swift-actions/setup-swift@v1.15.0
+      - uses: swift-actions/setup-swift@v1.18.0
         with:
           swift-version: ${{ matrix.swift }}
       - uses: actions/checkout@v2
@@ -28,10 +28,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        swift: ["5.5.3", "5.4.3"]
+        swift: ["5.6.3", "5.5.3"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: swift-actions/setup-swift@v1.15.0
+      - uses: swift-actions/setup-swift@v1.18.0
         with:
           swift-version: ${{ matrix.swift }}
       - uses: actions/checkout@v2
