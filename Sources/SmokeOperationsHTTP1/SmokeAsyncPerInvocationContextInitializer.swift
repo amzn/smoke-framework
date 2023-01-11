@@ -35,6 +35,7 @@ public protocol SmokeAsyncPerInvocationContextInitializer {
     var handlerSelectorProvider: (() -> SelectorType) { get }
     var operationsInitializer: ((inout SelectorType) -> Void) { get }
     
+    var defaultOperationDelegate: SelectorType.DefaultOperationDelegateType { get }
     var serverName: String { get }
     var invocationStrategy: InvocationStrategy { get }
     var defaultLogger: Logger { get }
