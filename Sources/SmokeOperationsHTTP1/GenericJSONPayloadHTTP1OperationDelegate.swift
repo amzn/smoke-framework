@@ -39,12 +39,6 @@ public enum ResponseExecutor {
     case dispatchQueue
 }
 
-internal enum _ResponseExecutor {
-    case existingThread
-    case eventLoop
-    case dispatchQueue(DispatchQueue)
-}
-
 /**
  Struct conforming to the OperationDelegate protocol that handles operations from HTTP1 requests with JSON encoded
  request and response payloads.
@@ -52,22 +46,10 @@ internal enum _ResponseExecutor {
 public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP1ResponseHandler,
                                                        InvocationReportingType: InvocationReporting>: HTTP1OperationDelegate
         where ResponseHandlerType.InvocationContext == SmokeInvocationContext<InvocationReportingType> {
-    internal let responseExecutor: _ResponseExecutor
+    internal let responseExecutor: ResponseExecutor
     
     public init(responseExecutor: ResponseExecutor = .eventLoop) {
-        switch responseExecutor {
-        case .existingThread:
-            self.responseExecutor = .existingThread
-        case .eventLoop:
-            self.responseExecutor = .eventLoop
-        case .dispatchQueue:
-            let executorQueue = DispatchQueue(
-                label: "com.amazon.SmokeFramework.GenericJSONPayloadHTTP1OperationDelegate.executorQueue",
-                attributes: [.concurrent],
-                target: DispatchQueue.global())
-            
-            self.responseExecutor = .dispatchQueue(executorQueue)
-        }
+        self.responseExecutor = responseExecutor
     }
     
     public func decorateLoggerForAnonymousRequest(requestLogger: inout Logger) {
@@ -147,8 +129,8 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
         case .existingThread:
             self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
                                                                invocationContext: invocationContext)
-        case .dispatchQueue(let dispatchQueue):
-            dispatchQueue.async {
+        case .dispatchQueue:
+            DispatchQueue.global().async {
                 self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
                                                                    invocationContext: invocationContext)
             }

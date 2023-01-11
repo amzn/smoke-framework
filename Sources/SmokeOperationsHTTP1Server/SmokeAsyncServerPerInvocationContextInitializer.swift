@@ -26,7 +26,7 @@ public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerIn
     var port: Int { get }
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
-    var internalExecutor: InternalExecutor { get }
+    var requestExecutor: RequestExecutor { get }
 }
 
 public extension SmokeAsyncServerPerInvocationContextInitializer {
@@ -42,8 +42,8 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
         return .spawnNewThreads
     }
     
-    var internalExecutor: InternalExecutor {
-        return .eventLoop
+    var requestExecutor: RequestExecutor {
+        return .originalEventLoop
     }
 }
 #endif

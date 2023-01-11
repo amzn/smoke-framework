@@ -29,7 +29,7 @@ internal struct PingParameters {
 public enum RequestExecutor {
     case originalEventLoop
     case cooperativeTaskGroup
-    case dispatchQueue(DispatchQueue)
+    case dispatchQueue
 }
 
 /**
@@ -132,8 +132,8 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                           invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
                                           invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
             }
-        case .dispatchQueue(let dispatchQueue):
-            dispatchQueue.async {
+        case .dispatchQueue:
+            DispatchQueue.global().async {
                 handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
                                           invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
                                           invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)

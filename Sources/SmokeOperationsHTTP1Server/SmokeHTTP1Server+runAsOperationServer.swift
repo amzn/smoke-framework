@@ -25,11 +25,6 @@ import NIO
 import AsyncHTTPClient
 import SmokeInvocation
 
-public enum InternalExecutor {
-    case eventLoop
-    case dispatchQueue
-}
-
 public extension SmokeHTTP1Server {
     @available(swift, deprecated: 3.0, message: "Provide an initializer that accepts an EventLoopGroup instance.")
     static func runAsOperationServer<InitializerType: SmokeServerStaticContextInitializer, TraceContextType>(
@@ -354,26 +349,13 @@ public extension SmokeHTTP1Server {
         
         var handlerSelector = initalizer.handlerSelectorProvider()
         initalizer.operationsInitializer(&handlerSelector)
-                
-        let requestExecutor: RequestExecutor
-        switch initalizer.internalExecutor {
-        case .eventLoop:
-            requestExecutor = .originalEventLoop
-        case .dispatchQueue:
-            let executorQueue = DispatchQueue(
-                        label: "com.amazon.SmokeFramework.executorQueue",
-                        attributes: [.concurrent],
-                        target: DispatchQueue.global())
-            
-            requestExecutor = .dispatchQueue(executorQueue)
-        }
         
         let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
             handlerSelector: handlerSelector,
             context: initalizer.getInvocationContext(),
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: requestExecutor)
+            requestExecutor: initalizer.requestExecutor)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,
@@ -429,26 +411,13 @@ public extension SmokeHTTP1Server {
         
         var handlerSelector = initalizer.handlerSelectorProvider()
         initalizer.operationsInitializer(&handlerSelector)
-                
-        let requestExecutor: RequestExecutor
-        switch initalizer.internalExecutor {
-        case .eventLoop:
-            requestExecutor = .originalEventLoop
-        case .dispatchQueue:
-            let executorQueue = DispatchQueue(
-                        label: "com.amazon.SmokeFramework.executorQueue",
-                        attributes: [.concurrent],
-                        target: DispatchQueue.global())
-            
-            requestExecutor = .dispatchQueue(executorQueue)
-        }
         
         let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
             handlerSelector: handlerSelector,
             contextProvider: initalizer.getInvocationContext,
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: requestExecutor)
+            requestExecutor: initalizer.requestExecutor)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,
