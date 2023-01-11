@@ -36,6 +36,12 @@ let package = Package(
         .library(
             name: "SmokeHTTP1",
             targets: ["SmokeHTTP1"]),
+        .library(
+            name: "SmokeAsyncHTTP1Server",
+            targets: ["SmokeAsyncHTTP1Server"]),
+        .library(
+            name: "SmokeAsyncHTTP1Middleware",
+            targets: ["SmokeAsyncHTTP1Middleware"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -58,6 +64,19 @@ let package = Package(
                 .product(name: "NIOExtras", package: "swift-nio-extras"),
                 .product(name: "SmokeHTTPClient", package: "smoke-http"),
                 .target(name: "SmokeInvocation"),
+            ]),
+        .target(
+            name: "SmokeAsyncHTTP1Server", dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "NIO", package: "swift-nio"),
+                .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
+            ]),
+        .target(
+            name: "SmokeAsyncHTTP1Middleware", dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "Metrics", package: "swift-metrics"),
+                .target(name: "SmokeAsyncHTTP1Server")
             ]),
         .target(
             name: "SmokeOperations", dependencies: [
