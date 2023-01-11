@@ -105,23 +105,18 @@ public struct StandardHTTP1ResponseHandler<
                                 responseComponents: HTTP1ServerResponseComponents, reportRequest: Bool) {
         var headers = HTTPHeaders()
         
-        let buffer: ByteBuffer?
+        let data: Data?
         let bodySize: Int
         
         // if there is a body
         if let body = responseComponents.body {
-            let data = body.data
-            // create a buffer for the body and copy the body into it
-            var newBuffer = context.channel.allocator.buffer(capacity: data.count)
-            newBuffer.writeBytes(data)
-            
-            buffer = newBuffer
-            bodySize = data.count
+            data = body.data
+            bodySize = body.data.count
             
             // add the content type header
             headers.add(name: HTTP1Headers.contentType, value: body.contentType)
         } else {
-            buffer = nil
+            data = nil
             bodySize = 0
         }
         
@@ -178,30 +173,36 @@ public struct StandardHTTP1ResponseHandler<
             }
         }
         
-        context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
-                                                                  status: status,
-                                                                  headers: headers))), promise: nil)
-        
-        // if there is a body, write it to the response
-        if let buffer = buffer {
-            context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
-        }
-        
-        let promise: EventLoopPromise<Void>? = self.keepAliveStatus.state ? nil : context.eventLoop.makePromise()
-        if let promise = promise {
-            let currentContext = context
-            // if keep alive is false, close the channel when the response end
-            // has been written
-            promise.futureResult.whenComplete { _ in
-                currentContext.close(promise: nil)
+        executeInEventLoop(invocationContext: invocationContext) {
+            context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
+                                                                      status: status,
+                                                                      headers: headers))), promise: nil)
+            
+            // if there is a body, write it to the response
+            if let data = data {
+                // create a buffer for the body and copy the body into it
+                var buffer = context.channel.allocator.buffer(capacity: data.count)
+                buffer.writeBytes(data)
+                
+                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
             }
+            
+            let promise: EventLoopPromise<Void>? = self.keepAliveStatus.state ? nil : context.eventLoop.makePromise()
+            if let promise = promise {
+                let currentContext = context
+                // if keep alive is false, close the channel when the response end
+                // has been written
+                promise.futureResult.whenComplete { _ in
+                    currentContext.close(promise: nil)
+                }
+            }
+            
+            onComplete()
+            
+            // write the response end and flush
+            context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
+                                  promise: promise)
         }
-        
-        onComplete()
-        
-        // write the response end and flush
-        context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
-                          promise: promise)
     }
 }
 

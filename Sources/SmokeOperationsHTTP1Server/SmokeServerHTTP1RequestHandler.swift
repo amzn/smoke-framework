@@ -47,22 +47,26 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
     let operationRequestHandler: StandardHTTP1OperationRequestHandler<SelectorType>
     
     init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
-         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
+         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
+         requestExecutor: RequestExecutor = .originalEventLoop) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             context: context,
             serverName: serverName,
-            reportingConfiguration: reportingConfiguration)
+            reportingConfiguration: reportingConfiguration,
+            requestExecutor: requestExecutor)
     }
     
     init(handlerSelector: SelectorType,
          contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
-         serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
+         serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
+         requestExecutor: RequestExecutor = .originalEventLoop) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             contextProvider: contextProvider,
             serverName: serverName,
-            reportingConfiguration: reportingConfiguration)
+            reportingConfiguration: reportingConfiguration,
+            requestExecutor: requestExecutor)
     }
     
     // Function required to confirm to protocol, delegate to the variant that provides the event loop
@@ -78,10 +82,12 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
                        outwardsRequestAggregator: OutwardsRequestAggregator?, internalRequestId: String) {
         
         let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
-        var decoratedRequestLogger: Logger = requestLogger
-        if requestHead.uri != "/ping" {
+        func requestStartTraceAction() -> Logger {
+            var decoratedRequestLogger: Logger = requestLogger
             traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
                                                    logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
+            
+            return decoratedRequestLogger
         }
         
         func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
@@ -98,6 +104,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
                                             invocationStrategy: invocationStrategy,
                                             requestLogger: requestLogger,
                                             internalRequestId: internalRequestId,
-                                            invocationReportingProvider: invocationReportingProvider)
+                                            invocationReportingProvider: invocationReportingProvider,
+                                            requestStartTraceAction: requestStartTraceAction)
     }
 }
