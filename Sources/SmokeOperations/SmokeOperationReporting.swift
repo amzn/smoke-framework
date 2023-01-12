@@ -48,32 +48,36 @@ public struct SmokeOperationReporting {
                                                        configuration: SmokeReportingConfiguration<OperationIdentifer>) {
         let operationName = request.description
         
+        func getCounter(metricName: String) -> Counter {
+            let counterDimensions = [(namespaceDimension, serverName),
+                                     (operationNameDimension, operationName),
+                                     (metricNameDimension, metricName)]
+            return Counter(label: "\(serverName).\(operationName).\(metricName)",
+                           dimensions: counterDimensions)
+        }
+        
+        func getTimer(metricName: String) -> Timer {
+            let timerDimensions = [(namespaceDimension, serverName),
+                                   (operationNameDimension, operationName),
+                                   (metricNameDimension, metricName)]
+            return Timer(label: "\(serverName).\(operationName).\(metricName)",
+                         dimensions: timerDimensions)
+        }
+        
         if configuration.reportSuccessForRequest(request) {
-            let successCounterDimensions = [(namespaceDimension, serverName),
-                                            (operationNameDimension, operationName),
-                                            (metricNameDimension, successCountMetric)]
-            successCounter = Counter(label: "\(serverName).\(operationName).\(successCountMetric)",
-                                     dimensions: successCounterDimensions)
+            successCounter = getCounter(metricName: successCountMetric)
         } else {
             successCounter = nil
         }
         
         if configuration.reportFailure5XXForRequest(request) {
-            let failure5XXCounterDimensions = [(namespaceDimension, serverName),
-                                               (operationNameDimension, operationName),
-                                               (metricNameDimension, failure5XXCountMetric)]
-            failure5XXCounter = Counter(label: "\(serverName).\(operationName).\(failure5XXCountMetric)",
-                                        dimensions: failure5XXCounterDimensions)
+            failure5XXCounter = getCounter(metricName: failure5XXCountMetric)
         } else {
             failure5XXCounter = nil
         }
         
         if configuration.reportFailure4XXForRequest(request) {
-            let failure4XXCounterDimensions = [(namespaceDimension, serverName),
-                                               (operationNameDimension, operationName),
-                                               (metricNameDimension, failure4XXCountMetric)]
-            failure4XXCounter = Counter(label: "\(serverName).\(operationName).\(failure4XXCountMetric)",
-                                        dimensions: failure4XXCounterDimensions)
+            failure4XXCounter = getCounter(metricName: failure4XXCountMetric)
         } else {
             failure4XXCounter = nil
         }
@@ -82,11 +86,7 @@ public struct SmokeOperationReporting {
            let specificFailureStatusesToReport = configuration.specificFailureStatusesToReport {
             let countersWithStatusCodes: [(UInt, Counter)] = specificFailureStatusesToReport.map { statusCode in
                 let metricName = String(format: specificFailureStatusCountMetricFormat, statusCode)
-                let specificFailureStatusDimensions = [(namespaceDimension, serverName),
-                                                       (operationNameDimension, operationName),
-                                                       (metricNameDimension, metricName)]
-                let specificFailureStatusCounter = Counter(label: "\(serverName).\(operationName).\(metricName)",
-                                                           dimensions: specificFailureStatusDimensions)
+                let specificFailureStatusCounter = getCounter(metricName: metricName)
                 return (statusCode, specificFailureStatusCounter)
             }
             specificFailureStatusCounters = Dictionary(uniqueKeysWithValues: countersWithStatusCodes)
@@ -95,41 +95,25 @@ public struct SmokeOperationReporting {
         }
         
         if configuration.reportLatencyForRequest(request) {
-            let latencyTimeDimensions = [(namespaceDimension, serverName),
-                                         (operationNameDimension, operationName),
-                                         (metricNameDimension, latencyTimeMetric)]
-            latencyTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(latencyTimeMetric)",
-                                         dimensions: latencyTimeDimensions)
+            latencyTimer = getTimer(metricName: latencyTimeMetric)
         } else {
             latencyTimer = nil
         }
         
         if configuration.reportServiceLatencyForRequest(request) {
-            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
-                                                (operationNameDimension, operationName),
-                                                (metricNameDimension, serviceLatencyTimeMetric)]
-            serviceLatencyTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(serviceLatencyTimeMetric)",
-                                                dimensions: serviceLatencyTimeDimensions)
+            serviceLatencyTimer = getTimer(metricName: serviceLatencyTimeMetric)
         } else {
             serviceLatencyTimer = nil
         }
         
         if configuration.reportOutwardsServiceCallLatencySumForRequest(request) {
-            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
-                                                (operationNameDimension, operationName),
-                                                (metricNameDimension, outwardsServiceCallLatencySumMetric)]
-            outwardsServiceCallLatencySumTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(outwardsServiceCallLatencySumMetric)",
-                                                               dimensions: serviceLatencyTimeDimensions)
+            outwardsServiceCallLatencySumTimer = getTimer(metricName: outwardsServiceCallLatencySumMetric)
         } else {
             outwardsServiceCallLatencySumTimer = nil
         }
         
         if configuration.reportOutwardsServiceCallRetryWaitLatencySumForRequest(request) {
-            let serviceLatencyTimeDimensions = [(namespaceDimension, serverName),
-                                                (operationNameDimension, operationName),
-                                                (metricNameDimension, outwardsServiceCallRetryWaitSumMetric)]
-            outwardsServiceCallRetryWaitSumTimer = Metrics.Timer(label: "\(serverName).\(operationName).\(outwardsServiceCallRetryWaitSumMetric)",
-                                                                 dimensions: serviceLatencyTimeDimensions)
+            outwardsServiceCallRetryWaitSumTimer = getTimer(metricName: outwardsServiceCallRetryWaitSumMetric)
         } else {
             outwardsServiceCallRetryWaitSumTimer = nil
         }
