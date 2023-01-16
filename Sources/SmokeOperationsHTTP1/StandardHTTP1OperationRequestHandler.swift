@@ -26,6 +26,12 @@ internal struct PingParameters {
     static let payload = "Ping completed.".data(using: .utf8) ?? Data()
 }
 
+public enum RequestExecutor {
+    case originalEventLoop
+    case cooperativeTaskGroup
+    case dispatchQueue
+}
+
 /**
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
@@ -46,9 +52,11 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
     let pingOperationReporting: SmokeOperationReporting
     let unknownOperationReporting: SmokeOperationReporting
     let errorDeterminingOperationReporting: SmokeOperationReporting
+    let requestExecutor: RequestExecutor
     
     public init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
-         reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
+                reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
+                requestExecutor: RequestExecutor = .originalEventLoop) {
         self.handlerSelector = handlerSelector
         self.context = .static(context)
         
@@ -59,11 +67,13 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
         self.errorDeterminingOperationReporting = SmokeOperationReporting(serverName: serverName,
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
+        self.requestExecutor = requestExecutor
     }
     
     public init(handlerSelector: SelectorType,
-         contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
-         serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) {
+                contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
+                serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
+                requestExecutor: RequestExecutor = .originalEventLoop) {
         self.handlerSelector = handlerSelector
         self.context = .provider(contextProvider)
         
@@ -74,30 +84,76 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
         self.errorDeterminingOperationReporting = SmokeOperationReporting(serverName: serverName,
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
+        self.requestExecutor = requestExecutor
+    }
+    
+    private func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting,
+                                                         requestLogger: Logger,
+                                                         invocationReportingProvider: @escaping (Logger) -> InvocationReportingType)
+    -> SmokeInvocationContext<InvocationReportingType> {
+        var decoratedRequestLogger: Logger = requestLogger
+        handlerSelector.defaultOperationDelegate.decorateLoggerForAnonymousRequest(requestLogger: &decoratedRequestLogger)
+        
+        let invocationReporting = invocationReportingProvider(decoratedRequestLogger)
+        return SmokeInvocationContext(invocationReporting: invocationReporting,
+                                      requestReporting: requestReporting)
+    }
+    
+    public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
+        handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
+               invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+               invocationReportingProvider: invocationReportingProvider,
+               requestStartTraceAction: nil)
     }
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
-                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
-        func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting)
-                -> SmokeInvocationContext<InvocationReportingType> {
-            var decoratedRequestLogger: Logger = requestLogger
-            handlerSelector.defaultOperationDelegate.decorateLoggerForAnonymousRequest(requestLogger: &decoratedRequestLogger)
-            
-            let invocationReporting = invocationReportingProvider(decoratedRequestLogger)
-            return SmokeInvocationContext(invocationReporting: invocationReporting,
-                                                requestReporting: requestReporting)
-        }
-        
+                       invocationReportingProvider: @escaping (Logger) -> InvocationReportingType,
+                       requestStartTraceAction: (() -> (Logger))?) {
         // this is the ping url
         if requestHead.uri == PingParameters.uri {
             let body = (contentType: "text/plain", data: PingParameters.payload)
             let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
-            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: pingOperationReporting)
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: pingOperationReporting,
+                                                                            requestLogger: requestLogger,
+                                                                            invocationReportingProvider: invocationReportingProvider)
             responseHandler.completeSilentlyInEventLoop(invocationContext: invocationContext,
                                                         status: .ok, responseComponents: responseComponents)
             
             return
+        }
+        
+        switch self.requestExecutor {
+        case .cooperativeTaskGroup:
+            Task {
+                handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                          invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                          invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+            }
+        case .dispatchQueue:
+            DispatchQueue.global().async {
+                handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                          invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                          invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+            }
+        case .originalEventLoop:
+            handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                      invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                      invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+        }
+    }
+    
+    private func handleOnDesiredThreadPool(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                                           invocationStrategy: InvocationStrategy, requestLogger originalLogger: Logger, internalRequestId: String,
+                                           invocationReportingProvider: @escaping (Logger) -> InvocationReportingType,
+                                           requestStartTraceAction: (() -> (Logger))?) {
+        let requestLogger: Logger
+        if let requestStartTraceAction = requestStartTraceAction {
+            requestLogger = requestStartTraceAction()
+        } else {
+            requestLogger = originalLogger
         }
         
         let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
@@ -119,7 +175,9 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                               query: query,
                                                               pathShape: .null)
             
-            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: unknownOperationReporting)
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: unknownOperationReporting,
+                                                                            requestLogger: requestLogger,
+                                                                            invocationReportingProvider: invocationReportingProvider)
             defaultOperationDelegate.handleResponseForInvalidOperation(
                 requestHead: smokeHTTP1RequestHead,
                 message: reason,
@@ -133,7 +191,9 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                               query: query,
                                                               pathShape: .null)
             
-            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: errorDeterminingOperationReporting)
+            let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: errorDeterminingOperationReporting,
+                                                                            requestLogger: requestLogger,
+                                                                            invocationReportingProvider: invocationReportingProvider)
             defaultOperationDelegate.handleResponseForInternalServerError(
                 requestHead: smokeHTTP1RequestHead,
                 responseHandler: responseHandler,

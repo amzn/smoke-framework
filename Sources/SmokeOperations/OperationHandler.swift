@@ -221,18 +221,12 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
             // To avoid retaining the original body `Data` object, `body` should not be referenced in this
             // invocation.
             if ignoreInvocationStrategy {
-                inputDecodeResult.handle(
-                    requestHead: requestHead,
-                    context: context,
-                    responseHandler: responseHandler,
-                    operationDelegate: operationDelegate)
+                inputDecodeResult.handle(requestHead: requestHead, context: context,
+                    responseHandler: responseHandler, operationDelegate: operationDelegate)
             } else {
                 invocationStrategy.invoke {
-                    inputDecodeResult.handle(
-                        requestHead: requestHead,
-                        context: context,
-                        responseHandler: responseHandler,
-                        operationDelegate: operationDelegate)
+                    inputDecodeResult.handle(requestHead: requestHead, context: context,
+                        responseHandler: responseHandler, operationDelegate: operationDelegate)
                 }
             }
         }

@@ -33,6 +33,12 @@ internal struct JSONErrorEncoder: ErrorEncoder {
     }
 }
 
+public enum ResponseExecutor {
+    case existingThread
+    case eventLoop
+    case dispatchQueue
+}
+
 /**
  Struct conforming to the OperationDelegate protocol that handles operations from HTTP1 requests with JSON encoded
  request and response payloads.
@@ -40,8 +46,10 @@ internal struct JSONErrorEncoder: ErrorEncoder {
 public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP1ResponseHandler,
                                                        InvocationReportingType: InvocationReporting>: HTTP1OperationDelegate
         where ResponseHandlerType.InvocationContext == SmokeInvocationContext<InvocationReportingType> {
-    public init() {
-        
+    internal let responseExecutor: ResponseExecutor
+    
+    public init(responseExecutor: ResponseExecutor = .eventLoop) {
+        self.responseExecutor = responseExecutor
     }
     
     public func decorateLoggerForAnonymousRequest(requestLogger: inout Logger) {
@@ -114,18 +122,29 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
     }
     
     public func handleResponseForOperation<OutputType>(
-            requestHead: SmokeHTTP1RequestHead, output: OutputType,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: OperationHTTP1OutputProtocol {
-        // encode the response within the event loop of the server to limit the number of response
-        // `Data` objects that exist at single time to the number of threads in the event loop
-        responseHandler.executeInEventLoop(invocationContext: invocationContext) {
-            self.handleResponseForOperationInEventLoop(requestHead: requestHead, output: output, responseHandler: responseHandler,
-                                                       invocationContext: invocationContext)
+                requestHead: SmokeHTTP1RequestHead, output: OutputType,
+                responseHandler: ResponseHandlerType,
+                invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: OperationHTTP1OutputProtocol {
+        switch self.responseExecutor {
+        case .existingThread:
+            self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
+                                                               invocationContext: invocationContext)
+        case .dispatchQueue:
+            DispatchQueue.global().async {
+                self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
+                                                                   invocationContext: invocationContext)
+            }
+        case .eventLoop:
+            // encode the response within the event loop of the server to limit the number of response
+            // `Data` objects that exist at single time to the number of threads in the event loop
+            responseHandler.executeInEventLoop(invocationContext: invocationContext) {
+                self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
+                                                                   invocationContext: invocationContext)
+            }
         }
     }
-    
-    private func handleResponseForOperationInEventLoop<OutputType>(
+        
+    private func handleResponseForOperationOnDesiredThreadPool<OutputType>(
             requestHead: SmokeHTTP1RequestHead, output: OutputType,
             responseHandler: ResponseHandlerType,
             invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: OperationHTTP1OutputProtocol {
