@@ -101,6 +101,55 @@ public struct StandardHTTP1ResponseHandler<
         }
     }
     
+    private func reportRequestOnComplete(smokeInwardsRequestContext: SmokeInwardsRequestContext,
+                                         invocationContext: InvocationContext, status: HTTPResponseStatus) {
+        let requestLatency = Date().timeIntervalSince(smokeInwardsRequestContext.requestStart).milliseconds
+        let serviceCallCount = smokeInwardsRequestContext.retriableOutputRequestRecords.count
+        let serviceCallLatency = smokeInwardsRequestContext.retriableOutputRequestRecords.reduce(0) { (retriableRequestSum, retriableRequestRecord) in
+            return retriableRequestSum + retriableRequestRecord.outputRequests.reduce(0) { (requestSum, requestRecord) in
+                return requestSum + requestRecord.requestLatency.milliseconds
+            }
+        }
+        let retryWaitLatency = smokeInwardsRequestContext.retryAttemptRecords.reduce(0) { (retryWaitSum, retryAttemptRecord) in
+            return retryWaitSum + retryAttemptRecord.retryWait.milliseconds
+        }
+        let retriedServiceCalls = smokeInwardsRequestContext.retriableOutputRequestRecords.filter { requestRecord in
+            return requestRecord.outputRequests.count > 1
+        }
+        
+        var logMetadata: Logger.Metadata = [
+            "requestLatencyMS": "\(requestLatency)",
+            "serviceCallCount":"\(serviceCallCount)",
+            "serviceCallLatencyMS": "\(serviceCallLatency)",
+            "retryServiceCallCount": "\(retriedServiceCalls.count)",
+            "retryWaitLatencyMS": "\(retryWaitLatency)"]
+        
+        if let headReceiveDate = smokeInwardsRequestContext.headReceiveDate {
+            let requestReadLatency = smokeInwardsRequestContext.requestStart.timeIntervalSince(headReceiveDate).milliseconds
+            logMetadata["requestReadLatencyMS"] = "\(requestReadLatency)"
+            
+            invocationContext.requestReadLatencyTimer?.recordMilliseconds(requestReadLatency)
+        }
+        
+        invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
+        
+        invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
+        invocationContext.outwardsServiceCallLatencySumTimer?.recordMilliseconds(serviceCallLatency)
+        invocationContext.outwardsServiceCallRetryWaitSumTimer?.recordMilliseconds(retryWaitLatency)
+        
+        if status.code >= 200 && status.code < 300 {
+            invocationContext.successCounter?.increment()
+        } else if status.code >= 400 {
+            if status.code < 500 {
+                invocationContext.failure4XXCounter?.increment()
+            } else {
+                invocationContext.failure5XXCounter?.increment()
+            }
+            
+            invocationContext.specificFailureStatusCounters?[status.code]?.increment()
+        }
+    }
+    
     private func handleComplete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                 responseComponents: HTTP1ServerResponseComponents, reportRequest: Bool) {
         var headers = HTTPHeaders()
@@ -133,51 +182,8 @@ public struct StandardHTTP1ResponseHandler<
         }
         
         if let smokeInwardsRequestContext = self.smokeInwardsRequestContext, reportRequest {
-            let requestLatency = Date().timeIntervalSince(smokeInwardsRequestContext.requestStart).milliseconds
-            let serviceCallCount = smokeInwardsRequestContext.retriableOutputRequestRecords.count
-            let serviceCallLatency = smokeInwardsRequestContext.retriableOutputRequestRecords.reduce(0) { (retriableRequestSum, retriableRequestRecord) in
-                return retriableRequestSum + retriableRequestRecord.outputRequests.reduce(0) { (requestSum, requestRecord) in
-                    return requestSum + requestRecord.requestLatency.milliseconds
-                }
-            }
-            let retryWaitLatency = smokeInwardsRequestContext.retryAttemptRecords.reduce(0) { (retryWaitSum, retryAttemptRecord) in
-                return retryWaitSum + retryAttemptRecord.retryWait.milliseconds
-            }
-            let retriedServiceCalls = smokeInwardsRequestContext.retriableOutputRequestRecords.filter { requestRecord in
-                return requestRecord.outputRequests.count > 1
-            }
-            
-            var logMetadata: Logger.Metadata = [
-                "requestLatencyMS": "\(requestLatency)",
-                "serviceCallCount":"\(serviceCallCount)",
-                "serviceCallLatencyMS": "\(serviceCallLatency)",
-                "retryServiceCallCount": "\(retriedServiceCalls.count)",
-                "retryWaitLatencyMS": "\(retryWaitLatency)"]
-            
-            if let headReceiveDate = smokeInwardsRequestContext.headReceiveDate {
-                let requestReadLatency = smokeInwardsRequestContext.requestStart.timeIntervalSince(headReceiveDate).milliseconds
-                logMetadata["requestReadLatencyMS"] = "\(requestReadLatency)"
-                
-                invocationContext.requestReadLatencyTimer?.recordMilliseconds(requestReadLatency)
-            }
-            
-            invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
-            
-            invocationContext.latencyTimer?.recordMilliseconds(requestLatency)
-            invocationContext.outwardsServiceCallLatencySumTimer?.recordMilliseconds(serviceCallLatency)
-            invocationContext.outwardsServiceCallRetryWaitSumTimer?.recordMilliseconds(retryWaitLatency)
-            
-            if status.code >= 200 && status.code < 300 {
-                invocationContext.successCounter?.increment()
-            } else if status.code >= 400 {
-                if status.code < 500 {
-                    invocationContext.failure4XXCounter?.increment()
-                } else {
-                    invocationContext.failure5XXCounter?.increment()
-                }
-                
-                invocationContext.specificFailureStatusCounters?[status.code]?.increment()
-            }
+            reportRequestOnComplete(smokeInwardsRequestContext: smokeInwardsRequestContext,
+                                    invocationContext: invocationContext, status: status)
         }
         
         executeInEventLoop(invocationContext: invocationContext) {
