@@ -157,6 +157,8 @@ public struct StandardHTTP1ResponseHandler<
             if let headReceiveDate = smokeInwardsRequestContext.headReceiveDate {
                 let requestReadLatency = smokeInwardsRequestContext.requestStart.timeIntervalSince(headReceiveDate).milliseconds
                 logMetadata["requestReadLatencyMS"] = "\(requestReadLatency)"
+                
+                invocationContext.requestReadLatencyTimer?.recordMilliseconds(requestReadLatency)
             }
             
             invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)

@@ -84,6 +84,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
     private let successCounterMatchingRequests: MatchingRequests
     private let failure5XXCounterMatchingRequests: MatchingRequests
     private let failure4XXCounterMatchingRequests: MatchingRequests
+    private let requestReadLatencyTimerMatchingRequests: MatchingRequests
     private let specificFailureStatusCounterMatchingRequests: MatchingRequests
     private let latencyTimerMatchingRequests: MatchingRequests
     
@@ -95,6 +96,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
     public init(successCounterMatchingRequests: MatchingRequests,
                 failure5XXCounterMatchingRequests: MatchingRequests,
                 failure4XXCounterMatchingRequests: MatchingRequests,
+                requestReadLatencyTimerMatchingRequests: MatchingRequests = .none,
                 latencyTimerMatchingRequests: MatchingRequests,
                 serviceLatencyTimerMatchingRequests: MatchingRequests = .none,
                 outwardServiceCallLatencyTimerMatchingRequests: MatchingRequests = .none,
@@ -102,6 +104,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         self.successCounterMatchingRequests = successCounterMatchingRequests
         self.failure5XXCounterMatchingRequests = failure5XXCounterMatchingRequests
         self.failure4XXCounterMatchingRequests = failure4XXCounterMatchingRequests
+        self.requestReadLatencyTimerMatchingRequests = requestReadLatencyTimerMatchingRequests
         self.latencyTimerMatchingRequests = latencyTimerMatchingRequests
         self.serviceLatencyTimerMatchingRequests = serviceLatencyTimerMatchingRequests
         self.outwardServiceCallLatencySumTimerMatchingRequests = outwardServiceCallLatencyTimerMatchingRequests
@@ -115,6 +118,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
                 failure4XXCounterMatchingRequests: MatchingRequests,
                 specificFailureStatusCounterMatchingRequests: MatchingRequests,
                 specificFailureStatusesToReport: Set<UInt>,
+                requestReadLatencyTimerMatchingRequests: MatchingRequests = .none,
                 latencyTimerMatchingRequests: MatchingRequests,
                 serviceLatencyTimerMatchingRequests: MatchingRequests = .none,
                 outwardServiceCallLatencyTimerMatchingRequests: MatchingRequests = .none,
@@ -122,6 +126,7 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         self.successCounterMatchingRequests = successCounterMatchingRequests
         self.failure5XXCounterMatchingRequests = failure5XXCounterMatchingRequests
         self.failure4XXCounterMatchingRequests = failure4XXCounterMatchingRequests
+        self.requestReadLatencyTimerMatchingRequests = requestReadLatencyTimerMatchingRequests
         self.latencyTimerMatchingRequests = latencyTimerMatchingRequests
         self.serviceLatencyTimerMatchingRequests = serviceLatencyTimerMatchingRequests
         self.outwardServiceCallLatencySumTimerMatchingRequests = outwardServiceCallLatencyTimerMatchingRequests
@@ -130,10 +135,13 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
         self.specificFailureStatusesToReport = specificFailureStatusesToReport
     }
     
+    // Metrics added within the current major version are set to .none
+    // to maintain existing behaviour
     public init(matchingRequests: MatchingRequests = MatchingRequests()) {
         self.successCounterMatchingRequests = matchingRequests
         self.failure5XXCounterMatchingRequests = matchingRequests
         self.failure4XXCounterMatchingRequests = matchingRequests
+        self.requestReadLatencyTimerMatchingRequests = .none
         self.latencyTimerMatchingRequests = matchingRequests
         self.serviceLatencyTimerMatchingRequests = .none
         self.outwardServiceCallLatencySumTimerMatchingRequests = .none
@@ -152,6 +160,10 @@ public struct SmokeReportingConfiguration<OperationIdentifer: OperationIdentity>
     
     public func reportFailure4XXForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
         return isMatchingRequest(request, matchingRequests: failure4XXCounterMatchingRequests)
+    }
+    
+    public func reportRequestReadLatencyForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {
+        return isMatchingRequest(request, matchingRequests: requestReadLatencyTimerMatchingRequests)
     }
     
     public func reportSpecificFailureStatusesForRequest(_ request: RequestType<OperationIdentifer>) -> Bool {

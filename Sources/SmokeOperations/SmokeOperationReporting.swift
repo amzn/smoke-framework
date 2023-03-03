@@ -25,6 +25,7 @@ private let metricNameDimension = "Metric Name"
 private let successCountMetric = "successCount"
 private let failure5XXCountMetric = "failure5XXCount"
 private let failure4XXCountMetric = "failure4XXCount"
+private let requestReadLatencyTimeMetric = "requestReadLatencyTime"
 private let specificFailureStatusCountMetricFormat = "failure%dCount"
 private let latencyTimeMetric = "latencyTime"
 private let serviceLatencyTimeMetric = "serviceLatencyTime"
@@ -38,6 +39,7 @@ public struct SmokeOperationReporting {
     public let successCounter: Metrics.Counter?
     public let failure5XXCounter: Metrics.Counter?
     public let failure4XXCounter: Metrics.Counter?
+    public let requestReadLatencyTimer: Metrics.Timer?
     public let specificFailureStatusCounters: [UInt: Metrics.Counter]?
     public let latencyTimer: Metrics.Timer?
     public let serviceLatencyTimer: Metrics.Timer?
@@ -80,6 +82,12 @@ public struct SmokeOperationReporting {
             failure4XXCounter = getCounter(metricName: failure4XXCountMetric)
         } else {
             failure4XXCounter = nil
+        }
+        
+        if configuration.reportRequestReadLatencyForRequest(request) {
+            requestReadLatencyTimer = getTimer(metricName: requestReadLatencyTimeMetric)
+        } else {
+            requestReadLatencyTimer = nil
         }
         
         if configuration.reportSpecificFailureStatusesForRequest(request),

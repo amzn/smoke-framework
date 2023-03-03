@@ -27,6 +27,7 @@ public protocol HTTP1RequestInvocationContext {
     var successCounter: Metrics.Counter? { get }
     var failure5XXCounter: Metrics.Counter? { get }
     var failure4XXCounter: Metrics.Counter? { get }
+    var requestReadLatencyTimer: Metrics.Timer? { get }
     var specificFailureStatusCounters: [UInt: Metrics.Counter]? { get }
     var latencyTimer: Metrics.Timer? { get }
     var serviceLatencyTimer: Metrics.Timer? { get }
@@ -48,6 +49,10 @@ public extension HTTP1RequestInvocationContext {
     }
     
     var failure4XXCounter: Metrics.Counter? {
+        return nil
+    }
+    
+    var requestReadLatencyTimer: Metrics.Timer? {
         return nil
     }
     
