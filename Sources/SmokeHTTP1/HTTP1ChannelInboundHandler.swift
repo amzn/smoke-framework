@@ -30,12 +30,14 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
     typealias OutboundOut = HTTPServerResponsePart
     
     private struct WaitingForRequestBody {
+        let headReceiveDate: Date
         let logger: Logger
         let internalRequestId: String
         let requestHead: HTTPRequestHead
         let keepAliveStatus: KeepAliveStatus
         
         init(requestHead: HTTPRequestHead) {
+            self.headReceiveDate = Date()
             self.internalRequestId = UUID().uuidString
             var newLogger = Logger(label: "com.amazon.SmokeFramework.request.\(internalRequestId)")
             newLogger[metadataKey: "internalRequestId"] = "\(internalRequestId)"
@@ -47,6 +49,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
     }
     
     private struct ReceivingRequestBody {
+        let headReceiveDate: Date
         let logger: Logger
         let internalRequestId: String
         let requestHead: HTTPRequestHead
@@ -54,6 +57,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         let partialBody: Data
         
         init(waitingForRequestBody: WaitingForRequestBody, bodyPart: Data) {
+            self.headReceiveDate = waitingForRequestBody.headReceiveDate
             self.logger = waitingForRequestBody.logger
             self.internalRequestId = waitingForRequestBody.internalRequestId
             self.requestHead = waitingForRequestBody.requestHead
@@ -62,6 +66,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         }
         
         init(receivingRequestBody: ReceivingRequestBody, bodyPart: Data) {
+            self.headReceiveDate = receivingRequestBody.headReceiveDate
             self.logger = receivingRequestBody.logger
             self.internalRequestId = receivingRequestBody.internalRequestId
             self.requestHead = receivingRequestBody.requestHead
@@ -71,6 +76,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
     }
     
     private struct PendingResponse {
+        let headReceiveDate: Date
         let logger: Logger
         let internalRequestId: String
         let requestHead: HTTPRequestHead
@@ -78,6 +84,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         let bodyData: Data?
         
         init(waitingForRequestBody: WaitingForRequestBody) {
+            self.headReceiveDate = waitingForRequestBody.headReceiveDate
             self.logger = waitingForRequestBody.logger
             self.internalRequestId = waitingForRequestBody.internalRequestId
             self.requestHead = waitingForRequestBody.requestHead
@@ -86,6 +93,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         }
         
         init(receivingRequestBody: ReceivingRequestBody) {
+            self.headReceiveDate = receivingRequestBody.headReceiveDate
             self.logger = receivingRequestBody.logger
             self.internalRequestId = receivingRequestBody.internalRequestId
             self.requestHead = receivingRequestBody.requestHead
@@ -94,6 +102,7 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
         }
         
         init(pendingResponse: PendingResponse, keepAliveStatus: Bool) {
+            self.headReceiveDate = pendingResponse.headReceiveDate
             self.internalRequestId = pendingResponse.internalRequestId
             self.logger = pendingResponse.logger
             self.requestHead = pendingResponse.requestHead
@@ -274,7 +283,8 @@ class HTTP1ChannelInboundHandler<HTTP1RequestHandlerType: HTTP1RequestHandler>: 
             self.state.responseFullSent()
         }
         
-        let smokeInwardsRequestContext = StandardSmokeInwardsRequestContext(requestStart: Date())
+        let smokeInwardsRequestContext = StandardSmokeInwardsRequestContext(headReceiveDate: pendingResponse.headReceiveDate,
+                                                                            requestStart: Date())
         
         // create a response handler for this request
         let responseHandler = HTTP1RequestHandlerType.ResponseHandlerType(

@@ -276,6 +276,7 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
             successCounterMatchingRequests: .none,
             failure5XXCounterMatchingRequests: .onlyForOperations([.theOperation]),
             failure4XXCounterMatchingRequests: .exceptForOperations([.theOperation]),
+            requestReadLatencyTimerMatchingRequests: .none,
             latencyTimerMatchingRequests: .all,
             serviceLatencyTimerMatchingRequests: .all,
             outwardServiceCallLatencyTimerMatchingRequests: .all,

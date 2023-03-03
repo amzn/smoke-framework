@@ -19,6 +19,8 @@ import Foundation
 import Logging
 import SmokeInvocation
 
+private let incomingOperationKey = "incomingOperation"
+
 /**
  Struct that handles serialization and de-serialization of request and response
  bodies from and to the shapes required by operation handlers.
@@ -44,8 +46,11 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                        responseHandler: ResponseHandlerType, invocationStrategy: InvocationStrategy,
                        requestLogger: Logger, internalRequestId: String,
                        invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
+        var decoratedRequestLogger = requestLogger
+        decoratedRequestLogger[metadataKey: incomingOperationKey] = "\(self.operationIdentifer)"
+        
         return operationFunction(requestHead, body, context, responseHandler,
-                                 invocationStrategy, requestLogger, internalRequestId, invocationReportingProvider)
+                                 invocationStrategy, decoratedRequestLogger, internalRequestId, invocationReportingProvider)
     }
     
     private enum InputDecodeResult<InputType: Validatable> {
