@@ -147,12 +147,17 @@ public struct StandardHTTP1ResponseHandler<
                 return requestRecord.outputRequests.count > 1
             }
             
-            let logMetadata: Logger.Metadata = [
+            var logMetadata: Logger.Metadata = [
                 "requestLatencyMS": "\(requestLatency)",
                 "serviceCallCount":"\(serviceCallCount)",
                 "serviceCallLatencyMS": "\(serviceCallLatency)",
                 "retryServiceCallCount": "\(retriedServiceCalls.count)",
                 "retryWaitLatencyMS": "\(retryWaitLatency)"]
+            
+            if let headReceiveDate = smokeInwardsRequestContext.headReceiveDate {
+                let requestReadLatency = smokeInwardsRequestContext.requestStart.timeIntervalSince(headReceiveDate).milliseconds
+                logMetadata["requestReadLatencyMS"] = "\(requestReadLatency)"
+            }
             
             invocationContext.logger.info("Inwards request complete.", metadata: logMetadata)
             

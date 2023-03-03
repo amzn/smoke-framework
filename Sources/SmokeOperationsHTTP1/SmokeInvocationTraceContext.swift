@@ -63,14 +63,26 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         
         // get the request id if present
         if !requestIds.isEmpty {
-            self.externalRequestId = requestIds.joined(separator: ",")
+            let joinedExternalRequestId = requestIds.joined(separator: ",")
+            
+            if joinedExternalRequestId != "none" {
+                self.externalRequestId = joinedExternalRequestId
+            } else {
+                self.externalRequestId = nil
+            }
         } else {
             self.externalRequestId = nil
         }
         
         // get the trace id if present
         if !traceIds.isEmpty {
-            self.traceId = traceIds.joined(separator: ",")
+            let joinedTraceId = traceIds.joined(separator: ",")
+            
+            if joinedTraceId != "none" {
+                self.traceId = joinedTraceId
+            } else {
+                self.traceId = nil
+            }
         } else {
             self.traceId = nil
         }
@@ -193,15 +205,11 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
         }
         
         if let requestIds = response?.headers[requestIdHeader], !requestIds.isEmpty {
-            requestIds.enumerated().forEach { (index, header) in
-                logMetadata["\(requestIdHeader)(index)"] = "\(header)"
-            }
+            logMetadata[requestIdHeader] = "\(requestIds.joined(separator: ","))"
         }
         
         if let traceIds = response?.headers[traceIdHeader], !traceIds.isEmpty {
-            traceIds.enumerated().forEach { (index, header) in
-                logMetadata["\(traceIdHeader)(index)"] = "\(header)"
-            }
+            logMetadata[traceIdHeader] = "\(traceIds.joined(separator: ","))"
         }
         
         if let bodyData = bodyData {

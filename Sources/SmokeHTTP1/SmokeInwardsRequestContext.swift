@@ -19,6 +19,8 @@ import Foundation
 import SmokeHTTPClient
 
 public protocol SmokeInwardsRequestContext {
+    var headReceiveDate: Date? { get }
+    
     var requestStart: Date { get }
     
     var retriableOutputRequestRecords: [RetriableOutputRequestRecord] { get }
@@ -26,7 +28,14 @@ public protocol SmokeInwardsRequestContext {
     var retryAttemptRecords: [RetryAttemptRecord] { get }
 }
 
+public extension SmokeInwardsRequestContext {
+    var headReceiveDate: Date? {
+        return nil
+    }
+}
+
 internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, OutwardsRequestAggregator {
+    let headReceiveDate: Date?
     let requestStart: Date
     private(set) var retriableOutputRequestRecords: [RetriableOutputRequestRecord]
     private(set) var retryAttemptRecords: [RetryAttemptRecord]
@@ -35,7 +44,8 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
                 label: "com.amazon.SmokeFramework.StandardSmokeInwardsRequestContext.accessQueue",
                 target: DispatchQueue.global())
     
-    init(requestStart: Date) {
+    init(headReceiveDate: Date?, requestStart: Date) {
+        self.headReceiveDate = headReceiveDate
         self.requestStart = requestStart
         self.retriableOutputRequestRecords = []
         self.retryAttemptRecords = []
