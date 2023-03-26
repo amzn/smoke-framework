@@ -24,7 +24,9 @@ private func createEncoder() -> JSONEncoder {
         jsonEncoder.dateEncodingStrategy = .iso8601
     }
 
-    jsonEncoder.outputFormatting = .prettyPrinted
+    #if DEBUG
+        jsonEncoder.outputFormatting = .prettyPrinted
+    #endif
     
     return jsonEncoder
 }
