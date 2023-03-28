@@ -38,8 +38,8 @@ FormattedPayloadServerMiddlewareStackProtocol {
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
@@ -60,8 +60,8 @@ FormattedPayloadServerMiddlewareStackProtocol {
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
@@ -82,8 +82,8 @@ FormattedPayloadServerMiddlewareStackProtocol {
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
