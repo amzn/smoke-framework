@@ -11,12 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// ContextWithPathShape.swift
-// SmokeOperationsHTTP1
+// ContextWithOperationIdentifer.swift
+// SmokeOperations
 //
 
 import ShapeCoding
 
-public protocol ContextWithPathShape {
-    var pathShape: Shape { get }
+public protocol ContextWithOperationIdentifer {
+    associatedtype OperationIdentifer: OperationIdentity
+    
+    var operationIdentifer: OperationIdentifer { get }
 }

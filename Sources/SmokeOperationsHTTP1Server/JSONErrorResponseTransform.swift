@@ -35,8 +35,7 @@ public struct JSONErrorResponseTransform<Context: ContextWithMutableLogger>: Err
     
     public func transform(_ input: Error, context: Context) -> SmokeAsyncHTTP1Server.HTTPServerResponse {
         let errorResult = SmokeOperationsErrorPayload(errorMessage: self.errorMessage)
-        let logger = context.logger ?? Logger(label: "ErrorResponseTransform")
-        let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: logger,
+        let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: context.logger,
                                                      reason: self.reason)
         
         var response = HTTPServerResponse()

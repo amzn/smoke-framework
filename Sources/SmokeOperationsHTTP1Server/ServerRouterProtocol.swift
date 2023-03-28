@@ -24,7 +24,7 @@ import SmokeOperationsHTTP1
 
 public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareContext, OperationIdentifer> {
     associatedtype OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId
-    associatedtype InnerMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger
+    associatedtype InnerMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
         & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId
     associatedtype OperationIdentifer: OperationIdentity
     

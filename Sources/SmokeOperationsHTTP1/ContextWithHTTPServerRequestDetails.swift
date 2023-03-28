@@ -27,6 +27,13 @@ public struct HTTPServerRequestHead: Sendable {
     public var uri: String
     /// The HTTP headers of this request.
     public var headers: HTTPHeaders
+    
+    public init(method: HTTPMethod, version: HTTPVersion, uri: String, headers: HTTPHeaders) {
+        self.method = method
+        self.version = version
+        self.uri = uri
+        self.headers = headers
+    }
 }
 
 public protocol ContextWithHTTPServerRequestHead {

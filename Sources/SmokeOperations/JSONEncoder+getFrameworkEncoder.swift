@@ -51,7 +51,7 @@ extension JSONEncoder {
      */
     public static func encodePayload<EncodableType: Encodable>(
         payload: EncodableType,
-        logger: Logger,
+        logger: Logger?,
         reason: String? = nil) -> Data {
             let encodedError: Data
             
@@ -64,8 +64,8 @@ extension JSONEncoder {
                     encodedError = try createEncoder().encode(payload)
                 }
             } catch {
-                logger.error("Unable to encode error message.",
-                             metadata: ["cause": "\(String(describing: error))"])
+                logger?.error("Unable to encode error message.",
+                              metadata: ["cause": "\(String(describing: error))"])
                 
                 encodedError = encodedInternalError
             }
