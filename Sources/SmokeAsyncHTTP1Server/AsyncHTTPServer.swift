@@ -85,7 +85,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service {
         let (quiesce, channel) = try self.start()
         let quiesceShutdownPromise = self.eventLoopGroup.next().makePromise(of: Void.self)
         
-        try await withShutdownGracefulHandler {
+        try await withGracefulShutdownHandler {
             try await channel.closeFuture.get()
         } onGracefulShutdown: {
             quiesce.initiateShutdown(promise: quiesceShutdownPromise)

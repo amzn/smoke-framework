@@ -141,7 +141,7 @@
       "location" : "https://github.com/swift-server/swift-service-lifecycle",
       "state" : {
         "branch" : "fb-structured-service-lifecycle",
-        "revision" : "1f8b8b8aec9b7aeba0b069711a5edb1e2bc7f26d"
+        "revision" : "ca597ad9fbf4f12aa2e8aa14a43c705548b3f24c"
       }
     }
   ],
