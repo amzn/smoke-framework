@@ -11,19 +11,25 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  ErrorTransform.swift
-//  SmokeOperationsHTTP1
+//  VoidResponseTransform.swift
+//  SmokeOperationsHTTP1Server
 //
 
-import Foundation
+import SwiftMiddleware
 import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
-import SmokeOperations
-import Logging
 import NIOHTTP1
 
-public protocol ErrorTransform {
-    associatedtype Context
-
-    func transform(_ input: Swift.Error, context: Context) -> HTTPServerResponse
+public struct VoidResponseTransform<Context>: TransformProtocol {
+    private let statusOnSuccess: HTTPResponseStatus
+    
+    public init(statusOnSuccess: HTTPResponseStatus) {
+        self.statusOnSuccess = statusOnSuccess
+    }
+    
+    public func transform(_ input: Void, context: Context) async throws -> HTTPServerResponse {
+        var response = HTTPServerResponse()
+        response.status = self.statusOnSuccess
+        
+        return response
+    }
 }

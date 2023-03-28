@@ -76,14 +76,14 @@ let package = Package(
                 .product(name: "HTTPPathCoding", package: "smoke-http"),
                 .product(name: "HTTPHeadersCoding", package: "smoke-http"),
                 .product(name: "SwiftMiddleware", package: "swift-middleware"),
-                .target(name: "SmokeAsyncHTTP1Server"),
                 .target(name: "SmokeHTTP1ServerMiddleware"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "Algorithms", package: "swift-algorithms")
+                .product(name: "Algorithms", package: "swift-algorithms"),
+                .target(name: "SmokeAsyncHTTP1Server"),
             ]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [

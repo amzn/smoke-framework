@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  JSONRequestTransform.swift
-//  SmokeOperationsHTTP1
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
@@ -22,6 +22,7 @@ import SwiftMiddleware
 import HTTPPathCoding
 import HTTPHeadersCoding
 import QueryCoding
+import SmokeOperationsHTTP1
 
 private let maxBodySize = 1024 * 1024 // 1 MB
 

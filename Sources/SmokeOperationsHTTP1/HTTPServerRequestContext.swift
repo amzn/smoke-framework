@@ -23,4 +23,12 @@ public struct HTTPServerRequestContext<OperationIdentifer: OperationIdentity> {
     public let requestId: String?
     public let requestHead: HTTPServerRequestHead
     public let operationIdentifer: OperationIdentifer
+    
+    public init(logger: Logger?, requestId: String?, requestHead: HTTPServerRequestHead,
+                operationIdentifer: OperationIdentifer) {
+        self.logger = logger
+        self.requestId = requestId
+        self.requestHead = requestHead
+        self.operationIdentifer = operationIdentifer
+    }
 }

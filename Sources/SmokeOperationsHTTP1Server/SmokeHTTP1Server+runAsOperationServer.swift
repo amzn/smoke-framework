@@ -28,7 +28,7 @@ public extension AsyncHTTPServer {
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
-    {
+    where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -59,7 +59,13 @@ public extension AsyncHTTPServer {
             eventLoopProvider = serverConfiguration.eventLoopProvider
         }
         
-        var middlewareStack = initalizer.middlewareStackProvider()
+        @Sendable func getInvocationContext(requestContext: HTTPServerRequestContext<InitializerType.OperationIdentifer>)
+        -> InitializerType.MiddlewareStackType.ApplicationContextType {
+            return initalizer.getInvocationContext()
+        }
+        
+        var middlewareStack = InitializerType.MiddlewareStackType(
+            serverConfiguration: serverConfiguration, applicationContextProvider: getInvocationContext)
         initalizer.operationsInitializer(&middlewareStack)
                 
         let server = AsyncHTTPServer(handler: middlewareStack.handle,
@@ -87,7 +93,7 @@ public extension AsyncHTTPServer {
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
-    {
+    where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -118,7 +124,8 @@ public extension AsyncHTTPServer {
             eventLoopProvider = serverConfiguration.eventLoopProvider
         }
         
-        var middlewareStack = initalizer.middlewareStackProvider()
+        var middlewareStack = InitializerType.MiddlewareStackType(
+            serverConfiguration: serverConfiguration, applicationContextProvider: initalizer.getInvocationContext)
         initalizer.operationsInitializer(&middlewareStack)
                 
         let server = AsyncHTTPServer(handler: middlewareStack.handle,

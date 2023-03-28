@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  ServerRouterProtocol.swift
-//  SmokeOperationsHTTP1
+//  SmokeOperationsHTTP1Server
 //
 
 import SmokeOperations
@@ -20,12 +20,15 @@ import NIOHTTP1
 import SwiftMiddleware
 import SmokeAsyncHTTP1Server
 import SmokeHTTP1ServerMiddleware
+import SmokeOperationsHTTP1
 
 public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareContext, OperationIdentifer> {
     associatedtype OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId
     associatedtype InnerMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger
         & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId
     associatedtype OperationIdentifer: OperationIdentity
+    
+    init()
 
     func handle(_ input: HTTPServerRequest, context: OuterMiddlewareContext) async throws -> HTTPServerResponse
     

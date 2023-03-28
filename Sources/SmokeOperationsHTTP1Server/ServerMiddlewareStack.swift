@@ -12,27 +12,30 @@
 // permissions and limitations under the License.
 //
 //  ServerMiddlewareStack.swift
-//  SmokeOperationsHTTP1
+//  SmokeOperationsHTTP1Server
 //
 
 import SwiftMiddleware
 import NIOHTTP1
 import SmokeOperations
 import SmokeAsyncHTTP1Server
+import SmokeOperationsHTTP1
 
-public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContext>: ServerMiddlewareStackProtocol {
+public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContext>: ServerMiddlewareStackProtocol
+where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
     public typealias OperationIdentifer = RouterType.OperationIdentifer
     private var router: RouterType
     
     private let initialMiddlewareContext: RouterType.OuterMiddlewareContext
     private let applicationContextProvider: @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext
     private let unhandledErrorTransform: JSONErrorResponseTransform<RouterType.OuterMiddlewareContext>
+    private let serverConfiguration: SmokeServerConfiguration<OperationIdentifer>
     
-    public init(router: RouterType,
-                initialMiddlewareContext: RouterType.OuterMiddlewareContext,
+    public init(serverConfiguration: SmokeServerConfiguration<OperationIdentifer>,
                 applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext) {
-        self.router = router
-        self.initialMiddlewareContext = initialMiddlewareContext
+        self.router = .init()
+        self.initialMiddlewareContext = .init()
+        self.serverConfiguration = serverConfiguration
         self.applicationContextProvider = applicationContextProvider
         
         self.unhandledErrorTransform = JSONErrorResponseTransform(reason: "InternalError",
@@ -51,7 +54,7 @@ public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, Applicatio
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                 RequestTransformType: TransformProtocol, ResponseTransformType: TransformProtocol, ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContext) async throws -> InnerMiddlewareType.Output,
+        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
         requestTransform: RequestTransformType, responseTransform: ResponseTransformType)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,

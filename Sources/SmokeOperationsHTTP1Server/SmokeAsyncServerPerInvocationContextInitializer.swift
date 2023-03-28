@@ -18,9 +18,19 @@
 import Foundation
 import SmokeOperationsHTTP1
 
-public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
+public protocol SmokeAsyncServerPerInvocationContextInitializer {
+    associatedtype MiddlewareStackType: ServerMiddlewareStackProtocol
+    
+    typealias MiddlewareContext = MiddlewareStackType.RouterType.OuterMiddlewareContext
+    typealias OperationIdentifer = MiddlewareStackType.RouterType.OperationIdentifer
     
     var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> { get }
+    
+    var operationsInitializer: ((inout MiddlewareStackType) -> Void) { get }
+
+    @Sendable func getInvocationContext(requestContext: HTTPServerRequestContext<OperationIdentifer>) -> MiddlewareStackType.ApplicationContextType
+    
+    func onShutdown() async throws
 }
 
 public extension SmokeAsyncServerPerInvocationContextInitializer {

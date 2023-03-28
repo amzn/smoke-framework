@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  JSONResponseTransform.swift
-//  SmokeOperationsHTTP1
+//  SmokeOperationsHTTP1Server
 //
 
 import Foundation
@@ -21,6 +21,7 @@ import SmokeHTTP1ServerMiddleware
 import SmokeAsyncHTTP1Server
 import HTTPHeadersCoding
 import NIOHTTP1
+import SmokeOperationsHTTP1
 
 internal struct MimeTypes {
     static let json = "application/json"
