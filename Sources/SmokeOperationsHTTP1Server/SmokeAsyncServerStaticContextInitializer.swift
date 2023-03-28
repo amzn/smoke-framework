@@ -23,6 +23,7 @@ public protocol SmokeAsyncServerStaticContextInitializer {
     
     typealias MiddlewareContext = MiddlewareStackType.RouterType.OuterMiddlewareContext
     typealias OperationIdentifer = MiddlewareStackType.RouterType.OperationIdentifer
+    typealias ContextType = MiddlewareStackType.ApplicationContextType
     
     var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> { get }
     
