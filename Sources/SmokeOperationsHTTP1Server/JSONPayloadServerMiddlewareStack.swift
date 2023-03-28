@@ -33,7 +33,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
     }
     
     /**
-     Input. Output. Standard transforms only.
+     Input. Output.
      */
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
@@ -55,7 +55,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
     }
     
     /**
-     Input. No Output. Standard transforms only.
+     Input. No Output.
      */
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
@@ -77,7 +77,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
     }
     
     /**
-     No Input. Output. Standard transforms only.
+     No Input. Output.
      */
     public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
                                                 ErrorType: ErrorIdentifiableByDescription>(
@@ -91,92 +91,6 @@ FormattedPayloadServerMiddlewareStackProtocol {
         let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
         let responseTransform: JSONResponseTransform<InnerMiddlewareType.Output, RouterType.InnerMiddlewareContext> =
             getStandardResponseTransform(statusOnSuccess: statusOnSuccess)
-        
-        @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
-            return try await operation(context)
-        }
-        
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
-    }
-    
-    /**
-     Input. Output. Standard + additional transforms.
-     */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                InnerRequestTransformType: TransformProtocol, InnerResponseTransformType: TransformProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
-        innerRequestTransform: InnerRequestTransformType, innerResponseTransform: InnerResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerRequestTransformType.Output == InnerMiddlewareType.Input, InnerResponseTransformType.Input == InnerMiddlewareType.Output,
-    InnerResponseTransformType.Context == RouterType.InnerMiddlewareContext, InnerRequestTransformType.Context == RouterType.InnerMiddlewareContext,
-    InnerRequestTransformType.Input: OperationHTTP1InputProtocol, InnerResponseTransformType.Output: OperationHTTP1OutputProtocol {
-        let standardRequestTransform: JSONRequestTransform<InnerRequestTransformType.Input, RouterType.InnerMiddlewareContext> =
-            getStandardRequestTransform()
-        let standardResponseTransform: JSONResponseTransform<InnerResponseTransformType.Output, RouterType.InnerMiddlewareContext> =
-            getStandardResponseTransform(statusOnSuccess: statusOnSuccess)
-        
-        let requestTransform = TransformTuple(standardRequestTransform, innerRequestTransform)
-        let responseTransform = TransformTuple(innerResponseTransform, standardResponseTransform)
-        
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
-    }
-    
-    /**
-     Input. No Output. Standard + additional transforms.
-     */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                InnerRequestTransformType: TransformProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
-        innerRequestTransform: InnerRequestTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerRequestTransformType.Output == InnerMiddlewareType.Input, InnerRequestTransformType.Context == RouterType.InnerMiddlewareContext,
-    InnerRequestTransformType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output == Void {
-        let standardRequestTransform: JSONRequestTransform<InnerRequestTransformType.Input, RouterType.InnerMiddlewareContext> =
-            getStandardRequestTransform()
-        let responseTransform: VoidResponseTransform<RouterType.InnerMiddlewareContext> =
-            .init(statusOnSuccess: statusOnSuccess)
-        
-        let requestTransform = TransformTuple(standardRequestTransform, innerRequestTransform)
-        
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
-    }
-    
-    /**
-     No Input. Output. Standard + additional transforms.
-     */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                InnerResponseTransformType: TransformProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
-        innerResponseTransform: InnerResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerResponseTransformType.Input == InnerMiddlewareType.Output, InnerResponseTransformType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerResponseTransformType.Output: OperationHTTP1OutputProtocol {
-        let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
-        let standardResponseTransform: JSONResponseTransform<InnerResponseTransformType.Output, RouterType.InnerMiddlewareContext> =
-            getStandardResponseTransform(statusOnSuccess: statusOnSuccess)
-        
-        let responseTransform = TransformTuple(innerResponseTransform, standardResponseTransform)
         
         @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
             return try await operation(context)
