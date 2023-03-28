@@ -16,11 +16,8 @@
 //
 
 import NIO
-import SmokeInvocation
 import SmokeOperations
 import Logging
-
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
 
 /**
   A protocol for initialization SmokeFramework-based applications that require a per-invocation context.
@@ -28,38 +25,14 @@ import Logging
   This initializer supports async shutdown.
  */
 public protocol SmokeAsyncPerInvocationContextInitializer {
-    associatedtype SelectorType: SmokeHTTP1HandlerSelector
+    associatedtype MiddlewareStackType: ServerMiddlewareStackProtocol
+    typealias OperationIdentifer = MiddlewareStackType.RouterType.OperationIdentifer
     
-    typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
-    
-    var handlerSelectorProvider: (() -> SelectorType) { get }
-    var operationsInitializer: ((inout SelectorType) -> Void) { get }
-    
-    var serverName: String { get }
-    var invocationStrategy: InvocationStrategy { get }
-    var defaultLogger: Logger { get }
-    var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> { get }
-        
-    func getInvocationContext(invocationReporting: InvocationReportingType) -> SelectorType.ContextType
+    var middlewareStackProvider: (() -> MiddlewareStackType) { get }
+    var operationsInitializer: ((inout MiddlewareStackType) -> Void) { get }
+
+    func getInvocationContext(requestContext: HTTPServerRequestContext<OperationIdentifer>) -> MiddlewareStackType.ApplicationContextType
     
     func onShutdown() async throws
 }
 
-public extension SmokeAsyncPerInvocationContextInitializer {
-    var serverName: String {
-        return "Server"
-    }
-    
-    var invocationStrategy: InvocationStrategy {
-        return GlobalDispatchQueueAsyncInvocationStrategy()
-    }
-    
-    var defaultLogger: Logger {
-        return Logger(label: "application.initialization")
-    }
-    
-    var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> {
-        return SmokeReportingConfiguration()
-    }
-}
-#endif

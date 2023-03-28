@@ -16,23 +16,19 @@
 //
 
 import Foundation
-import SmokeHTTP1
 import NIOHTTP1
 import SmokeOperations
 import SmokeOperationsHTTP1
 import Logging
 import NIO
-import AsyncHTTPClient
-import SmokeInvocation
+import SmokeAsyncHTTP1Server
+import ServiceLifecycle
 
-public extension SmokeHTTP1Server {
+public extension AsyncHTTPServer {
     
-    static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer, TraceContextType>(
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
-    where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-          InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
-          InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-            StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+    {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -48,53 +44,50 @@ public extension SmokeHTTP1Server {
             return
         }
         
+        let serverConfiguration = initalizer.serverConfiguration
+        
         // initialize the logger after instatiating the initializer
         let logger = Logger.init(label: "application.initialization")
         
-        let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+        let eventLoopProvider: AsyncHTTPServer.EventLoopProvider
         // if the initializer is indicating to create new threads for the server
         // just use the created eventLoopGroup
-        if case .spawnNewThreads = initalizer.eventLoopProvider {
+        if case .spawnNewThreads = serverConfiguration.eventLoopProvider {
             eventLoopProvider = .use(eventLoopGroup)
         } else {
             // use what the initializer says
-            eventLoopProvider = initalizer.eventLoopProvider
+            eventLoopProvider = serverConfiguration.eventLoopProvider
         }
         
-        var handlerSelector = initalizer.handlerSelectorProvider()
-        initalizer.operationsInitializer(&handlerSelector)
+        var middlewareStack = initalizer.middlewareStackProvider()
+        initalizer.operationsInitializer(&middlewareStack)
+                
+        let server = AsyncHTTPServer(handler: middlewareStack.handle,
+                                     port: serverConfiguration.port,
+                                     defaultLogger: serverConfiguration.defaultLogger,
+                                     eventLoopProvider: eventLoopProvider)
         
-        let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
-            handlerSelector: handlerSelector,
-            context: initalizer.getInvocationContext(),
-            serverName: initalizer.serverName,
-            reportingConfiguration: initalizer.reportingConfiguration)
-        let server = StandardSmokeHTTP1Server(handler: handler,
-                                              port: initalizer.port,
-                                              invocationStrategy: initalizer.invocationStrategy,
-                                              defaultLogger: initalizer.defaultLogger,
-                                              eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignals: initalizer.shutdownOnSignals)
+        let serviceRunner = ServiceRunner(
+          services: [server],
+          configuration: .init(gracefulShutdownSignals: serverConfiguration.shutdownOnSignals),
+          logger: logger
+        )
+
         do {
-            try server.start()
-            
-            try await server.untilShutdown()
+            try await serviceRunner.run()
             
             try await initalizer.onShutdown()
             
             try await eventLoopGroup.shutdownGracefully()
         } catch {
-            logger.error("Operations Server lifecycle error.",
+            logger.error("Service Runner error.",
                          metadata: ["cause": "\(String(describing: error))"])
         }
     }
     
-    static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer, TraceContextType>(
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
-    where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-          InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
-          InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-            StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+    {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -110,43 +103,43 @@ public extension SmokeHTTP1Server {
             return
         }
         
+        let serverConfiguration = initalizer.serverConfiguration
+        
         // initialize the logger after instatiating the initializer
         let logger = Logger.init(label: "application.initialization")
         
-        let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+        let eventLoopProvider: AsyncHTTPServer.EventLoopProvider
         // if the initializer is indicating to create new threads for the server
         // just use the created eventLoopGroup
-        if case .spawnNewThreads = initalizer.eventLoopProvider {
+        if case .spawnNewThreads = serverConfiguration.eventLoopProvider {
             eventLoopProvider = .use(eventLoopGroup)
         } else {
             // use what the initializer says
-            eventLoopProvider = initalizer.eventLoopProvider
+            eventLoopProvider = serverConfiguration.eventLoopProvider
         }
         
-        var handlerSelector = initalizer.handlerSelectorProvider()
-        initalizer.operationsInitializer(&handlerSelector)
+        var middlewareStack = initalizer.middlewareStackProvider()
+        initalizer.operationsInitializer(&middlewareStack)
+                
+        let server = AsyncHTTPServer(handler: middlewareStack.handle,
+                                     port: serverConfiguration.port,
+                                     defaultLogger: serverConfiguration.defaultLogger,
+                                     eventLoopProvider: eventLoopProvider)
         
-        let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
-            handlerSelector: handlerSelector,
-            contextProvider: initalizer.getInvocationContext,
-            serverName: initalizer.serverName,
-            reportingConfiguration: initalizer.reportingConfiguration)
-        let server = StandardSmokeHTTP1Server(handler: handler,
-                                              port: initalizer.port,
-                                              invocationStrategy: initalizer.invocationStrategy,
-                                              defaultLogger: initalizer.defaultLogger,
-                                              eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignals: initalizer.shutdownOnSignals)
+        let serviceRunner = ServiceRunner(
+          services: [server],
+          configuration: .init(gracefulShutdownSignals: serverConfiguration.shutdownOnSignals),
+          logger: logger
+        )
+
         do {
-            try server.start()
-            
-            try await server.untilShutdown()
+            try await serviceRunner.run()
             
             try await initalizer.onShutdown()
             
             try await eventLoopGroup.shutdownGracefully()
         } catch {
-            logger.error("Operations Server lifecycle error.",
+            logger.error("Service Runner error.",
                          metadata: ["cause": "\(String(describing: error))"])
         }
     }

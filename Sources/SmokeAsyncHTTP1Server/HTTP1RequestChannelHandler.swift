@@ -32,18 +32,17 @@ internal struct HTTP1Headers {
 /**
  Handler that manages the inbound channel for a HTTP Request.
  */
-class HTTP1RequestChannelHandler<ResponseBodyType: AsyncSequence>: ChannelInboundHandler
-where ResponseBodyType.Element == Data {
+class HTTP1RequestChannelHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
     
     private struct WaitingForRequestBody {
-        let request: SmokeHTTP1Request
-        let bodyPartHander: (Data) -> ()
+        let request: HTTPServerRequest
+        let bodyPartHander: (ByteBuffer) -> ()
         let bodyPartStreamFinishHandler: () -> ()
         
         init(requestHead: HTTPRequestHead) {
-            var newBodyPartHander: ((Data) -> ())?
+            var newBodyPartHander: ((ByteBuffer) -> ())?
             var newBodyPartStreamFinishHandler: (() -> ())?
             // create an async stream with a handler for adding new body parts
             // and a handler for finishing the stream
@@ -61,20 +60,23 @@ where ResponseBodyType.Element == Data {
                 fatalError()
             }
             
-            
-            self.request = SmokeHTTP1Request(head: requestHead, bodyStream: bodyPartStream)
-            
+            self.request = HTTPServerRequest(method: requestHead.method,
+                                             version: requestHead.version,
+                                             uri: requestHead.uri,
+                                             headers: requestHead.headers,
+                                             body: .stream(bodyPartStream))
+                        
             self.bodyPartHander = newBodyPartHander
             self.bodyPartStreamFinishHandler = newBodyPartStreamFinishHandler
         }
     }
     
     private struct ReceivingRequestBody {
-        let request: SmokeHTTP1Request
-        let bodyPartHander: (Data) -> ()
+        let request: HTTPServerRequest
+        let bodyPartHander: (ByteBuffer) -> ()
         let bodyPartStreamFinishHandler: () -> ()
         
-        init(waitingForRequestBody: WaitingForRequestBody, bodyPart: Data) {
+        init(waitingForRequestBody: WaitingForRequestBody, bodyPart: ByteBuffer) {
             self.request = waitingForRequestBody.request
             
             self.bodyPartHander = waitingForRequestBody.bodyPartHander
@@ -83,7 +85,7 @@ where ResponseBodyType.Element == Data {
             self.bodyPartHander(bodyPart)
         }
         
-        init(receivingRequestBody: ReceivingRequestBody, bodyPart: Data) {
+        init(receivingRequestBody: ReceivingRequestBody, bodyPart: ByteBuffer) {
             self.request = receivingRequestBody.request
             
             self.bodyPartHander = receivingRequestBody.bodyPartHander
@@ -200,7 +202,7 @@ where ResponseBodyType.Element == Data {
             }
         }
         
-        mutating func partialBodyReceived(bodyPart: Data?) {
+        mutating func partialBodyReceived(bodyPart: ByteBuffer?) {
             switch self {
             case .waitingForRequestBody(let waitingForRequestBody):
                 if let bodyPart = bodyPart {
@@ -254,10 +256,10 @@ where ResponseBodyType.Element == Data {
             }
         }
         
-        mutating func sendResponseHead(response: SmokeHTTP1Response<ResponseBodyType>) {
+        mutating func sendResponseHead(response: HTTPServerResponse, promise: EventLoopPromise<Void>) {
             switch self {
             case .pendingResponseHead(let pendingResponseHead):
-                var headers = HTTPHeaders()
+                var headers = response.headers
                 
                 // if there is a content type
                 if let body = response.body {
@@ -270,18 +272,13 @@ where ResponseBodyType.Element == Data {
                     }
                 }
                 
-                // add any additional headers
-                response.additionalHeaders.forEach { header in
-                    headers.add(name: header.0, value: header.1)
-                }
-                
                 let context = pendingResponseHead.context
                 let requestHead = pendingResponseHead.requestHead
                 let wrapOutboundOut = pendingResponseHead.wrapOutboundOut
                 
                 context.write(wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
                                                                      status: response.status,
-                                                                     headers: headers))), promise: nil)
+                                                                     headers: headers))), promise: promise)
                 
                 self = .pendingResponseBody(PendingResponseBody(pendingResponseHead: pendingResponseHead))
             case .idle, .pendingResponseBody, .sendingResponseBody:
@@ -291,7 +288,7 @@ where ResponseBodyType.Element == Data {
             }
         }
         
-        mutating func sendResponseBodyPart(bodyPart: Data) {
+        mutating func sendResponseBodyPart(bodyPart: ByteBuffer, promise: EventLoopPromise<Void>) {
             let context: ChannelHandlerContext
             let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
             switch self {
@@ -313,14 +310,10 @@ where ResponseBodyType.Element == Data {
                 fatalError()
             }
             
-            // create a buffer for the body and copy the body into it
-            var buffer = context.channel.allocator.buffer(capacity: bodyPart.count)
-            buffer.writeBytes(bodyPart)
-            
-            context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+            context.write(wrapOutboundOut(.body(.byteBuffer(bodyPart))), promise: promise)
         }
         
-        mutating func responseFullySent() {
+        mutating func responseFullySent(promise: EventLoopPromise<Void>) {
             let keepAliveStatus: KeepAliveStatus
             let context: ChannelHandlerContext
             let wrapOutboundOut: (_ value: HTTPServerResponsePart) -> NIOAny
@@ -339,8 +332,7 @@ where ResponseBodyType.Element == Data {
                 fatalError()
             }
             
-            let promise: EventLoopPromise<Void>? = keepAliveStatus.state ? nil : context.eventLoop.makePromise()
-            if let promise = promise {
+            if keepAliveStatus.state {
                 // if keep alive is false, close the channel when the response end
                 // has been written
                 promise.futureResult.whenComplete { _ in
@@ -375,13 +367,13 @@ where ResponseBodyType.Element == Data {
         }
     }
     
-    private let handler: (SmokeHTTP1Request) async -> SmokeHTTP1Response<ResponseBodyType>
+    private let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
     
     private var requestState = RequestState.idle
     private var responseState = ResponseState.idle
     private let channelLogger: Logger
     
-    init(handler: @escaping (SmokeHTTP1Request) async -> SmokeHTTP1Response<ResponseBodyType>) {
+    init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse) {
         self.handler = handler
         
         var newChannelLogger = Logger(label: "HTTP1RequestChannelHandler")
@@ -402,11 +394,8 @@ where ResponseBodyType.Element == Data {
             self.responseState.waitForResponse(requestHead: requestHead, context: context, wrapOutboundOut: wrapOutboundOut)
             
             handleNewRequest(context: context, waitingForRequestBody: waitingForRequestBody)
-        case .body(var byteBuffer):
-            let byteBufferSize = byteBuffer.readableBytes
-            let newData = byteBuffer.readData(length: byteBufferSize)
-            
-            self.requestState.partialBodyReceived(bodyPart: newData)
+        case .body(let byteBuffer):            
+            self.requestState.partialBodyReceived(bodyPart: byteBuffer)
         case .end:
             // this signals that the head and all possible body parts have been received
             self.requestState.requestFullyReceived()
@@ -420,26 +409,52 @@ where ResponseBodyType.Element == Data {
         Task {
             let response = await self.handler(waitingForRequestBody.request)
             
-            eventLoop.execute {
-                self.responseState.sendResponseHead(response: response)
-            }
-            
-            // await the body
-            if let responseBody = response.body {
-                do {
-                    for try await bodyPart in responseBody.stream {
-                        eventLoop.execute {
-                            self.responseState.sendResponseBodyPart(bodyPart: bodyPart)
-                        }
-                    }
-                } catch {
-                    self.channelLogger.error(
-                        "Error caught while sending body: \(String(describing: error)). Body may not be completely sent.")
+            do {
+                // write the head, making sure it has completed
+                let headPromise = eventLoop.makePromise(of: Void.self)
+                eventLoop.execute {
+                    self.responseState.sendResponseHead(response: response, promise: headPromise)
                 }
-            }
-            
-            eventLoop.execute {
-                self.responseState.responseFullySent()
+                try await headPromise.futureResult.get()
+                
+                func sendResponseBodyPart(bodyPart: ByteBuffer) async throws {
+                    // write the part, making sure it has completed
+                    let partPromise = eventLoop.makePromise(of: Void.self)
+                    eventLoop.execute {
+                        self.responseState.sendResponseBodyPart(bodyPart: bodyPart, promise: partPromise)
+                    }
+                    try await partPromise.futureResult.get()
+                }
+                
+                // await the body
+                if let responseBody = response.body {
+                    switch responseBody.mode {
+                    case .byteBuffer(let buffer, _):
+                        try await sendResponseBodyPart(bodyPart: buffer)
+                    case .asyncSequence(_, _, let makeAsyncIterator):
+                        let allocator: ByteBufferAllocator = .init()
+                        let next = makeAsyncIterator()
+                        
+                        while let part = try await next(allocator) {
+                            try await sendResponseBodyPart(bodyPart: part)
+                        }
+                    case .sequence(_, _, let makeCompleteBody):
+                        let allocator: ByteBufferAllocator = .init()
+                        let buffer = makeCompleteBody(allocator)
+                        try await sendResponseBodyPart(bodyPart: buffer)
+                    }
+
+                }
+                
+                // write the head, making sure it has completed
+                let endPromise = eventLoop.makePromise(of: Void.self)
+                eventLoop.execute {
+                    self.responseState.responseFullySent(promise: endPromise)
+                }
+                try await endPromise.futureResult.get()
+            } catch {
+                self.channelLogger.error(
+                    "Error caught while sending body: \(String(describing: error)). Body may not be completely sent.")
             }
         }
     }

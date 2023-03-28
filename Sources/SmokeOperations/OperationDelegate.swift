@@ -14,7 +14,7 @@
 //  OperationDelegate.swift
 //  SmokeOperations
 //
-
+/*
 import Foundation
 import Logging
 
@@ -109,3 +109,4 @@ public protocol OperationDelegate {
     func handleResponseForValidationError(requestHead: RequestHeadType, message: String?,
                                           responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>)
 }
+*/

@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.7
 //
 // Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
@@ -31,17 +31,11 @@ let package = Package(
             name: "SmokeOperationsHTTP1Server",
             targets: ["SmokeOperationsHTTP1Server"]),
         .library(
-            name: "SmokeInvocation",
-            targets: ["SmokeInvocation"]),
-        .library(
-            name: "SmokeHTTP1",
-            targets: ["SmokeHTTP1"]),
-        .library(
             name: "SmokeAsyncHTTP1Server",
             targets: ["SmokeAsyncHTTP1Server"]),
         .library(
-            name: "SmokeAsyncHTTP1Middleware",
-            targets: ["SmokeAsyncHTTP1Middleware"]),
+            name: "SmokeHTTP1ServerMiddleware",
+            targets: ["SmokeHTTP1ServerMiddleware"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -49,40 +43,31 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle", branch: "fb-structured-service-lifecycle"),
+        .package(path: "/Users/simonpi/pad/NextGen/swift-middleware"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
     ],
     targets: [
-        .target(
-            name: "SmokeInvocation", dependencies: [
-                .product(name: "Logging", package: "swift-log"),
-            ]),
-        .target(
-            name: "SmokeHTTP1", dependencies: [
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "NIO", package: "swift-nio"),
-                .product(name: "NIOHTTP1", package: "swift-nio"),
-                .product(name: "NIOFoundationCompat", package: "swift-nio"),
-                .product(name: "NIOExtras", package: "swift-nio-extras"),
-                .product(name: "SmokeHTTPClient", package: "smoke-http"),
-                .target(name: "SmokeInvocation"),
-            ]),
         .target(
             name: "SmokeAsyncHTTP1Server", dependencies: [
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOHTTP1", package: "swift-nio"),
+                .product(name: "NIOExtras", package: "swift-nio-extras"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             ]),
         .target(
-            name: "SmokeAsyncHTTP1Middleware", dependencies: [
+            name: "SmokeHTTP1ServerMiddleware", dependencies: [
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
-                .target(name: "SmokeAsyncHTTP1Server")
+                .target(name: "SmokeAsyncHTTP1Server"),
+                .product(name: "SwiftMiddleware", package: "swift-middleware"),
             ]),
         .target(
             name: "SmokeOperations", dependencies: [
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
-                .target(name: "SmokeInvocation"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1", dependencies: [
@@ -90,17 +75,19 @@ let package = Package(
                 .product(name: "QueryCoding", package: "smoke-http"),
                 .product(name: "HTTPPathCoding", package: "smoke-http"),
                 .product(name: "HTTPHeadersCoding", package: "smoke-http"),
-                .product(name: "SmokeHTTPClient", package: "smoke-http"),
+                .product(name: "SwiftMiddleware", package: "swift-middleware"),
+                .target(name: "SmokeAsyncHTTP1Server"),
+                .target(name: "SmokeHTTP1ServerMiddleware"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
-                .target(name: "SmokeHTTP1"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+                .product(name: "Algorithms", package: "swift-algorithms")
             ]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
-                .target(name: "SmokeHTTP1"),
             ]),
     ],
     swiftLanguageVersions: [.v5]

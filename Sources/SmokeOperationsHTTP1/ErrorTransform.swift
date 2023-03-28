@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -11,20 +11,19 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeServerStaticContextInitializerV2.swift
-// SmokeOperationsHTTP1Server
+//  ErrorTransform.swift
+//  SmokeOperationsHTTP1
 //
 
 import Foundation
-import SmokeOperationsHTTP1
+import SmokeAsyncHTTP1Server
+import SmokeHTTP1ServerMiddleware
+import SmokeOperations
+import Logging
+import NIOHTTP1
 
-public protocol SmokeAsyncServerStaticContextInitializer: SmokeAsyncStaticContextInitializer {
-    
-    var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> { get }
-}
+public protocol ErrorTransform {
+    associatedtype Context
 
-public extension SmokeAsyncServerStaticContextInitializer {
-    var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> {
-        return .init()
-    }
+    func transform(_ input: Swift.Error, context: Context) -> HTTPServerResponse
 }

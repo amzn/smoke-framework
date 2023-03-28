@@ -14,7 +14,7 @@
 // SmokeOperationsSyncTests.swift
 // SmokeOperationsTests
 //
-
+/*
 import XCTest
 @testable import SmokeOperationsHTTP1
 import SmokeOperations
@@ -304,3 +304,4 @@ class SmokeOperationsHTTP1SyncTests: XCTestCase {
         XCTAssertEqual("InvalidOperation", output.type)
     }
 }
+*/

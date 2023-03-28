@@ -17,28 +17,14 @@
 
 import Foundation
 import SmokeOperationsHTTP1
-import SmokeHTTP1
-
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
 
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     
-    var port: Int { get }
-    var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
-    var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
+    var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> { get }
 }
 
 public extension SmokeAsyncServerPerInvocationContextInitializer {
-    var port: Int {
-        return ServerDefaults.defaultPort
-    }
-    
-    var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
-        return [.sigint]
-    }
-    
-    var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {
-        return .spawnNewThreads
+    var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> {
+        return .init()
     }
 }
-#endif

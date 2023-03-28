@@ -14,7 +14,7 @@
 // TestConfiguration.swift
 // SmokeOperationsTests
 //
-
+/*
 import Foundation
 import SmokeOperations
 import NIOHTTP1
@@ -350,3 +350,4 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     
     XCTAssertEqual("TheError", output.type)
 }
+*/
