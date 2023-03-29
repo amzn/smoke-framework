@@ -24,6 +24,8 @@ import SmokeHTTP1ServerMiddleware
 import ShapeCoding
 import Logging
 
+public typealias BasicSmokeServerRouter<OperationIdentifer: OperationIdentity> = BasicServerRouter<SmokeMiddlewareContext, OperationIdentifer>
+
 public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationIdentity>: ContextWithPathShape &
                                                                                          ContextWithMutableLogger &
                                                                                          ContextWithHTTPServerRequestHead &
