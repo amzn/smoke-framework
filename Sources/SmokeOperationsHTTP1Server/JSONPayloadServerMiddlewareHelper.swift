@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  JSONPayloadServerMiddlewareStack.swift
+//  JSONPayloadServerMiddlewareHelper.swift
 //  SmokeOperationsHTTP1Server
 //
 
@@ -21,15 +21,13 @@ import SmokeAsyncHTTP1Server
 import SmokeOperations
 import SmokeOperationsHTTP1
 
-public struct JSONPayloadServerMiddlewareStack<MiddlewareStackType: ServerMiddlewareStackProtocol>:
-FormattedPayloadServerMiddlewareStackProtocol {
+public struct JSONPayloadServerMiddlewareHelper<MiddlewareStackType: ServerMiddlewareStackProtocol>:
+FormattedPayloadServerMiddlewareHelperProtocol {
     public typealias RouterType = MiddlewareStackType.RouterType
     public typealias ApplicationContextType = MiddlewareStackType.ApplicationContextType
-    
-    private var middlewareStack: MiddlewareStackType
-    
-    public init(middlewareStack: MiddlewareStackType) {
-        self.middlewareStack = middlewareStack
+        
+    public init() {
+
     }
     
     /**
@@ -39,7 +37,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
@@ -49,9 +47,9 @@ FormattedPayloadServerMiddlewareStackProtocol {
         let responseTransform: JSONResponseTransform<InnerMiddlewareType.Output, RouterType.InnerMiddlewareContext> =
             getStandardResponseTransform(statusOnSuccess: statusOnSuccess)
         
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                               operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                               requestTransform: requestTransform, responseTransform: responseTransform)
     }
     
     /**
@@ -61,7 +59,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
@@ -71,9 +69,9 @@ FormattedPayloadServerMiddlewareStackProtocol {
         let responseTransform: VoidResponseTransform<RouterType.InnerMiddlewareContext> =
             .init(statusOnSuccess: statusOnSuccess)
         
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                               operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                               requestTransform: requestTransform, responseTransform: responseTransform)
     }
     
     /**
@@ -83,7 +81,7 @@ FormattedPayloadServerMiddlewareStackProtocol {
                                                 ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
+        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
     where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
@@ -96,9 +94,9 @@ FormattedPayloadServerMiddlewareStackProtocol {
             return try await operation(context)
         }
         
-        self.middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                                    operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                                    requestTransform: requestTransform, responseTransform: responseTransform)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                               operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                               requestTransform: requestTransform, responseTransform: responseTransform)
     }
     
     private func getStandardRequestTransform<OutputType: OperationHTTP1InputProtocol>()
