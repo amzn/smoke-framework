@@ -29,11 +29,11 @@ public typealias SmokeReturnableError =
 
 /// Helper protocol for encoding errors
 public protocol ErrorEncoder {
-    func encode<InputType: SmokeReturnableError>(_ input: InputType, logger: Logger) throws -> Data
+    func encode<InputType: SmokeReturnableError>(_ input: InputType, logger: Logger?) throws -> Data
 }
 
 extension Encodable where Self: SmokeReturnableError {
-    public func encode(errorEncoder: ErrorEncoder, logger: Logger) throws -> Data {
+    public func encode(errorEncoder: ErrorEncoder, logger: Logger?) throws -> Data {
         return try errorEncoder.encode(self, logger: logger)
     }
 }

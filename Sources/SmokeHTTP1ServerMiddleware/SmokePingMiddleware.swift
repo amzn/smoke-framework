@@ -30,6 +30,10 @@ public struct SmokePingMiddleware<Context>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
     public typealias Output = HTTPServerResponse
     
+    public init() {
+        
+    }
+    
     public func handle(_ input: HTTPServerRequest, context: Context,
                        next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
     -> HTTPServerResponse {

@@ -23,10 +23,6 @@ import HTTPHeadersCoding
 import NIOHTTP1
 import SmokeOperationsHTTP1
 
-internal struct MimeTypes {
-    static let json = "application/json"
-}
-
 private let maxBodySize = 1024 * 1024 // 1 MB
 
 public struct JSONResponseTransform<InputType: OperationHTTP1OutputProtocol, Context: ContextWithMutableLogger>: TransformProtocol {

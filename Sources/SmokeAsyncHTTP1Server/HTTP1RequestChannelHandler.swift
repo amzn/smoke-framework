@@ -284,9 +284,9 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
                 let requestHead = pendingResponseHead.requestHead
                 let wrapOutboundOut = pendingResponseHead.wrapOutboundOut
                 
-                context.write(wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
-                                                                     status: response.status,
-                                                                     headers: headers))), promise: promise)
+                context.writeAndFlush(wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
+                                                                             status: response.status,
+                                                                             headers: headers))), promise: promise)
                 
                 self = .pendingResponseBody(PendingResponseBody(pendingResponseHead: pendingResponseHead))
             case .idle, .pendingResponseBody, .sendingResponseBody:
@@ -318,7 +318,7 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
                 fatalError()
             }
             
-            context.write(wrapOutboundOut(.body(.byteBuffer(bodyPart))), promise: promise)
+            context.writeAndFlush(wrapOutboundOut(.body(.byteBuffer(bodyPart))), promise: promise)
         }
         
         mutating func responseFullySent(promise: EventLoopPromise<Void>) {

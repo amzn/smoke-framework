@@ -12,13 +12,14 @@
 // permissions and limitations under the License.
 //
 // JSONSmokeOperationsErrorMiddleware.swift
-// SmokeAsyncHTTP1Middleware
+// SmokeOperationsHTTP1Server
 //
 
 import Foundation
 import SmokeAsyncHTTP1Server
 import SwiftMiddleware
 import Logging
+import NIOHTTP1
 import SmokeOperations
 import SmokeHTTP1ServerMiddleware
 
@@ -26,17 +27,17 @@ public struct JSONSmokeOperationsErrorMiddleware<Context: ContextWithMutableLogg
     public typealias Input = HTTPServerRequest
     public typealias Output = HTTPServerResponse
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
+    public func handle(_ input: HTTPServerRequest, context middlewareContext: Context,
                        next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
     -> HTTPServerResponse {
         do {
-            return try await next(input, context)
+            return try await next(input, middlewareContext)
         } catch SmokeOperationsError.validationError(let reason) {
-            let transform = JSONErrorResponseTransform<Context>(reason: "ValidationError", errorMessage: reason, status: .badRequest)
-            return transform.transform(SmokeOperationsError.validationError(reason: reason), context: context)
+            return JSONFormat.getErrorResponse(reason: "ValidationError", errorMessage: reason,
+                                               status: .badRequest, logger: middlewareContext.logger)
         } catch SmokeOperationsError.invalidOperation(let reason) {
-            let transform = JSONErrorResponseTransform<Context>(reason: "InvalidOperation", errorMessage: reason, status: .badRequest)
-            return transform.transform(SmokeOperationsError.invalidOperation(reason: reason), context: context)
+            return JSONFormat.getErrorResponse(reason: "InvalidOperation", errorMessage: reason,
+                                               status: .badRequest, logger: middlewareContext.logger)
         }
     }
 }

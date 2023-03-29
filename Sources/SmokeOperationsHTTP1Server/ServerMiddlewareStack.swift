@@ -47,14 +47,18 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
     @Sendable public func handle(request: HTTPServerRequest) async -> HTTPServerResponse {
         let middlewareStack = MiddlewareStack {
             // Add middleware outside the router (operates on Request and Response types)
+            SmokePingMiddleware<RouterType.OuterMiddlewareContext>()
             SmokeLoggerMiddleware<RouterType.OuterMiddlewareContext>()
             SmokeRequestIdMiddleware<RouterType.OuterMiddlewareContext>()
+            JSONSmokeOperationsErrorMiddleware<RouterType.OuterMiddlewareContext>()
+            JSONDecodingErrorMiddleware<RouterType.OuterMiddlewareContext>()
         }
         do {
             return try await middlewareStack.handle(request, context: self.initialMiddlewareContext) { (innerRequest, innerContext) in
                 return try await self.router.handle(innerRequest, context: innerContext)
             }
         } catch {
+            print(String(describing: error))
             return self.unhandledErrorTransform.transform(error, context: self.initialMiddlewareContext)
         }
     }
@@ -76,6 +80,7 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
             }
             
             // Add middleware to all routes within the router but outside the transformation (operates on Request and Response types)
+            JSONSmokeReturnableErrorMiddleware<ErrorType, RouterType.InnerMiddlewareContext>(allowedErrors: allowedErrors)
         } inner: {
             if let innerMiddleware = innerMiddleware {
                 innerMiddleware
