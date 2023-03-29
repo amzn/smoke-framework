@@ -31,7 +31,9 @@ public struct ServerDefaults {
  A basic non-blocking HTTP server that handles a request with an
  optional body and returns a response with an optional body.
  */
-public struct AsyncHTTPServer: ServiceLifecycle.Service {
+public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible {
+    public var description: String = "AsyncHTTPServer"
+    
     let port: Int
     
     let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
