@@ -222,14 +222,22 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
         }
 
         mutating func requestFullyReceived() {
+            let bodyPartStreamFinishHandler: () -> ()
             switch self {
-            case .waitingForRequestBody, .receivingRequestBody:
+            case .waitingForRequestBody(let state):
                 self = .idle
+                bodyPartStreamFinishHandler = state.bodyPartStreamFinishHandler
+            case .receivingRequestBody(let state):
+                self = .idle
+                bodyPartStreamFinishHandler = state.bodyPartStreamFinishHandler
             case .idle:
                 assertionFailure("Invalid state for request complete: \(self)")
                 
                 fatalError()
             }
+            
+            // signal that the body part stream has completed
+            bodyPartStreamFinishHandler()
         }
     }
     
