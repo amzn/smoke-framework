@@ -24,6 +24,8 @@ import SmokeHTTP1ServerMiddleware
 import ShapeCoding
 import Logging
 
+private let incomingOperationKey = "incomingOperation"
+
 public typealias BasicSmokeServerRouter<OperationIdentifer: OperationIdentity> = BasicServerRouter<SmokeMiddlewareContext, OperationIdentifer>
 
 public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationIdentity>: ContextWithPathShape &
@@ -73,9 +75,10 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
                     reason: "Invalid operation with uri '\(lowerCasedUri)', method '\(input.method)'")
             }
             
+            let decoratedLogger = context.logger?.decorateWithOperationIdentifer(operationIdentifer: tokenizedEntry.operationIdentifer)
             let middlewareContext = BasicServerRouterMiddlewareContext(operationIdentifer: tokenizedEntry.operationIdentifer,
                                                                        pathShape: shape,
-                                                                       logger: context.logger,
+                                                                       logger: decoratedLogger,
                                                                        httpServerRequestHead: input.asHead(),
                                                                        internalRequestId: context.internalRequestId)
             
@@ -87,9 +90,10 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
                                          "uri": "\(input.uri)",
                                          "method": "\(input.method)"])
         
+        let decoratedLogger = context.logger?.decorateWithOperationIdentifer(operationIdentifer: entry.operationIdentifer)
         let middlewareContext = BasicServerRouterMiddlewareContext(operationIdentifer: entry.operationIdentifer,
                                                                    pathShape: .null,
-                                                                   logger: context.logger,
+                                                                   logger: decoratedLogger,
                                                                    httpServerRequestHead: input.asHead(),
                                                                    internalRequestId: context.internalRequestId)
         
@@ -197,5 +201,14 @@ extension HTTPMethod: Hashable {
 extension HTTPServerRequest {
     func asHead() -> HTTPServerRequestHead {
         return .init(method: self.method, version: self.version, uri: self.uri, headers: self.headers)
+    }
+}
+
+extension Logger {
+    func decorateWithOperationIdentifer<OperationIdentifer: OperationIdentity>(operationIdentifer: OperationIdentifer) -> Logger {
+        var decoratedLogger = self
+        decoratedLogger[metadataKey: incomingOperationKey] = "\(operationIdentifer)"
+        
+        return decoratedLogger
     }
 }
