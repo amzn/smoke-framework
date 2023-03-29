@@ -18,6 +18,7 @@
 import SwiftMiddleware
 import NIOHTTP1
 import SmokeOperations
+import SmokeHTTP1ServerMiddleware
 import SmokeAsyncHTTP1Server
 import SmokeOperationsHTTP1
 
@@ -44,8 +45,15 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
     }
     
     @Sendable public func handle(request: HTTPServerRequest) async -> HTTPServerResponse {
+        let middlewareStack = MiddlewareStack {
+            // Add middleware outside the router (operates on Request and Response types)
+            SmokeLoggerMiddleware<RouterType.OuterMiddlewareContext>()
+            SmokeRequestIdMiddleware<RouterType.OuterMiddlewareContext>()
+        }
         do {
-            return try await self.router.handle(request, context: self.initialMiddlewareContext)
+            return try await middlewareStack.handle(request, context: self.initialMiddlewareContext) { (innerRequest, innerContext) in
+                return try await self.router.handle(innerRequest, context: innerContext)
+            }
         } catch {
             return self.unhandledErrorTransform.transform(error, context: self.initialMiddlewareContext)
         }
@@ -67,13 +75,13 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
                 outerMiddleware
             }
             
-            // Add middleware to all routes prior to transformation
+            // Add middleware to all routes within the router but outside the transformation (operates on Request and Response types)
         } inner: {
             if let innerMiddleware = innerMiddleware {
                 innerMiddleware
             }
             
-            // Add middleware to all routes after to transformation
+            // Add middleware to all routes within the transformation (operates on operation Input and Output types)
         }
         
         self.router.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod,
