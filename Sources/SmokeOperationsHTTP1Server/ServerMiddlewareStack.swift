@@ -58,7 +58,6 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
                 return try await self.router.handle(innerRequest, context: innerContext)
             }
         } catch {
-            print(String(describing: error))
             return self.unhandledErrorTransform.transform(error, context: self.initialMiddlewareContext)
         }
     }
