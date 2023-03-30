@@ -25,6 +25,7 @@ public protocol SmokeAsyncServerStaticContextInitializer {
     typealias OperationIdentifer = MiddlewareStackType.RouterType.OperationIdentifer
     typealias ContextType = MiddlewareStackType.ApplicationContextType
     
+    var serverName: String { get }
     var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> { get }
     
     var operationsInitializer: ((inout MiddlewareStackType) -> Void) { get }
@@ -32,10 +33,4 @@ public protocol SmokeAsyncServerStaticContextInitializer {
     func getInvocationContext() -> MiddlewareStackType.ApplicationContextType
     
     func onShutdown() async throws
-}
-
-public extension SmokeAsyncServerStaticContextInitializer {
-    var serverConfiguration: SmokeServerConfiguration<OperationIdentifer> {
-        return .init()
-    }
 }

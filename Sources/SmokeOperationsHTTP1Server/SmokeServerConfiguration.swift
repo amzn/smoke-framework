@@ -22,20 +22,17 @@ import SmokeOperationsHTTP1
 import SmokeAsyncHTTP1Server
 
 public struct SmokeServerConfiguration<OperationIdentifer: OperationIdentity> {
-    public var serverName: String
     public var defaultLogger: Logger
     public var reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     public var port: Int
     public var shutdownOnSignals: [UnixSignal]
     public var eventLoopProvider: AsyncHTTPServer.EventLoopProvider
     
-    public init(serverName: String = "Server",
-                port: Int = ServerDefaults.defaultPort,
+    public init(port: Int = ServerDefaults.defaultPort,
                 defaultLogger: Logger = Logger(label: "application.initialization"),
                 reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer> = .init(),
                 eventLoopProvider: AsyncHTTPServer.EventLoopProvider = .spawnNewThreads,
                 shutdownOnSignals: [UnixSignal] = [.sigint, .sigterm]) {
-        self.serverName = serverName
         self.port = port
         self.defaultLogger = defaultLogger
         self.reportingConfiguration = reportingConfiguration
