@@ -61,7 +61,8 @@ public extension ServerRouterProtocol {
             let requestContext = HTTPServerRequestContext(logger: middlewareContext.logger,
                                                           requestId: middlewareContext.internalRequestId,
                                                           requestHead: middlewareContext.httpServerRequestHead,
-                                                          operationIdentifer: operationIdentifer)
+                                                          operationIdentifer: operationIdentifer,
+                                                          middlewareContext: middlewareContext)
             let applicationContext = applicationContextProvider(requestContext)
             return try await operation(input, applicationContext)
         }

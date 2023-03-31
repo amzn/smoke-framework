@@ -23,12 +23,18 @@ public struct HTTPServerRequestContext<OperationIdentifer: OperationIdentity> {
     public let requestId: String?
     public let requestHead: HTTPServerRequestHead
     public let operationIdentifer: OperationIdentifer
+    // This is the raw middleware context from the end of the middleware chain.
+    // The exact type is determined by the middleware chain used. An application can
+    // check conformance of this type to extract information from the context.
+    public let middlewareContext: Any
     
     public init(logger: Logger?, requestId: String?, requestHead: HTTPServerRequestHead,
-                operationIdentifer: OperationIdentifer) {
+                operationIdentifer: OperationIdentifer,
+                middlewareContext: Any) {
         self.logger = logger
         self.requestId = requestId
         self.requestHead = requestHead
         self.operationIdentifer = operationIdentifer
+        self.middlewareContext = middlewareContext
     }
 }
