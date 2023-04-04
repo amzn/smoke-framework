@@ -83,20 +83,71 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
         }
     }
     
-    public func run() async throws {
-        let (quiesce, channel) = try self.start()
-        let quiesceShutdownPromise = self.eventLoopGroup.next().makePromise(of: Void.self)
-        
-        try await withGracefulShutdownHandler {
-            try await channel.closeFuture.get()
-        } onGracefulShutdown: {
-            quiesce.initiateShutdown(promise: quiesceShutdownPromise)
-        }
-        
-        try await self.shutdown(quiesceShutdownPromise: quiesceShutdownPromise)
+    private enum RequestStreamCommand: Sendable {
+        case process(@Sendable () async -> ())
+        case shutdown
     }
     
-    private func start() throws -> (ServerQuiescingHelper, Channel) {
+    public func run() async throws {
+        var newProcessRequestHander: ((@escaping @Sendable () async -> ()) -> ())?
+        var newRequestStreamFinishHandler: (() -> ())?
+        
+        // and a handler for finishing the stream
+        let requestStream = AsyncStream<RequestStreamCommand> { continuation in
+            newProcessRequestHander = { operation in
+                continuation.yield(.process(operation))
+            }
+            
+            newRequestStreamFinishHandler = {
+                continuation.yield(.shutdown)
+            }
+        }
+        
+        guard let processRequestHander = newProcessRequestHander,
+                let requestStreamFinishHandler = newRequestStreamFinishHandler else {
+            fatalError()
+        }
+        
+        let (quiesce, channel) = try self.start(processRequestHander: processRequestHander)
+        
+        await withGracefulShutdownHandler {
+#if os(Linux)
+            // A `DiscardingTaskGroup` will discard results of its child tasks immediately and
+            // release the child task that produced the result.
+            // This allows for efficient and "running forever" request accepting loops.
+            await withDiscardingTaskGroup { group in
+                for await command in requestStream {
+                    guard case .process(let operation) = command else {
+                        // command received to shutdown
+                        break
+                    }
+                    
+                    group.addTask(operation: operation)
+                }
+            }
+#else
+            // DiscardingTaskGroup are not available under MacOS for Swift 5.8.
+            for await command in requestStream {
+                guard case .process(let operation) = command else {
+                    // command received to shutdown
+                    break
+                }
+                
+                Task(operation: operation)
+            }
+#endif
+        } onGracefulShutdown: {
+            // on graceful shutdown, a `.shutdown` command will be added to the
+            // `requestQueue`. Any requests already in the queue will be processed.
+            // Any requests added after this call will be ignored.
+            requestStreamFinishHandler()
+        }
+        
+        try await self.shutdown(quiesce: quiesce, channel: channel)
+    }
+    
+    private func start(processRequestHander: @escaping (@escaping @Sendable () async -> ()) -> ()) throws
+    -> (ServerQuiescingHelper, Channel) {
         let quiesce = ServerQuiescingHelper(group: self.eventLoopGroup)
         
         defaultLogger.info("AsyncHTTPServer starting.",
@@ -114,7 +165,8 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             }
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().flatMap {
-                    channel.pipeline.addHandler(HTTP1RequestChannelHandler(handler: currentHandler))
+                    channel.pipeline.addHandler(HTTP1RequestChannelHandler(handler: currentHandler,
+                                                                           processRequestHander: processRequestHander))
                 }
             }
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
@@ -129,8 +181,13 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
         return (quiesce, channel)
     }
     
-    private func shutdown(quiesceShutdownPromise: EventLoopPromise<Void>) async throws {
+    private func shutdown(quiesce: ServerQuiescingHelper, channel: Channel) async throws {
+        let quiesceShutdownPromise = self.eventLoopGroup.next().makePromise(of: Void.self)
+        
+        quiesce.initiateShutdown(promise: quiesceShutdownPromise)
+        
         try await quiesceShutdownPromise.futureResult.get()
+        try await channel.closeFuture.get()
         
         do {
             if self.ownEventLoopGroup {

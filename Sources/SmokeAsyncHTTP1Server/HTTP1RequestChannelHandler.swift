@@ -376,13 +376,16 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
     }
     
     private let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
+    private let processRequestHander: (@escaping @Sendable () async -> ()) -> ()
     
     private var requestState = RequestState.idle
     private var responseState = ResponseState.idle
     private let channelLogger: Logger
     
-    init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse) {
+    init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse,
+         processRequestHander: @escaping (@escaping @Sendable () async -> ()) -> ()) {
         self.handler = handler
+        self.processRequestHander = processRequestHander
         
         var newChannelLogger = Logger(label: "HTTP1RequestChannelHandler")
         newChannelLogger[metadataKey: "lifecycle"] = "HTTP1RequestChannelHandler"
@@ -413,8 +416,7 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
     private func handleNewRequest(context: ChannelHandlerContext, waitingForRequestBody: WaitingForRequestBody) {
         let eventLoop = context.eventLoop
         
-        // TODO: use a disgarding thread group
-        Task {
+        @Sendable func processRequest() async {
             let response = await self.handler(waitingForRequestBody.request)
             
             do {
@@ -465,6 +467,8 @@ class HTTP1RequestChannelHandler: ChannelInboundHandler {
                     "Error caught while sending body: \(String(describing: error)). Body may not be completely sent.")
             }
         }
+        
+        self.processRequestHander(processRequest)
     }
     
     /**
