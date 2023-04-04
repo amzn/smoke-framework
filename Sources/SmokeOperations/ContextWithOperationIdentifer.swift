@@ -15,8 +15,6 @@
 // SmokeOperations
 //
 
-import ShapeCoding
-
 public protocol ContextWithOperationIdentifer {
     associatedtype OperationIdentifer: OperationIdentity
     
