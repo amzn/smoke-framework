@@ -55,6 +55,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.14.0"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -98,6 +99,7 @@ let package = Package(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
                 .target(name: "SmokeHTTP1"),
+                .product(name: "Algorithms", package: "swift-algorithms")
             ]),
         .target(
             name: "SmokeAsync", dependencies: [

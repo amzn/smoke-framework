@@ -71,6 +71,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }
@@ -134,6 +135,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }
@@ -197,6 +199,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }
@@ -263,6 +266,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }
@@ -330,6 +334,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }
@@ -392,6 +397,7 @@ public extension SmokeHTTP1Server {
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
+            print("Unable to initialize application from factory: \(String(describing: error))")
             
             return
         }

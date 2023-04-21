@@ -21,8 +21,11 @@ import NIOHTTP1
 import SmokeOperationsHTTP1
 import SmokeHTTP1
 import Logging
+import Algorithms
 
+private typealias HTTPServerRawResponsePart = HTTPPart<HTTPResponseHead, Data.SubSequence>
 private let timeIntervalToMilliseconds: Double = 1000
+private let responseChunksSize = 500
 
 /**
  Handles the response to a HTTP request.
@@ -186,35 +189,83 @@ public struct StandardHTTP1ResponseHandler<
                                     invocationContext: invocationContext, status: status)
         }
         
-        executeInEventLoop(invocationContext: invocationContext) {
-            context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: requestHead.version,
-                                                                      status: status,
-                                                                      headers: headers))), promise: nil)
+        let headPart: HTTPServerRawResponsePart = .head(HTTPResponseHead(version: requestHead.version,
+                                                                         status: status,
+                                                                         headers: headers))
+        let endPart: HTTPServerRawResponsePart = .end(nil)
+        
+        // chunk the response; each chunk potentially has multiple parts
+        // that will be written together
+        let responsePartsOfChunks: [[HTTPServerRawResponsePart]]
+        if let data = data {
+            let dataChunks = data.chunks(ofCount: responseChunksSize)
             
-            // if there is a body, write it to the response
-            if let data = data {
-                // create a buffer for the body and copy the body into it
-                var buffer = context.channel.allocator.buffer(capacity: data.count)
-                buffer.writeBytes(data)
+            // 1. The head will be part of the first chunk along with the first body chunk
+            // 2. The end will be part of the last chunk along with the last body chunk
+            // 3. If there is only one body chunk, the head, body and end will be a single chunk
+            responsePartsOfChunks = dataChunks.enumerated().map { (index, bodyChunk) in
+                var partsOfChunk: [HTTPServerRawResponsePart] = []
                 
-                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+                // if this is the first chunk, include the header
+                if index == 0 {
+                    partsOfChunk.append(headPart)
+                }
+                
+                partsOfChunk.append(.body(bodyChunk))
+                
+                // if this is the last chunk, include the end
+                if index == dataChunks.count - 1 {
+                    partsOfChunk.append(endPart)
+                }
+                
+                return partsOfChunk
             }
-            
-            let promise: EventLoopPromise<Void>? = self.keepAliveStatus.state ? nil : context.eventLoop.makePromise()
-            if let promise = promise {
-                let currentContext = context
-                // if keep alive is false, close the channel when the response end
-                // has been written
-                promise.futureResult.whenComplete { _ in
-                    currentContext.close(promise: nil)
+        } else {
+            // In the case of no body, head and end will be a single chunk
+            responsePartsOfChunks = [
+                [headPart, endPart]
+            ]
+        }
+        
+        responsePartsOfChunks.enumerated().forEach { (chunkIndex, partsOfChunk) in
+            executeInEventLoop(invocationContext: invocationContext) {
+                let promise: EventLoopPromise<Void>?
+                // if this is the last chunk
+                if chunkIndex == responsePartsOfChunks.count - 1 && self.keepAliveStatus.state {
+                    let newPromise: EventLoopPromise<Void> = context.eventLoop.makePromise()
+                    
+                    newPromise.futureResult.whenComplete { _ in
+                        context.close(promise: nil)
+                    }
+                    
+                    promise = newPromise
+                } else {
+                    promise = nil
+                }
+                
+                partsOfChunk.enumerated().forEach { (partIndex, rawPart) in
+                    let part: HTTPServerResponsePart
+                    switch rawPart {
+                    case .head(let head):
+                        part = .head(head)
+                    case .body(let bodyChunk):
+                        // create a buffer for the body chunk and copy the chunk into it
+                        var buffer = context.channel.allocator.buffer(capacity: bodyChunk.count)
+                        buffer.writeBytes(bodyChunk)
+                        
+                        part = .body(.byteBuffer(buffer))
+                    case .end(let headers):
+                        part = .end(headers)
+                    }
+                    
+                    // if this is the last part
+                    if partIndex == partsOfChunk.count - 1 {
+                        context.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
+                    } else {
+                        context.write(self.wrapOutboundOut(part), promise: nil)
+                    }
                 }
             }
-            
-            onComplete()
-            
-            // write the response end and flush
-            context.writeAndFlush(self.wrapOutboundOut(HTTPServerResponsePart.end(nil)),
-                                  promise: promise)
         }
     }
 }
