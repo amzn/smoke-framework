@@ -227,11 +227,20 @@ public struct StandardHTTP1ResponseHandler<
             ]
         }
         
-        responsePartsOfChunks.enumerated().forEach { (chunkIndex, partsOfChunk) in
-            executeInEventLoop(invocationContext: invocationContext) {
-                let promise: EventLoopPromise<Void>?
-                // if this is the last chunk
-                if chunkIndex == responsePartsOfChunks.count - 1 && self.keepAliveStatus.state {
+        func handleResponseChunks(_ chunks: [[HTTPServerRawResponsePart]]) {
+            guard !chunks.isEmpty else {
+                // nothing to do
+                return
+            }
+            
+            var remainingChunks = chunks
+            let partsOfChunk = remainingChunks.removeFirst()
+            let isLastChunk = remainingChunks.isEmpty
+            
+            let promise: EventLoopPromise<Void>?
+            // if this is the last chunk
+            if isLastChunk && self.keepAliveStatus.state {
+                if self.keepAliveStatus.state {
                     let newPromise: EventLoopPromise<Void> = context.eventLoop.makePromise()
                     
                     newPromise.futureResult.whenComplete { _ in
@@ -242,30 +251,42 @@ public struct StandardHTTP1ResponseHandler<
                 } else {
                     promise = nil
                 }
+            } else {
+                let newPromise: EventLoopPromise<Void> = context.eventLoop.makePromise()
                 
-                partsOfChunk.enumerated().forEach { (partIndex, rawPart) in
-                    let part: HTTPServerResponsePart
-                    switch rawPart {
-                    case .head(let head):
-                        part = .head(head)
-                    case .body(let bodyChunk):
-                        // create a buffer for the body chunk and copy the chunk into it
-                        var buffer = context.channel.allocator.buffer(capacity: bodyChunk.count)
-                        buffer.writeBytes(bodyChunk)
-                        
-                        part = .body(.byteBuffer(buffer))
-                    case .end(let headers):
-                        part = .end(headers)
-                    }
+                newPromise.futureResult.whenComplete { _ in
+                    handleResponseChunks(remainingChunks)
+                }
+                
+                promise = newPromise
+            }
+            
+            partsOfChunk.enumerated().forEach { (partIndex, rawPart) in
+                let part: HTTPServerResponsePart
+                switch rawPart {
+                case .head(let head):
+                    part = .head(head)
+                case .body(let bodyChunk):
+                    // create a buffer for the body chunk and copy the chunk into it
+                    var buffer = context.channel.allocator.buffer(capacity: bodyChunk.count)
+                    buffer.writeBytes(bodyChunk)
                     
-                    // if this is the last part
-                    if partIndex == partsOfChunk.count - 1 {
-                        context.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
-                    } else {
-                        context.write(self.wrapOutboundOut(part), promise: nil)
-                    }
+                    part = .body(.byteBuffer(buffer))
+                case .end(let headers):
+                    part = .end(headers)
+                }
+                
+                // if this is the last part
+                if partIndex == partsOfChunk.count - 1 {
+                    context.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
+                } else {
+                    context.write(self.wrapOutboundOut(part), promise: nil)
                 }
             }
+        }
+        
+        executeInEventLoop(invocationContext: invocationContext) {
+            handleResponseChunks(responsePartsOfChunks)
         }
     }
 }
