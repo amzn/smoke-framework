@@ -140,8 +140,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-server/swift-service-lifecycle",
       "state" : {
-        "branch" : "fb-structured-service-lifecycle",
-        "revision" : "e59ed5c900a5a383042508c6a9ea2e50dd033483"
+        "revision" : "fafab8f7adf3e55e2f6d8c4ca0ffcd15a3a197c0",
+        "version" : "2.0.0-alpha.1"
       }
     }
   ],

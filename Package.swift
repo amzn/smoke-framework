@@ -43,7 +43,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", branch: "main"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
-        .package(url: "https://github.com/swift-server/swift-service-lifecycle", branch: "fb-structured-service-lifecycle"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle", from: "2.0.0-alpha.1"),
         .package(url: "https://github.com/tachyonics/swift-middleware", branch: "static_poc_2"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
     ],
