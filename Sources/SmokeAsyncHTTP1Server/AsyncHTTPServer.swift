@@ -96,7 +96,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
 #else
             // DiscardingTaskGroup are not available under MacOS for Swift 5.8.
             for try await inboundStream in asyncChannel.inboundStream {
-                let handler = AsyncHTTP1RequestHandler(handler: self.handler)
+                let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
                 
                 @Sendable
                 func executor(operation: @escaping @Sendable () async -> ()) {
@@ -104,7 +104,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
                 }
                 
                 Task {
-                    await handler.handle(asyncChannel: inboundStream, executor: executor)
+                    await manager.process(asyncChannel: inboundStream, executor: executor)
                 }
             }
 #endif

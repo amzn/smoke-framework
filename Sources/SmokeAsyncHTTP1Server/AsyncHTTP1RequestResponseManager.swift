@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// AsyncHTTP1RequestHandler.swift
+// AsyncHTTP1RequestResponseManager.swift
 // SmokeAsyncHTTP1Server
 //
 
@@ -30,9 +30,9 @@ internal struct HTTP1Headers {
 }
 
 /**
- Handler that manages the inbound channel for a HTTP Request.
+ Actor that manages the state of a request/response pair.
  */
-actor AsyncHTTP1RequestHandler {
+actor AsyncHTTP1RequestResponseManager {
     
     private struct WaitingForRequestBody {
         let request: HTTPServerRequest
@@ -311,18 +311,18 @@ actor AsyncHTTP1RequestHandler {
         self.channelLogger = newChannelLogger
     }
     
-    func handle(asyncChannel: NIOAsyncChannel<HTTPServerRequestPart, AsyncHTTPServerResponsePart>,
+    func process(asyncChannel: NIOAsyncChannel<HTTPServerRequestPart, AsyncHTTPServerResponsePart>,
                 executor: (@escaping @Sendable () async -> ()) -> ()) async {
         do {
             for try await part in asyncChannel.inboundStream {
-                await handle(requestPart: part, executor: executor, outboundWriter: asyncChannel.outboundWriter)
+                await process(requestPart: part, executor: executor, outboundWriter: asyncChannel.outboundWriter)
             }
         } catch {
             // TODO: handle error
         }
     }
     
-    private func handle(requestPart: HTTPServerRequestPart,
+    private func process(requestPart: HTTPServerRequestPart,
                         executor: (@escaping @Sendable () async -> ()) -> (),
                         outboundWriter: NIOAsyncChannelOutboundWriter<AsyncHTTPServerResponsePart>) async {
         switch requestPart {
