@@ -79,7 +79,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             // A `DiscardingTaskGroup` will discard results of its child tasks immediately and
             // release the child task that produced the result.
             // This allows for efficient and "running forever" request accepting loops.
-            await withDiscardingTaskGroup { group in
+            try await withThrowingDiscardingTaskGroup { group in
                 for try await inboundStream in asyncChannel.inboundStream {
                     let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
                     
