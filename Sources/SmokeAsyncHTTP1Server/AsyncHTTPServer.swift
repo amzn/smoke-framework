@@ -81,10 +81,10 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             // This allows for efficient and "running forever" request accepting loops.
             await withDiscardingTaskGroup { group in
                 for try await inboundStream in asyncChannel.inboundStream {
-                    let handler = AsyncHTTP1RequestHandler(handler: self.handler)
+                    let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
                     
                     group.addTask {
-                        await handler.handle(asyncChannel: inboundStream)
+                        await manager.process(asyncChannel: inboundStream)
                     }
                 }
             }
