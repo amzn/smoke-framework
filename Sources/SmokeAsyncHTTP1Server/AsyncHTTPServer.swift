@@ -16,8 +16,9 @@
 //
 
 import Foundation
-import NIO
+@_spi(AsyncChannel) import NIOCore
 import NIOHTTP1
+@_spi(AsyncChannel) import NIOPosix
 import NIOExtras
 import Logging
 import ServiceLifecycle
@@ -32,6 +33,9 @@ public struct ServerDefaults {
  optional body and returns a response with an optional body.
  */
 public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible {
+    @_spi(AsyncChannel) public typealias AsyncServerChannel =
+        NIOAsyncChannel<NIOAsyncChannel<HTTPServerRequestPart, AsyncHTTPServerResponsePart>, Never>
+    
     public var description: String = "AsyncHTTPServer"
     
     let port: Int
@@ -40,19 +44,6 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
     let defaultLogger: Logger
     
     let eventLoopGroup: EventLoopGroup
-    let ownEventLoopGroup: Bool
-    
-    /**
-     Enumeration specifying how the event loop is provided for a channel established by this client.
-     */
-    public enum EventLoopProvider {
-        /// The client will create a new EventLoopGroup to be used for channels created from
-        /// this client. The EventLoopGroup will be closed when this client is closed.
-        case spawnNewThreads
-        /// The client will use the provided EventLoopGroup for channels created from
-        /// this client. This EventLoopGroup will not be closed when this client is closed.
-        case use(EventLoopGroup)
-    }
     
     /**
      Initializer.
@@ -61,26 +52,16 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
         - handler: the HTTPRequestHandler to handle incoming requests.
         - port: Optionally the localhost port for the server to listen on.
                 If not specified, defaults to 8080.
-        - eventLoopProvider: Provides the event loop to be used by the server.
-                             If not specified, the server will create a new multi-threaded event loop
-                             with the number of threads specified by `System.coreCount`.
+        - eventLoopGroup: The event loop to be used by the server.
      */
     public init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse,
                 port: Int = ServerDefaults.defaultPort,
                 defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeAsyncHTTPServer.AsyncHTTPServer"),
-                eventLoopProvider: EventLoopProvider = .spawnNewThreads) {
+                eventLoopGroup: EventLoopGroup) {
         self.port = port
         self.handler = handler
         self.defaultLogger = defaultLogger
-        
-        switch eventLoopProvider {
-        case .spawnNewThreads:
-            self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-            self.ownEventLoopGroup = true
-        case .use(let existingEventLoopGroup):
-            self.eventLoopGroup = existingEventLoopGroup
-            self.ownEventLoopGroup = false
-        }
+        self.eventLoopGroup = eventLoopGroup
     }
     
     private enum RequestStreamCommand: Sendable {
@@ -89,71 +70,59 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
     }
     
     public func run() async throws {
-        var newProcessRequestHander: ((@escaping @Sendable () async -> ()) -> ())?
-        var newRequestStreamFinishHandler: (() -> ())?
+        // quiesce open channels
+        let (quiesce, asyncChannel) = try await self.start()
+        let shutdownPromise = asyncChannel.channel.eventLoop.makePromise(of: Void.self)
         
-        // and a handler for finishing the stream
-        let requestStream = AsyncStream<RequestStreamCommand> { continuation in
-            newProcessRequestHander = { operation in
-                continuation.yield(.process(operation))
-            }
-            
-            newRequestStreamFinishHandler = {
-                continuation.yield(.shutdown)
-            }
-        }
-        
-        guard let processRequestHander = newProcessRequestHander,
-                let requestStreamFinishHandler = newRequestStreamFinishHandler else {
-            fatalError()
-        }
-        
-        let (quiesce, channel) = try self.start(processRequestHander: processRequestHander)
-        
-        await withGracefulShutdownHandler {
+        try await withGracefulShutdownHandler {
 #if os(Linux)
             // A `DiscardingTaskGroup` will discard results of its child tasks immediately and
             // release the child task that produced the result.
             // This allows for efficient and "running forever" request accepting loops.
             await withDiscardingTaskGroup { group in
-                for await command in requestStream {
-                    guard case .process(let operation) = command else {
-                        // command received to shutdown
-                        break
+                for try await inboundStream in asyncChannel.inboundStream {
+                    let handler = AsyncHTTP1RequestHandler(handler: self.handler)
+                    
+                    @Sendable
+                    func executor(operation: @escaping @Sendable () async -> ()) {
+                        group.addTask(operation: operation)
                     }
                     
-                    group.addTask(operation: operation)
+                    group.addTask {
+                        await handler.handle(asyncChannel: inboundStream, executor: executor)
+                    }
                 }
             }
 #else
             // DiscardingTaskGroup are not available under MacOS for Swift 5.8.
-            for await command in requestStream {
-                guard case .process(let operation) = command else {
-                    // command received to shutdown
-                    break
+            for try await inboundStream in asyncChannel.inboundStream {
+                let handler = AsyncHTTP1RequestHandler(handler: self.handler)
+                
+                @Sendable
+                func executor(operation: @escaping @Sendable () async -> ()) {
+                    Task(operation: operation)
                 }
                 
-                Task(operation: operation)
+                Task {
+                    await handler.handle(asyncChannel: inboundStream, executor: executor)
+                }
             }
 #endif
         } onGracefulShutdown: {
-            // on graceful shutdown, a `.shutdown` command will be added to the
-            // `requestQueue`. Any requests already in the queue will be processed.
-            // Any requests added after this call will be ignored.
-            requestStreamFinishHandler()
+            self.shutdownGracefully(asyncChannel: asyncChannel, quiesce: quiesce, shutdownPromise: shutdownPromise)
         }
         
-        try await self.shutdown(quiesce: quiesce, channel: channel)
+        try await shutdownPromise.futureResult.get()
+        
+        self.defaultLogger.info("AsyncHTTPServer shutdown.")
     }
     
-    private func start(processRequestHander: @escaping (@escaping @Sendable () async -> ()) -> ()) throws
-    -> (ServerQuiescingHelper, Channel) {
+    private func start() async throws
+    -> (ServerQuiescingHelper, AsyncServerChannel) {
         let quiesce = ServerQuiescingHelper(group: self.eventLoopGroup)
         
         defaultLogger.info("AsyncHTTPServer starting.",
                            metadata: ["port": "\(self.port)"])
-        
-        let currentHandler = handler
         
         // create a ServerBootstrap with a HTTP Server pipeline that delegates
         // to a HTTPChannelInboundHandler
@@ -165,39 +134,35 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             }
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().flatMap {
-                    channel.pipeline.addHandler(HTTP1RequestChannelHandler(handler: currentHandler,
-                                                                           processRequestHander: processRequestHander))
+                    channel.pipeline.addHandler(HTTPServerResponsePartConverterHandler())
                 }
             }
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
             .childChannelOption(ChannelOptions.allowRemoteHalfClosure, value: true)
-        
-        let channel = try bootstrap.bind(host: ServerDefaults.defaultHost, port: port).wait()
+                
+        let asyncChannel: AsyncServerChannel = try await bootstrap.asyncBind(
+            host: ServerDefaults.defaultHost, port: port)
         defaultLogger.info("AsyncHTTPServer started.",
                            metadata: ["port": "\(self.port)"])
         
-        return (quiesce, channel)
+        return (quiesce, asyncChannel)
     }
     
-    private func shutdown(quiesce: ServerQuiescingHelper, channel: Channel) async throws {
-        let quiesceShutdownPromise = self.eventLoopGroup.next().makePromise(of: Void.self)
-        
-        quiesce.initiateShutdown(promise: quiesceShutdownPromise)
-        
-        try await quiesceShutdownPromise.futureResult.get()
-        try await channel.closeFuture.get()
-        
-        do {
-            if self.ownEventLoopGroup {
-                try await self.eventLoopGroup.shutdownGracefully()
-            }
-        } catch {
-            self.defaultLogger.error("Server unable to shutdown cleanly following full shutdown.",
-                                     metadata: ["cause": "\(String(describing: error))"])
-        }
-        
-        self.defaultLogger.info("AsyncHTTPServer shutdown.")
+    @_spi(AsyncChannel) public func shutdownGracefully(asyncChannel: AsyncServerChannel,
+                                                       quiesce: ServerQuiescingHelper,
+                                                       shutdownPromise: EventLoopPromise<Void>) {
+        // quiesce open channels
+        quiesce.initiateShutdown(promise: shutdownPromise)
+    }
+}
+
+extension ServerBootstrap {
+    func asyncBind<ChildChannelInboundIn: Sendable, ChildChannelOutboundOut: Sendable>(
+        host: String,
+        port: Int
+    ) async throws -> NIOAsyncChannel<NIOAsyncChannel<ChildChannelInboundIn, ChildChannelOutboundOut>, Never> {
+        try await self.bind(host: host, port: port)
     }
 }

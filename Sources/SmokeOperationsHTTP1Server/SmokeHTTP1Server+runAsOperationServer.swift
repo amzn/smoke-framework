@@ -27,14 +27,11 @@ import ServiceLifecycle
 public extension AsyncHTTPServer {
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer>(
-        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
+        _ factory: @escaping () async throws -> InitializerType) async
     where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
-        let eventLoopGroup =
-            MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        
         let initalizer: InitializerType
         do {
-            initalizer = try await factory(eventLoopGroup)
+            initalizer = try await factory()
         } catch {
             let logger = Logger.init(label: "application.initialization")
             
@@ -48,17 +45,7 @@ public extension AsyncHTTPServer {
         
         // initialize the logger after instatiating the initializer
         let logger = Logger.init(label: "application.initialization")
-        
-        let eventLoopProvider: AsyncHTTPServer.EventLoopProvider
-        // if the initializer is indicating to create new threads for the server
-        // just use the created eventLoopGroup
-        if case .spawnNewThreads = serverConfiguration.eventLoopProvider {
-            eventLoopProvider = .use(eventLoopGroup)
-        } else {
-            // use what the initializer says
-            eventLoopProvider = serverConfiguration.eventLoopProvider
-        }
-        
+                
         @Sendable func getInvocationContext(requestContext: HTTPServerRequestContext<InitializerType.OperationIdentifer>)
         -> InitializerType.MiddlewareStackType.ApplicationContextType {
             return initalizer.getInvocationContext()
@@ -71,35 +58,34 @@ public extension AsyncHTTPServer {
         let server = AsyncHTTPServer(handler: middlewareStack.handle,
                                      port: serverConfiguration.port,
                                      defaultLogger: serverConfiguration.defaultLogger,
-                                     eventLoopProvider: eventLoopProvider)
+                                     eventLoopGroup: serverConfiguration.eventLoopGroup)
         
-        let serviceRunner = ServiceRunner(
+        let serviceGroup = ServiceGroup(
           services: [server],
           configuration: .init(gracefulShutdownSignals: serverConfiguration.shutdownOnSignals),
           logger: logger
         )
 
         do {
-            try await serviceRunner.run()
+            try await serviceGroup.run()
             
             try await initalizer.onShutdown()
             
-            try await eventLoopGroup.shutdownGracefully()
+            if serverConfiguration.eventLoopGroupStatus.owned {
+                try await serverConfiguration.eventLoopGroup.shutdownGracefully()
+            }
         } catch {
-            logger.error("Service Runner error.",
+            logger.error("Service Group error.",
                          metadata: ["cause": "\(String(describing: error))"])
         }
     }
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer>(
-        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
+        _ factory: @escaping () async throws -> InitializerType) async
     where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
-        let eventLoopGroup =
-            MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        
         let initalizer: InitializerType
         do {
-            initalizer = try await factory(eventLoopGroup)
+            initalizer = try await factory()
         } catch {
             let logger = Logger.init(label: "application.initialization")
             
@@ -114,16 +100,6 @@ public extension AsyncHTTPServer {
         // initialize the logger after instatiating the initializer
         let logger = Logger.init(label: "application.initialization")
         
-        let eventLoopProvider: AsyncHTTPServer.EventLoopProvider
-        // if the initializer is indicating to create new threads for the server
-        // just use the created eventLoopGroup
-        if case .spawnNewThreads = serverConfiguration.eventLoopProvider {
-            eventLoopProvider = .use(eventLoopGroup)
-        } else {
-            // use what the initializer says
-            eventLoopProvider = serverConfiguration.eventLoopProvider
-        }
-        
         var middlewareStack = InitializerType.MiddlewareStackType(
             serverConfiguration: serverConfiguration, applicationContextProvider: initalizer.getInvocationContext)
         initalizer.operationsInitializer(&middlewareStack)
@@ -131,22 +107,24 @@ public extension AsyncHTTPServer {
         let server = AsyncHTTPServer(handler: middlewareStack.handle,
                                      port: serverConfiguration.port,
                                      defaultLogger: serverConfiguration.defaultLogger,
-                                     eventLoopProvider: eventLoopProvider)
-        
-        let serviceRunner = ServiceRunner(
+                                     eventLoopGroup: serverConfiguration.eventLoopGroup)
+
+        let serviceGroup = ServiceGroup(
           services: [server],
           configuration: .init(gracefulShutdownSignals: serverConfiguration.shutdownOnSignals),
           logger: logger
         )
 
         do {
-            try await serviceRunner.run()
+            try await serviceGroup.run()
             
             try await initalizer.onShutdown()
             
-            try await eventLoopGroup.shutdownGracefully()
+            if serverConfiguration.eventLoopGroupStatus.owned {
+                try await serverConfiguration.eventLoopGroup.shutdownGracefully()
+            }
         } catch {
-            logger.error("Service Runner error.",
+            logger.error("Service Group error.",
                          metadata: ["cause": "\(String(describing: error))"])
         }
     }

@@ -18,6 +18,7 @@
 import Foundation
 import SmokeOperations
 import SmokeAsyncHTTP1Server
+import NIOFoundationCompat
 import SwiftMiddleware
 import HTTPPathCoding
 import HTTPHeadersCoding

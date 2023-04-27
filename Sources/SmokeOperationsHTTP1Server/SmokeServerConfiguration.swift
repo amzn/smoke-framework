@@ -15,6 +15,7 @@
 // SmokeOperationsHTTP1Server
 //
 
+import NIO
 import SmokeOperations
 import Logging
 import UnixSignals
@@ -26,17 +27,39 @@ public struct SmokeServerConfiguration<OperationIdentifer: OperationIdentity> {
     public var reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     public var port: Int
     public var shutdownOnSignals: [UnixSignal]
-    public var eventLoopProvider: AsyncHTTPServer.EventLoopProvider
+    internal var eventLoopGroupStatus: (group: EventLoopGroup, owned: Bool)
     
     public init(port: Int = ServerDefaults.defaultPort,
                 defaultLogger: Logger = Logger(label: "application.initialization"),
                 reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer> = .init(),
-                eventLoopProvider: AsyncHTTPServer.EventLoopProvider = .spawnNewThreads,
+                eventLoopGroup: EventLoopGroup,
                 shutdownOnSignals: [UnixSignal] = [.sigint, .sigterm]) {
         self.port = port
         self.defaultLogger = defaultLogger
         self.reportingConfiguration = reportingConfiguration
-        self.eventLoopProvider = eventLoopProvider
+        self.eventLoopGroupStatus = (group: eventLoopGroup, owned: false)
         self.shutdownOnSignals = shutdownOnSignals
+    }
+    
+    public init(port: Int = ServerDefaults.defaultPort,
+                defaultLogger: Logger = Logger(label: "application.initialization"),
+                reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer> = .init(),
+                shutdownOnSignals: [UnixSignal] = [.sigint, .sigterm]) {
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        
+        self.port = port
+        self.defaultLogger = defaultLogger
+        self.reportingConfiguration = reportingConfiguration
+        self.eventLoopGroupStatus = (group: eventLoopGroup, owned: true)
+        self.shutdownOnSignals = shutdownOnSignals
+    }
+    
+    public var eventLoopGroup: EventLoopGroup {
+        get {
+            return self.eventLoopGroupStatus.group
+        }
+        set(newEventLoopGroup) {
+            self.eventLoopGroupStatus = (group: newEventLoopGroup, owned: true)
+        }
     }
 }
