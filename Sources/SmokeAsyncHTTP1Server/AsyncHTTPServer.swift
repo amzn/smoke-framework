@@ -83,13 +83,8 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
                 for try await inboundStream in asyncChannel.inboundStream {
                     let handler = AsyncHTTP1RequestHandler(handler: self.handler)
                     
-                    @Sendable
-                    func executor(operation: @escaping @Sendable () async -> ()) {
-                        group.addTask(operation: operation)
-                    }
-                    
                     group.addTask {
-                        await handler.handle(asyncChannel: inboundStream, executor: executor)
+                        await handler.handle(asyncChannel: inboundStream)
                     }
                 }
             }
@@ -98,13 +93,8 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             for try await inboundStream in asyncChannel.inboundStream {
                 let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
                 
-                @Sendable
-                func executor(operation: @escaping @Sendable () async -> ()) {
-                    Task(operation: operation)
-                }
-                
                 Task {
-                    await manager.process(asyncChannel: inboundStream, executor: executor)
+                    await manager.process(asyncChannel: inboundStream)
                 }
             }
 #endif
