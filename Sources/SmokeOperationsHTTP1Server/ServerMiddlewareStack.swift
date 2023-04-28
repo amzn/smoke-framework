@@ -30,12 +30,15 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
     private let initialMiddlewareContext: RouterType.OuterMiddlewareContext
     private let applicationContextProvider: @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext
     private let unhandledErrorTransform: JSONErrorResponseTransform<RouterType.OuterMiddlewareContext>
+    private let serverName: String
     private let serverConfiguration: SmokeServerConfiguration<OperationIdentifer>
     
-    public init(serverConfiguration: SmokeServerConfiguration<OperationIdentifer>,
+    public init(serverName: String,
+                serverConfiguration: SmokeServerConfiguration<OperationIdentifer>,
                 applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext) {
         self.router = .init()
         self.initialMiddlewareContext = .init()
+        self.serverName = serverName
         self.serverConfiguration = serverConfiguration
         self.applicationContextProvider = applicationContextProvider
         
@@ -48,8 +51,9 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
         let middlewareStack = MiddlewareStack {
             // Add middleware outside the router (operates on Request and Response types)
             SmokePingMiddleware<RouterType.OuterMiddlewareContext>()
-            SmokeLoggerMiddleware<RouterType.OuterMiddlewareContext>()
+            SmokeTracingMiddleware<RouterType.OuterMiddlewareContext>(serverName: self.serverName)
             SmokeRequestIdMiddleware<RouterType.OuterMiddlewareContext>()
+            SmokeLoggerMiddleware<RouterType.OuterMiddlewareContext>()
             JSONSmokeOperationsErrorMiddleware<RouterType.OuterMiddlewareContext>()
             JSONDecodingErrorMiddleware<RouterType.OuterMiddlewareContext>()
         }

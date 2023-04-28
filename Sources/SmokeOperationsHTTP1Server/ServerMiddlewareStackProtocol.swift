@@ -41,7 +41,8 @@ public protocol ServerMiddlewareStackProtocol {
     associatedtype RouterType: ServerRouterProtocol where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext
     associatedtype ApplicationContextType
     
-    init(serverConfiguration: SmokeServerConfiguration<RouterType.OperationIdentifer>,
+    init(serverName: String,
+         serverConfiguration: SmokeServerConfiguration<RouterType.OperationIdentifer>,
          applicationContextProvider:
          @escaping @Sendable (HTTPServerRequestContext<RouterType.OperationIdentifer>) -> ApplicationContextType)
     

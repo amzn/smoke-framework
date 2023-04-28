@@ -294,7 +294,7 @@ extension HTTPServerResponse.Body {
 }
 
 extension HTTPServerResponse.Body {
-    internal var size: Int? {
+    public var size: Int? {
         let responseBodyLength: ResponseBodyLength
         switch self.mode {
         case .byteBuffer(let buffer, _): responseBodyLength = .known(buffer.readableBytes)

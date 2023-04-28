@@ -52,7 +52,7 @@ public extension AsyncHTTPServer {
         }
         
         var middlewareStack = InitializerType.MiddlewareStackType(
-            serverConfiguration: serverConfiguration, applicationContextProvider: getInvocationContext)
+            serverName: initalizer.serverName, serverConfiguration: serverConfiguration, applicationContextProvider: getInvocationContext)
         initalizer.operationsInitializer(&middlewareStack)
                 
         let server = AsyncHTTPServer(handler: middlewareStack.handle,
@@ -101,7 +101,7 @@ public extension AsyncHTTPServer {
         let logger = Logger.init(label: "application.initialization")
         
         var middlewareStack = InitializerType.MiddlewareStackType(
-            serverConfiguration: serverConfiguration, applicationContextProvider: initalizer.getInvocationContext)
+            serverName: initalizer.serverName, serverConfiguration: serverConfiguration, applicationContextProvider: initalizer.getInvocationContext)
         initalizer.operationsInitializer(&middlewareStack)
                 
         let server = AsyncHTTPServer(handler: middlewareStack.handle,
