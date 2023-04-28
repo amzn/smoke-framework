@@ -81,7 +81,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
             // This allows for efficient and "running forever" request accepting loops.
             try await withThrowingDiscardingTaskGroup { group in
                 for try await inboundStream in asyncChannel.inboundStream {
-                    let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
+                    let manager = AsyncHTTP1ChannelManager(handler: self.handler)
                     
                     group.addTask {
                         await manager.process(asyncChannel: inboundStream)
@@ -91,7 +91,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
 #else
             // DiscardingTaskGroup are not available under MacOS for Swift 5.8.
             for try await inboundStream in asyncChannel.inboundStream {
-                let manager = AsyncHTTP1RequestResponseManager(handler: self.handler)
+                let manager = AsyncHTTP1ChannelManager(handler: self.handler)
                 
                 Task {
                     await manager.process(asyncChannel: inboundStream)

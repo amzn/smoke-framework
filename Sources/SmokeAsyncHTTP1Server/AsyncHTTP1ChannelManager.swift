@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// AsyncHTTP1RequestResponseManager.swift
+// AsyncHTTP1ChannelManager.swift
 // SmokeAsyncHTTP1Server
 //
 
@@ -30,17 +30,9 @@ internal struct HTTP1Headers {
 }
 
 /**
- Actor that manages the state of a request/response pair.
+ Actor that manages the state of a HTTP1 channel.
  */
-actor AsyncHTTP1RequestResponseManager {
-        
-    private struct IdleRequest {
-        var awaitingContinuations: [CheckedContinuation<HTTPServerRequest, Never>]
-        
-        init() {
-            self.awaitingContinuations = []
-        }
-    }
+actor AsyncHTTP1ChannelManager {
     
     private struct WaitingForRequestBody {
         let request: HTTPServerRequest
@@ -73,13 +65,6 @@ actor AsyncHTTP1RequestResponseManager {
             self.request = receivingRequestBody.request
             
             self.bodyChannel = receivingRequestBody.bodyChannel
-        }
-    }
-    
-    private struct IdleResponse {
-        
-        init() {
-            
         }
     }
     
@@ -148,28 +133,27 @@ actor AsyncHTTP1RequestResponseManager {
      Internal state variable that tracks the progress of the HTTP Request.
      */
     private enum RequestState {
-        case idle(IdleRequest)
+        case idle
         case waitingForRequestBody(WaitingForRequestBody)
         case receivingRequestBody(ReceivingRequestBody)
-        case complete
+        case waitingForResponseComplete
+        case incomingStreamReset
 
-        mutating func requestReceived(requestHead: HTTPRequestHead) -> WaitingForRequestBody {
+        mutating func requestReceived(requestHead: HTTPRequestHead) -> HTTPServerRequest {
             switch self {
-            case .idle(let state):
+            case .idle:
                 let statePayload = WaitingForRequestBody(requestHead: requestHead)
                 self = .waitingForRequestBody(statePayload)
                 
-                state.awaitingContinuations.forEach { $0.resume(returning: statePayload.request) }
-                
-                return statePayload
-            case .waitingForRequestBody, .receivingRequestBody, .complete:
+                return statePayload.request
+            case .waitingForRequestBody, .receivingRequestBody, .waitingForResponseComplete, .incomingStreamReset:
                 assertionFailure("Invalid state for request received: \(self)")
                 
                 fatalError()
             }
         }
         
-        mutating func partialBodyReceived() -> AsyncThrowingChannel<ByteBuffer, Error> {
+        mutating func partialBodyReceived() -> AsyncThrowingChannel<ByteBuffer, Error>? {
             switch self {
             case .waitingForRequestBody(let waitingForRequestBody):
                 let statePayload = ReceivingRequestBody(waitingForRequestBody: waitingForRequestBody)
@@ -181,46 +165,62 @@ actor AsyncHTTP1RequestResponseManager {
                 self = .receivingRequestBody(statePayload)
                 
                 return statePayload.bodyChannel
-            case .idle, .complete:
+            case .incomingStreamReset:
+                return nil
+            case .idle, .waitingForResponseComplete:
                 assertionFailure("Invalid state for partial body received: \(self)")
                     
                 fatalError()
             }
         }
 
-        mutating func requestFullyReceived() {
-            let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>
+        mutating func requestFullyReceived(responseState: inout ResponseState) {
+            let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>?
+            
+            let nextState: RequestState
+            switch responseState {
+            case .idle, .pendingResponseHead, .pendingResponseBody, .sendingResponseBody:
+                nextState = .waitingForResponseComplete
+            case .waitingForRequestComplete:
+                nextState = .idle
+                responseState = .idle
+            }
+            
             switch self {
             case .waitingForRequestBody(let state):
-                self = .complete
                 bodyChannel = state.bodyChannel
             case .receivingRequestBody(let state):
-                self = .complete
                 bodyChannel = state.bodyChannel
-            case .idle, .complete:
+            case .incomingStreamReset:
+                bodyChannel = nil
+            case .idle, .waitingForResponseComplete:
                 assertionFailure("Invalid state for request complete: \(self)")
                 
                 fatalError()
             }
             
+            self = nextState
+            
             // signal that the body part stream has completed
-            bodyChannel.finish()
+            bodyChannel?.finish()
         }
         
-        mutating func continuationAwaitingRequestHead(_ awaitingContinuation: CheckedContinuation<HTTPServerRequest, Never>) {
+        mutating func confirmFinished() {
             switch self {
-            case .idle(var state):
-                state.awaitingContinuations.append(awaitingContinuation)
-                self = .idle(state)
+            case .waitingForResponseComplete, .incomingStreamReset:
+                // nothing to do
+                return
             case .waitingForRequestBody(let state):
-                awaitingContinuation.resume(returning: state.request)
+                state.bodyChannel.finish()
             case .receivingRequestBody(let state):
-                awaitingContinuation.resume(returning: state.request)
-            case .complete:
-                assertionFailure("Invalid state for continuationAwaitingRequestHead: \(self)")
+                state.bodyChannel.finish()
+            case .idle:
+                assertionFailure("Invalid state for reset: \(self)")
                 
                 fatalError()
             }
+            
+            self = .incomingStreamReset
         }
     }
     
@@ -228,18 +228,18 @@ actor AsyncHTTP1RequestResponseManager {
      Internal state variable that tracks the progress of the HTTP Response.
      */
     private enum ResponseState {
-        case idle(IdleResponse)
+        case idle
         case pendingResponseHead(PendingResponseHead)
         case pendingResponseBody(PendingResponseBody)
         case sendingResponseBody(SendingResponseBody)
-        case complete
+        case waitingForRequestComplete
         
         mutating func waitForResponse(requestHead: HTTPRequestHead) {
             switch self {
             case .idle:
                 let pendingResponseHead = PendingResponseHead(requestHead: requestHead)
                 self = .pendingResponseHead(pendingResponseHead)
-            case .pendingResponseHead, .pendingResponseBody, .sendingResponseBody, .complete:
+            case .pendingResponseHead, .pendingResponseBody, .sendingResponseBody, .waitingForRequestComplete:
                 assertionFailure("Invalid state for requestReceived: \(self)")
                 
                 fatalError()
@@ -271,7 +271,7 @@ actor AsyncHTTP1RequestResponseManager {
                 self = .pendingResponseBody(PendingResponseBody(pendingResponseHead: pendingResponseHead))
                 
                 return head
-            case .idle, .pendingResponseBody, .sendingResponseBody, .complete:
+            case .idle, .pendingResponseBody, .sendingResponseBody, .waitingForRequestComplete:
                 assertionFailure("Invalid state for responseFullySent: \(self)")
                 
                 fatalError()
@@ -286,27 +286,33 @@ actor AsyncHTTP1RequestResponseManager {
             case .sendingResponseBody(let sendingResponseBody):
                 let sendingResponseBody = SendingResponseBody(sendingResponseBody: sendingResponseBody)
                 self = .sendingResponseBody(sendingResponseBody)
-            case .idle, .pendingResponseHead, .complete:
+            case .idle, .pendingResponseHead, .waitingForRequestComplete:
                 assertionFailure("Invalid state for sendResponseBodyPart: \(self)")
                 
                 fatalError()
             }
         }
         
-        mutating func responseFullySent() -> Bool {
+        mutating func responseFullySent(requestState: inout RequestState) -> Bool {
             let keepAliveStatus: KeepAliveStatus
             switch self {
             case .pendingResponseBody(let pendingResponseBody):
                 keepAliveStatus = pendingResponseBody.keepAliveStatus
             case .sendingResponseBody(let sendingResponseBody):
                 keepAliveStatus = sendingResponseBody.keepAliveStatus
-            case .idle, .pendingResponseHead, .complete:
+            case .idle, .pendingResponseHead, .waitingForRequestComplete:
                 assertionFailure("Invalid state for responseFullySent: \(self)")
                 
                 fatalError()
             }
             
-            self = .complete
+            switch requestState {
+            case .idle, .waitingForRequestBody, .receivingRequestBody, .incomingStreamReset:
+                self = .waitingForRequestComplete
+            case .waitingForResponseComplete:
+                self = .idle
+                requestState = .idle
+            }
             
             return keepAliveStatus.state
         }
@@ -327,7 +333,7 @@ actor AsyncHTTP1RequestResponseManager {
                 self = .sendingResponseBody(SendingResponseBody(sendingResponseBody: sendingResponseBody, keepAliveStatus: keepAliveStatus))
                 
                 return false
-            case .complete:
+            case .waitingForRequestComplete:
                 assertionFailure("Invalid state for updateKeepAliveStatus: \(self)")
                 
                 fatalError()
@@ -336,9 +342,10 @@ actor AsyncHTTP1RequestResponseManager {
     }
     
     private let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
+    private let requestChannel: AsyncThrowingChannel<HTTPServerRequest, Error>
     
-    private var requestState = RequestState.idle(.init())
-    private var responseState = ResponseState.idle(.init())
+    private var requestState = RequestState.idle
+    private var responseState = ResponseState.idle
     private let channelLogger: Logger
     
     init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse) {
@@ -348,28 +355,28 @@ actor AsyncHTTP1RequestResponseManager {
         newChannelLogger[metadataKey: "lifecycle"] = "HTTP1RequestChannelHandler"
         
         self.channelLogger = newChannelLogger
+        self.requestChannel = .init()
     }
     
     private enum ChildTaskResult {
-        case requestConsumptionFinished
-        case responseHandlingFinished
-        case requestConsumptionThrew
-    }
-    
-    private func getRequest() async -> HTTPServerRequest {
-        return await withCheckedContinuation { cont in
-            self.requestState.continuationAwaitingRequestHead(cont)
-        }
+        case inboundConsumptionFinished
+        case inboundConsumptionThrew
+        case outboundSubmitFinished
+        case outboundSubmitThrew
     }
     
     func process(asyncChannel: NIOAsyncChannel<HTTPServerRequestPart, AsyncHTTPServerResponsePart>) async {
         await withTaskGroup(of: ChildTaskResult.self, returning: Void.self) { group in
             group.addTask {
-                let request = await self.getRequest()
-                
-                await self.handle(request: request, outboundWriter: asyncChannel.outboundWriter)
-                
-                return .responseHandlingFinished
+                do {
+                    for try await request in self.requestChannel {
+                        await self.handle(request: request, outboundWriter: asyncChannel.outboundWriter)
+                    }
+                    
+                    return .outboundSubmitFinished
+                } catch {
+                    return .outboundSubmitThrew
+                }
             }
             
             group.addTask {
@@ -378,27 +385,30 @@ actor AsyncHTTP1RequestResponseManager {
                         await self.process(requestPart: part)
                     }
                     
-                    return .requestConsumptionFinished
+                    return .inboundConsumptionFinished
                 } catch {
-                    return .requestConsumptionThrew
+                    return .inboundConsumptionThrew
                 }
             }
             
             resultIteration: for await result in group {
                 switch result {
-                case .requestConsumptionFinished:
+                case .inboundConsumptionFinished:
                     // this is valid case to finish early and can be ignored
                     continue
-                case .responseHandlingFinished:
+                case .outboundSubmitFinished:
                     // everything is done
                     break resultIteration
-                case .requestConsumptionThrew:
+                case .outboundSubmitThrew:
+                    // TODO: Handle the error
+                    break resultIteration
+                case .inboundConsumptionThrew:
                     // TODO: Handle the error
                     break resultIteration
                 }
             }
             
-            // make sure everything from the request is cancelled
+            // make sure everything from the channel is cancelled
             group.cancelAll()
         }
     }
@@ -406,20 +416,24 @@ actor AsyncHTTP1RequestResponseManager {
     private func process(requestPart: HTTPServerRequestPart) async {
         switch requestPart {
         case .head(let requestHead):
-            let waitingForRequestBody = self.requestState.requestReceived(requestHead: requestHead)
+            let request = self.requestState.requestReceived(requestHead: requestHead)
             self.responseState.waitForResponse(requestHead: requestHead)
+            
+            await self.requestChannel.send(request)
         case .body(let byteBuffer):
             let bodyChannel = self.requestState.partialBodyReceived()
-            await bodyChannel.send(byteBuffer)
+            await bodyChannel?.send(byteBuffer)
         case .end:
             // this signals that the head and all possible body parts have been received
-            self.requestState.requestFullyReceived()
+            self.requestState.requestFullyReceived(responseState: &self.responseState)
         }
     }
     
     private func handle(request: HTTPServerRequest,
                         outboundWriter: NIOAsyncChannelOutboundWriter<AsyncHTTPServerResponsePart>) async {
         let response = await self.handler(request)
+        
+        self.requestState.confirmFinished()
         
         func sendResponseBodyPart(bodyPart: ByteBuffer) async throws {
             self.responseState.sendResponseBodyPart()
@@ -451,10 +465,11 @@ actor AsyncHTTP1RequestResponseManager {
             }
             
             try await outboundWriter.write(.end(nil))
-            let keepAlive = self.responseState.responseFullySent()
+            let keepAlive = self.responseState.responseFullySent(requestState: &self.requestState)
             
             if !keepAlive {
                 outboundWriter.finish()
+                self.requestChannel.finish()
             }
         } catch {
             self.channelLogger.error(
