@@ -55,6 +55,24 @@
       }
     },
     {
+      "identity" : "swift-distributed-tracing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-distributed-tracing.git",
+      "state" : {
+        "revision" : "3d152afac2c84ff03a5a59c2ec2fc96c967f43fb",
+        "version" : "1.0.0-beta.2"
+      }
+    },
+    {
+      "identity" : "swift-distributed-tracing-baggage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-distributed-tracing-baggage.git",
+      "state" : {
+        "revision" : "d0a49298dbf2bf3978281ff520099c0946f7a3f6",
+        "version" : "0.4.1"
+      }
+    },
+    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
@@ -86,8 +104,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "fd35cd9e52bfcc9db3258274e789bfc077250ff4"
+        "revision" : "546eaa261ec5028b9cc5c7fa883fba9dd5881a3b",
+        "version" : "2.52.0"
       }
     },
     {
