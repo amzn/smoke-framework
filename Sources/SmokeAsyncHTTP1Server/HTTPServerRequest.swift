@@ -1,16 +1,19 @@
-//===----------------------------------------------------------------------===//
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
-// This source file is part of the AsyncHTTPClient open source project
+// Licensed under the Apache License, Version 2.0 (the "License").
+// You may not use this file except in compliance with the License.
+// A copy of the License is located at
 //
-// Copyright (c) 2021 Apple Inc. and the AsyncHTTPClient project authors
-// Licensed under Apache License v2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-// See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of AsyncHTTPClient project authors
+// or in the "license" file accompanying this file. This file is distributed
+// on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+// express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
 //
-// SPDX-License-Identifier: Apache-2.0
+// HTTPServerRequest.swift
+// SmokeAsyncHTTP1Server
 //
-//===----------------------------------------------------------------------===//
 
 import NIOCore
 import NIOHTTP1
@@ -33,18 +36,18 @@ public struct HTTPServerRequest: Sendable {
     /// The body of this HTTP request.
     public var body: Body
 
-    @inlinable public init(
+    init(
         method: HTTPMethod = .GET,
         version: HTTPVersion = .http1_1,
         uri: String,
         headers: HTTPHeaders = [:],
-        body: Body = Body()
+        bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>
     ) {
         self.method = method
         self.version = version
         self.uri = uri
         self.headers = headers
-        self.body = body
+        self.body = .init(underlyingChannel: bodyChannel)
     }
 }
 
@@ -57,74 +60,21 @@ extension HTTPServerRequest {
     public struct Body: AsyncSequence, Sendable {
         public typealias Element = ByteBuffer
         public struct AsyncIterator: AsyncIteratorProtocol {
-            @usableFromInline var storage: Storage.AsyncIterator
+            @usableFromInline var underlyingIterator: AsyncThrowingChannel<ByteBuffer, Error>.AsyncIterator
 
-            @inlinable init(storage: Storage.AsyncIterator) {
-                self.storage = storage
+            @inlinable init(underlyingIterator: AsyncThrowingChannel<ByteBuffer, Error>.AsyncIterator) {
+                self.underlyingIterator = underlyingIterator
             }
 
             @inlinable public mutating func next() async throws -> ByteBuffer? {
-                try await self.storage.next()
+                try await self.underlyingIterator.next()
             }
         }
 
-        @usableFromInline var storage: Storage
+        @usableFromInline var underlyingChannel: AsyncThrowingChannel<ByteBuffer, Error>
 
         @inlinable public func makeAsyncIterator() -> AsyncIterator {
-            .init(storage: self.storage.makeAsyncIterator())
+            return .init(underlyingIterator: self.underlyingChannel.makeAsyncIterator())
         }
-    }
-}
-
-extension HTTPServerRequest.Body {
-    @usableFromInline enum Storage: Sendable {
-        case anyAsyncSequence(AnyAsyncSequence<ByteBuffer>)
-    }
-}
-
-extension HTTPServerRequest.Body.Storage: AsyncSequence {
-    @usableFromInline typealias Element = ByteBuffer
-
-    @inlinable func makeAsyncIterator() -> AsyncIterator {
-        switch self {
-        case .anyAsyncSequence(let anyAsyncSequence):
-            return .anyAsyncSequence(anyAsyncSequence.makeAsyncIterator())
-        }
-    }
-}
-
-extension HTTPServerRequest.Body.Storage {
-    @usableFromInline enum AsyncIterator {
-        case anyAsyncSequence(AnyAsyncSequence<ByteBuffer>.AsyncIterator)
-    }
-}
-
-extension HTTPServerRequest.Body.Storage.AsyncIterator: AsyncIteratorProtocol {
-    @inlinable mutating func next() async throws -> ByteBuffer? {
-        switch self {
-        case .anyAsyncSequence(var iterator):
-            defer { self = .anyAsyncSequence(iterator) }
-            return try await iterator.next()
-        }
-    }
-}
-
-extension HTTPServerRequest.Body {
-    @usableFromInline init(_ storage: Storage) {
-        self.storage = storage
-    }
-
-    public init() {
-        self = .stream(EmptyCollection<ByteBuffer>().async)
-    }
-
-    @inlinable public static func stream<SequenceOfBytes>(
-        _ sequenceOfBytes: SequenceOfBytes
-    ) -> Self where SequenceOfBytes: AsyncSequence & Sendable, SequenceOfBytes.Element == ByteBuffer {
-        self.init(.anyAsyncSequence(AnyAsyncSequence(sequenceOfBytes.singleIteratorPrecondition)))
-    }
-
-    public static func bytes(_ byteBuffer: ByteBuffer) -> Self {
-        .stream(CollectionOfOne(byteBuffer).async)
     }
 }

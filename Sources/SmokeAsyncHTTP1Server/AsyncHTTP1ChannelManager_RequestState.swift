@@ -42,7 +42,7 @@ extension AsyncHTTP1ChannelManager {
                                                  version: requestHead.version,
                                                  uri: requestHead.uri,
                                                  headers: requestHead.headers,
-                                                 body: .stream(bodyChannel))
+                                                 bodyChannel: bodyChannel)
                             
                 self.bodyChannel = bodyChannel
             }
