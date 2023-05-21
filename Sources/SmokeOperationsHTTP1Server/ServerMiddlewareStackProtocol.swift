@@ -24,11 +24,11 @@ import SmokeHTTP1ServerMiddleware
 import Logging
 
 public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutableRequestId, ContextWithResponseWriter {
-    public let responseWriter: HTTPServerResponseWriter
+    public let responseWriter: HTTPServerResponseWriterProtocol
     public var logger: Logging.Logger?
     public var internalRequestId: String?
     
-    public init(responseWriter: HTTPServerResponseWriter,
+    public init(responseWriter: HTTPServerResponseWriterProtocol,
                 logger: Logging.Logger? = nil,
                 internalRequestId: String? = nil) {
         self.responseWriter = responseWriter

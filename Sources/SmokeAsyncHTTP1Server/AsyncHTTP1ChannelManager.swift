@@ -266,4 +266,14 @@ extension AsyncHTTP1ChannelManager {
         
         self.requestChannel.finish()
     }
+    
+    internal func getWriterState(channelRequestId: UInt64) -> HTTPServerResponseWriterState {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.getWriterState()
+    }
 }

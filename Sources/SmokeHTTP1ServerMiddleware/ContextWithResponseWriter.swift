@@ -18,5 +18,5 @@
 import SmokeAsyncHTTP1Server
 
 public protocol ContextWithResponseWriter {
-    var responseWriter: HTTPServerResponseWriter { get }
+    var responseWriter: any HTTPServerResponseWriterProtocol { get }
 }

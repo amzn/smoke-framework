@@ -352,5 +352,20 @@ extension AsyncHTTP1ChannelManager.ResponseState {
             fatalError()
         }
     }
+    
+    func getWriterState() -> HTTPServerResponseWriterState {
+        switch self {
+        case .pendingResponseHead(_):
+            return .notCommitted
+        case .pendingResponseBody, .sendingResponseBody:
+            return .committed
+        case .waitingForRequestComplete, .waitingForHandlingComplete:
+            return .completed
+        case .idle:
+            assertionFailure("Invalid state for writer state: \(self)")
+            
+            fatalError()
+        }
+    }
 }
 

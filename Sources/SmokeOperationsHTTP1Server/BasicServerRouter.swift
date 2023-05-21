@@ -34,7 +34,7 @@ public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationId
                                                                                          ContextWithMutableRequestId &
                                                                                          ContextWithOperationIdentifer &
                                                                                          ContextWithResponseWriter {
-    public let responseWriter: HTTPServerResponseWriter
+    public let responseWriter: HTTPServerResponseWriterProtocol
     public let operationIdentifer: OperationIdentifer
     public let pathShape: ShapeCoding.Shape
     public var logger: Logging.Logger?
