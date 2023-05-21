@@ -343,7 +343,10 @@ extension AsyncHTTP1ChannelManager.ResponseState {
         switch self {
         case .waitingForHandlingComplete:
             self = .idle
-        case .pendingResponseHead, .pendingResponseBody, .sendingResponseBody, .waitingForRequestComplete, .idle:
+        case .waitingForRequestComplete:
+            // nothing to do
+            break
+        case .pendingResponseHead, .pendingResponseBody, .sendingResponseBody, .idle:
             assertionFailure("Invalid state for reset: \(self)")
             
             fatalError()
