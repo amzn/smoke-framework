@@ -22,9 +22,9 @@ import Logging
 import Tracing
 import NIOHTTP1
 
-public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId>: MiddlewareProtocol {
+public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId & ContextWithResponseWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = HTTPServerResponse
+    public typealias Output = Void
     
     private let serverName: String
     
@@ -33,8 +33,7 @@ public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId>: Midd
     }
     
     public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
-    -> HTTPServerResponse {
+                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
         var baggage = Baggage.current ?? .topLevel
         InstrumentationSystem.instrument.extract(input.headers, into: &baggage, using: HTTPHeadersExtractor())
         
@@ -55,16 +54,18 @@ public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId>: Midd
 
         return try await Baggage.withValue(span.baggage) {
             do {
-                let response = try await next(input, context)
+                try await next(input, context)
+                let responseWriter = context.responseWriter
 
-                attributes["http.status_code"] = Int(response.status.code)
+                let statusCode = await responseWriter.getStatus().code
+                attributes["http.status_code"] = Int(statusCode)
                 
-                if let bodySize = response.body?.size {
+                if case .known(let bodySize) = await responseWriter.getBodyLength() {
                     attributes["http.response_content_length"] = bodySize
                 }
                 span.attributes = attributes
                 
-                return response
+                return
             } catch {
                 // anything other than an internal server Error will have been caught at this point
                 span.attributes["http.status_code"] = 500

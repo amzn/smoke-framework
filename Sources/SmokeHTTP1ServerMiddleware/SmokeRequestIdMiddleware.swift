@@ -22,15 +22,14 @@ import Logging
 
 public struct SmokeRequestIdMiddleware<Context: ContextWithMutableRequestId>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = HTTPServerResponse
+    public typealias Output = Void
     
     public init() {
         
     }
     
     public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
-    -> HTTPServerResponse {
+                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
         var updatedContext = context
         updatedContext.internalRequestId = UUID().uuidString
         

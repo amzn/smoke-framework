@@ -40,7 +40,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
     
     let port: Int
     
-    let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
+    let handler: @Sendable (HTTPServerRequest, HTTPServerResponseWriter) async -> ()
     let defaultLogger: Logger
     
     let eventLoopGroup: EventLoopGroup
@@ -54,7 +54,7 @@ public struct AsyncHTTPServer: ServiceLifecycle.Service, CustomStringConvertible
                 If not specified, defaults to 8080.
         - eventLoopGroup: The event loop to be used by the server.
      */
-    public init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse,
+    public init(handler: @Sendable @escaping (HTTPServerRequest, HTTPServerResponseWriter) async -> (),
                 port: Int = ServerDefaults.defaultPort,
                 defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeAsyncHTTPServer.AsyncHTTPServer"),
                 eventLoopGroup: EventLoopGroup) {

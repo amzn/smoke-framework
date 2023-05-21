@@ -23,21 +23,22 @@ import NIOHTTP1
 import SmokeOperations
 import SmokeHTTP1ServerMiddleware
 
-public struct JSONSmokeOperationsErrorMiddleware<Context: ContextWithMutableLogger>: MiddlewareProtocol {
+public struct JSONSmokeOperationsErrorMiddleware<Context: ContextWithMutableLogger & ContextWithResponseWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = HTTPServerResponse
+    public typealias Output = Void
     
     public func handle(_ input: HTTPServerRequest, context middlewareContext: Context,
-                       next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
-    -> HTTPServerResponse {
+                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
         do {
             return try await next(input, middlewareContext)
         } catch SmokeOperationsError.validationError(let reason) {
-            return JSONFormat.getErrorResponse(reason: "ValidationError", errorMessage: reason,
-                                               status: .badRequest, logger: middlewareContext.logger)
+            try await JSONFormat.writeErrorResponse(reason: "ValidationError", errorMessage: reason,
+                                                    status: .badRequest, logger: middlewareContext.logger,
+                                                    responseWriter: middlewareContext.responseWriter)
         } catch SmokeOperationsError.invalidOperation(let reason) {
-            return JSONFormat.getErrorResponse(reason: "InvalidOperation", errorMessage: reason,
-                                               status: .badRequest, logger: middlewareContext.logger)
+            try await JSONFormat.writeErrorResponse(reason: "InvalidOperation", errorMessage: reason,
+                                                    status: .badRequest, logger: middlewareContext.logger,
+                                                    responseWriter: middlewareContext.responseWriter)
         }
     }
 }

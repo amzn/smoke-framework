@@ -23,26 +23,27 @@ import Logging
 internal struct PingParameters {
     static let uri = "/ping"
     static let payload = "Ping completed.".data(using: .utf8) ?? Data()
-    static let responseBody = HTTPServerResponse.Body.bytes(payload, contentType: "text/plain")
+    static let contentType = "text/plain"
 }
 
-public struct SmokePingMiddleware<Context>: MiddlewareProtocol {
+public struct SmokePingMiddleware<Context: ContextWithResponseWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = HTTPServerResponse
+    public typealias Output = Void
     
     public init() {
         
     }
     
     public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
-    -> HTTPServerResponse {
+                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
         // this is the ping url
         if input.uri == PingParameters.uri {
-            var response = HTTPServerResponse()
-            response.body = PingParameters.responseBody
+            let responseWriter = context.responseWriter
             
-            return response
+            await responseWriter.setContentType(PingParameters.contentType)
+            try await responseWriter.commitAndCompleteWith(PingParameters.payload)
+            
+            return
         }
         
         return try await next(input, context)

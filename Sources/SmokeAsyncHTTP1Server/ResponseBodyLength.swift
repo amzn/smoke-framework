@@ -17,8 +17,7 @@
 
 import NIOCore
 
-@usableFromInline
-internal enum ResponseBodyLength: Hashable, Sendable {
+public enum ResponseBodyLength: Hashable, Sendable {
     /// size of the request body is not known before starting the response
     case unknown
     /// size of the response body is fixed and exactly `count` bytes

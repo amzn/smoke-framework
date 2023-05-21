@@ -25,35 +25,37 @@ import SmokeOperationsHTTP1
 
 private let maxBodySize = 1024 * 1024 // 1 MB
 
-public struct JSONResponseTransform<InputType: OperationHTTP1OutputProtocol, Context: ContextWithMutableLogger>: TransformProtocol {
+public struct JSONResponseTransform<InputType: OperationHTTP1OutputProtocol,
+                                        Context: ContextWithMutableLogger & ContextWithResponseWriter>: TransformProtocol {
     private let status: HTTPResponseStatus
     
     public init(status: HTTPResponseStatus) {
         self.status = status
     }
     
-    public func transform(_ input: InputType, context: Context) async throws -> HTTPServerResponse {
-        var response = HTTPServerResponse()
-        response.status = self.status
-        
-        if let bodyEncodable = input.bodyEncodable {
-            let encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(bodyEncodable)
-            
-            response.body = HTTPServerResponse.Body.bytes(encodedOutput, contentType: MimeTypes.json)
-        }
+    public func transform(_ input: InputType, context: Context) async throws {
+        let responseWriter = context.responseWriter
+        await responseWriter.setStatus(self.status)
         
         if let additionalHeadersEncodable = input.additionalHeadersEncodable {
             let headers = try HTTPHeadersEncoder().encode(additionalHeadersEncodable)
             
-            headers.forEach { header in
-                guard let value = header.1 else {
-                    return
+            await responseWriter.updateHeaders { responseHeaders in
+                headers.forEach { header in
+                    guard let value = header.1 else {
+                        return
+                    }
+                    
+                    responseHeaders.add(name: header.0, value: value)
                 }
-                
-                response.headers.add(name: header.0, value: value)
             }
         }
         
-        return response
+        if let bodyEncodable = input.bodyEncodable {
+            let encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(bodyEncodable)
+            
+            await responseWriter.setContentType(MimeTypes.json)
+            try await responseWriter.commitAndCompleteWith(encodedOutput)
+        }
     }
 }

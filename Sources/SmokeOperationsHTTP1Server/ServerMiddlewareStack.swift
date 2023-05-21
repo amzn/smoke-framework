@@ -27,7 +27,6 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
     public typealias OperationIdentifer = RouterType.OperationIdentifer
     private var router: RouterType
     
-    private let initialMiddlewareContext: RouterType.OuterMiddlewareContext
     private let applicationContextProvider: @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext
     private let unhandledErrorTransform: JSONErrorResponseTransform<RouterType.OuterMiddlewareContext>
     private let serverName: String
@@ -37,7 +36,6 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
                 serverConfiguration: SmokeServerConfiguration<OperationIdentifer>,
                 applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext) {
         self.router = .init()
-        self.initialMiddlewareContext = .init()
         self.serverName = serverName
         self.serverConfiguration = serverConfiguration
         self.applicationContextProvider = applicationContextProvider
@@ -47,7 +45,9 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
                                                                   status: .internalServerError)
     }
     
-    @Sendable public func handle(request: HTTPServerRequest) async -> HTTPServerResponse {
+    @Sendable public func handle(request: HTTPServerRequest, responseWriter: HTTPServerResponseWriter) async {
+        let initialMiddlewareContext = SmokeMiddlewareContext(responseWriter: responseWriter)
+        
         let middlewareStack = MiddlewareStack {
             // Add middleware outside the router (operates on Request and Response types)
             SmokePingMiddleware<RouterType.OuterMiddlewareContext>()
@@ -58,11 +58,11 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
             JSONDecodingErrorMiddleware<RouterType.OuterMiddlewareContext>()
         }
         do {
-            return try await middlewareStack.handle(request, context: self.initialMiddlewareContext) { (innerRequest, innerContext) in
+            return try await middlewareStack.handle(request, context: initialMiddlewareContext) { (innerRequest, innerContext) in
                 return try await self.router.handle(innerRequest, context: innerContext)
             }
         } catch {
-            return self.unhandledErrorTransform.transform(error, context: self.initialMiddlewareContext)
+            return await self.unhandledErrorTransform.transform(error, context: initialMiddlewareContext)
         }
     }
     
@@ -72,10 +72,10 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
         requestTransform: RequestTransformType, responseTransform: ResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     RequestTransformType.Input == HTTPServerRequest, RequestTransformType.Output == InnerMiddlewareType.Input,
-    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == HTTPServerResponse,
+    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == Void,
     ResponseTransformType.Context == RouterType.InnerMiddlewareContext, RequestTransformType.Context == RouterType.InnerMiddlewareContext {
         let stack = MiddlewareTransformStack(requestTransform: requestTransform, responseTransform: responseTransform) {
             if let outerMiddleware = outerMiddleware {

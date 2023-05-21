@@ -24,9 +24,9 @@ import SmokeOperations
 import SmokeHTTP1ServerMiddleware
 
 public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByDescription,
-                                                 Context: ContextWithMutableLogger>: MiddlewareProtocol {
+                                                 Context: ContextWithMutableLogger & ContextWithResponseWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = HTTPServerResponse
+    public typealias Output = Void
     
     private let allowedErrors: [(ErrorType, Int)]
     
@@ -35,8 +35,7 @@ public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByD
     }
     
     public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> HTTPServerResponse) async throws
-    -> HTTPServerResponse {
+                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
         let operationFailure: OperationFailure
         do {
             return try await next(input, context)
@@ -54,10 +53,10 @@ public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByD
         
         let encodedOutput = try operationFailure.error.encode(errorEncoder: JSONErrorEncoder(), logger: context.logger)
         
-        var response = HTTPServerResponse()
-        response.body = HTTPServerResponse.Body.bytes(encodedOutput, contentType: MimeTypes.json)
-        
-        return response
+        let responseWriter = context.responseWriter
+        await responseWriter.setStatus(HTTPResponseStatus(statusCode: operationFailure.code))
+        await responseWriter.setContentType(MimeTypes.json)
+        try await responseWriter.commitAndCompleteWith(encodedOutput)
     }
     
     /**

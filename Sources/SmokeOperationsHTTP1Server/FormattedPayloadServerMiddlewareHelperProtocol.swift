@@ -52,7 +52,7 @@ public protocol FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol
     
@@ -75,7 +75,7 @@ public protocol FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output == Void
     
@@ -98,7 +98,7 @@ public protocol FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol
 }
@@ -114,7 +114,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         innerMiddleware: InnerMiddlewareType?)
     where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -128,7 +128,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (Input, ApplicationContextType) async throws -> Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Input: OperationHTTP1InputProtocol, Output: OperationHTTP1OutputProtocol {
         let innerMiddleware: EmptyMiddleware<Input, Output, RouterType.InnerMiddlewareContext>? = nil
@@ -144,7 +144,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (Input, ApplicationContextType) async throws -> Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType)
     where Input: OperationHTTP1InputProtocol, Output: OperationHTTP1OutputProtocol {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Input, Output, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
@@ -162,7 +162,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         innerMiddleware: InnerMiddlewareType?)
     where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output == Void {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -176,7 +176,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (Input, ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Input: OperationHTTP1InputProtocol {
         let innerMiddleware: EmptyMiddleware<Input, Void, RouterType.InnerMiddlewareContext>? = nil
@@ -192,7 +192,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (Input, ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType)
     where Input: OperationHTTP1InputProtocol {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Input, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
@@ -211,7 +211,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         innerMiddleware: InnerMiddlewareType?)
     where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -225,7 +225,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Output: OperationHTTP1OutputProtocol {
         let innerMiddleware: EmptyMiddleware<Void, Output, RouterType.InnerMiddlewareContext>? = nil
@@ -241,7 +241,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType)
     where Output: OperationHTTP1OutputProtocol {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Void, Output, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
@@ -258,7 +258,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable (InnerMiddlewareType.Input) async throws -> InnerMiddlewareType.Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
         @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
@@ -284,7 +284,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             return try await operation(input)
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -298,7 +298,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable (Input) async throws -> Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Input: OperationHTTP1InputProtocol, Output: OperationHTTP1OutputProtocol {
         @Sendable func innerOperation(input: Input, context: ApplicationContextType) async throws -> Output {
@@ -324,7 +324,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             return try await operation(input)
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Input, Output, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
@@ -341,7 +341,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable (InnerMiddlewareType.Input) async throws -> Void),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output == Void {
         @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws {
@@ -367,7 +367,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             try await operation(input)
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -381,7 +381,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable (Input) async throws -> Void),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Input: OperationHTTP1InputProtocol {
         @Sendable func innerOperation(input: Input, context: ApplicationContextType) async throws {
@@ -407,7 +407,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             try await operation(input)
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Input, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
@@ -424,7 +424,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
         @Sendable func innerOperation(context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
@@ -451,7 +451,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             return try await operation()
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, toStack: &middlewareStack,
@@ -465,7 +465,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     Output: OperationHTTP1OutputProtocol {
         @Sendable func innerOperation(context: ApplicationContextType) async throws -> Output {
@@ -491,7 +491,7 @@ public extension FormattedPayloadServerMiddlewareHelperProtocol {
             return try await operation()
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Void, Output, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,

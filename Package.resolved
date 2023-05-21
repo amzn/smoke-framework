@@ -104,8 +104,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "revision" : "546eaa261ec5028b9cc5c7fa883fba9dd5881a3b",
-        "version" : "2.52.0"
+        "revision" : "2d8e6ca36fe3e8ed74b0883f593757a45463c34d",
+        "version" : "2.53.0"
       }
     },
     {
@@ -158,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swift-server/swift-service-lifecycle",
       "state" : {
-        "revision" : "fafab8f7adf3e55e2f6d8c4ca0ffcd15a3a197c0",
-        "version" : "2.0.0-alpha.1"
+        "revision" : "5074896b5ac05fa0c957697e464a883b57fd4e15",
+        "version" : "2.0.0-alpha.2"
       }
     }
   ],

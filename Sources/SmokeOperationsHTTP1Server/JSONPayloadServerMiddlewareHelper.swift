@@ -39,7 +39,7 @@ FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
         let requestTransform: JSONRequestTransform<InnerMiddlewareType.Input, RouterType.InnerMiddlewareContext> =
@@ -61,7 +61,7 @@ FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.Output == Void {
         let requestTransform: JSONRequestTransform<InnerMiddlewareType.Input, RouterType.InnerMiddlewareContext> =
@@ -83,7 +83,7 @@ FormattedPayloadServerMiddlewareHelperProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output: OperationHTTP1OutputProtocol {
         let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()

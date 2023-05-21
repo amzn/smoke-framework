@@ -23,14 +23,14 @@ import SmokeHTTP1ServerMiddleware
 import SmokeOperationsHTTP1
 
 public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareContext, OperationIdentifer> {
-    associatedtype OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId
+    associatedtype OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithResponseWriter
     associatedtype InnerMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
-        & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId
+        & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId & ContextWithResponseWriter
     associatedtype OperationIdentifer: OperationIdentity
     
     init()
 
-    func handle(_ input: HTTPServerRequest, context: OuterMiddlewareContext) async throws -> HTTPServerResponse
+    func handle(_ input: HTTPServerRequest, context: OuterMiddlewareContext) async throws
     
     /**
      Adds a handler for the specified uri and http method.
@@ -43,7 +43,7 @@ public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareCont
     mutating func addHandlerForOperation(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        handler: @escaping @Sendable (HTTPServerRequest, InnerMiddlewareContext) async throws -> HTTPServerResponse)
+        handler: @escaping @Sendable (HTTPServerRequest, InnerMiddlewareContext) async throws -> ())
 }
 
 public extension ServerRouterProtocol {
@@ -53,7 +53,7 @@ public extension ServerRouterProtocol {
             middlewareStack: MiddlewareType,
             operation: @escaping @Sendable (MiddlewareType.TransformedInput, ApplicationContext) async throws -> MiddlewareType.OriginalOutput,
             applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext)
-    where MiddlewareType.TransformedOutput == HTTPServerResponse,
+    where MiddlewareType.TransformedOutput == Void,
           MiddlewareType.OriginalInput == HTTPServerRequest,
           MiddlewareType.Context == InnerMiddlewareContext {
         @Sendable func next(input: MiddlewareType.TransformedInput, middlewareContext: InnerMiddlewareContext) async throws
@@ -67,7 +67,7 @@ public extension ServerRouterProtocol {
             return try await operation(input, applicationContext)
         }
         
-        @Sendable func handler(request: HTTPServerRequest, middlewareContext: InnerMiddlewareContext) async throws -> HTTPServerResponse {
+        @Sendable func handler(request: HTTPServerRequest, middlewareContext: InnerMiddlewareContext) async throws {
             return try await middlewareStack.handle(request, context: middlewareContext, next: next)
         }
         

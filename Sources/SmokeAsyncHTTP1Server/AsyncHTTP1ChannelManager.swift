@@ -33,322 +33,15 @@ internal struct HTTP1Headers {
  Actor that manages the state of a HTTP1 channel.
  */
 actor AsyncHTTP1ChannelManager {
-    
-    private struct WaitingForRequestBody {
-        let request: HTTPServerRequest
-        let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>
-        
-        init(requestHead: HTTPRequestHead) {
-            let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error> = .init()
-            
-            self.request = HTTPServerRequest(method: requestHead.method,
-                                             version: requestHead.version,
-                                             uri: requestHead.uri,
-                                             headers: requestHead.headers,
-                                             body: .stream(bodyChannel))
-                        
-            self.bodyChannel = bodyChannel
-        }
-    }
-    
-    private struct ReceivingRequestBody {
-        let request: HTTPServerRequest
-        let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>
-        
-        init(waitingForRequestBody: WaitingForRequestBody) {
-            self.request = waitingForRequestBody.request
-            
-            self.bodyChannel = waitingForRequestBody.bodyChannel
-        }
-        
-        init(receivingRequestBody: ReceivingRequestBody) {
-            self.request = receivingRequestBody.request
-            
-            self.bodyChannel = receivingRequestBody.bodyChannel
-        }
-    }
-    
-    private struct PendingResponseHead {
-        let requestHead: HTTPRequestHead
-        let keepAliveStatus: KeepAliveStatus
-        
-        init(requestHead: HTTPRequestHead) {
-            self.requestHead = requestHead
-            self.keepAliveStatus = KeepAliveStatus(state: requestHead.isKeepAlive)
-        }
-        
-        init(pendingResponseHead: PendingResponseHead, keepAliveStatus: Bool) {
-            self.requestHead = pendingResponseHead.requestHead
-            self.keepAliveStatus = pendingResponseHead.keepAliveStatus
-            
-            self.keepAliveStatus.state = keepAliveStatus
-        }
-    }
-    
-    private struct PendingResponseBody {
-        let requestHead: HTTPRequestHead
-        let keepAliveStatus: KeepAliveStatus
-        
-        init(pendingResponseHead: PendingResponseHead) {
-            self.requestHead = pendingResponseHead.requestHead
-            self.keepAliveStatus = pendingResponseHead.keepAliveStatus
-        }
-        
-        init(sendingResponseBody: SendingResponseBody) {
-            self.requestHead = sendingResponseBody.requestHead
-            self.keepAliveStatus = sendingResponseBody.keepAliveStatus
-        }
-        
-        init(pendingResponseBody: PendingResponseBody, keepAliveStatus: Bool) {
-            self.requestHead = pendingResponseBody.requestHead
-            self.keepAliveStatus = pendingResponseBody.keepAliveStatus
-            
-            self.keepAliveStatus.state = keepAliveStatus
-        }
-    }
-    
-    private struct SendingResponseBody {
-        let requestHead: HTTPRequestHead
-        let keepAliveStatus: KeepAliveStatus
-        
-        init(pendingResponseBody: PendingResponseBody) {
-            self.requestHead = pendingResponseBody.requestHead
-            self.keepAliveStatus = pendingResponseBody.keepAliveStatus
-        }
-        
-        init(sendingResponseBody: SendingResponseBody) {
-            self.requestHead = sendingResponseBody.requestHead
-            self.keepAliveStatus = sendingResponseBody.keepAliveStatus
-        }
-        
-        init(sendingResponseBody: SendingResponseBody, keepAliveStatus: Bool) {
-            self.requestHead = sendingResponseBody.requestHead
-            self.keepAliveStatus = sendingResponseBody.keepAliveStatus
-            
-            self.keepAliveStatus.state = keepAliveStatus
-        }
-    }
-    
-    /**
-     Internal state variable that tracks the progress of the HTTP Request.
-     */
-    private enum RequestState {
-        case idle
-        case waitingForRequestBody(WaitingForRequestBody)
-        case receivingRequestBody(ReceivingRequestBody)
-        case waitingForResponseComplete
-        case incomingStreamReset
-
-        mutating func requestReceived(requestHead: HTTPRequestHead) -> HTTPServerRequest {
-            switch self {
-            case .idle:
-                let statePayload = WaitingForRequestBody(requestHead: requestHead)
-                self = .waitingForRequestBody(statePayload)
-                
-                return statePayload.request
-            case .waitingForRequestBody, .receivingRequestBody, .waitingForResponseComplete, .incomingStreamReset:
-                assertionFailure("Invalid state for request received: \(self)")
-                
-                fatalError()
-            }
-        }
-        
-        mutating func partialBodyReceived() -> AsyncThrowingChannel<ByteBuffer, Error>? {
-            switch self {
-            case .waitingForRequestBody(let waitingForRequestBody):
-                let statePayload = ReceivingRequestBody(waitingForRequestBody: waitingForRequestBody)
-                self = .receivingRequestBody(statePayload)
-                
-                return statePayload.bodyChannel
-            case .receivingRequestBody(let receivingRequestBody):
-                let statePayload = ReceivingRequestBody(receivingRequestBody: receivingRequestBody)
-                self = .receivingRequestBody(statePayload)
-                
-                return statePayload.bodyChannel
-            case .incomingStreamReset:
-                return nil
-            case .idle, .waitingForResponseComplete:
-                assertionFailure("Invalid state for partial body received: \(self)")
-                    
-                fatalError()
-            }
-        }
-
-        mutating func requestFullyReceived(responseState: inout ResponseState) {
-            let bodyChannel: AsyncThrowingChannel<ByteBuffer, Error>?
-            
-            let nextState: RequestState
-            switch responseState {
-            case .idle, .pendingResponseHead, .pendingResponseBody, .sendingResponseBody:
-                nextState = .waitingForResponseComplete
-            case .waitingForRequestComplete:
-                nextState = .idle
-                responseState = .idle
-            }
-            
-            switch self {
-            case .waitingForRequestBody(let state):
-                bodyChannel = state.bodyChannel
-            case .receivingRequestBody(let state):
-                bodyChannel = state.bodyChannel
-            case .incomingStreamReset:
-                bodyChannel = nil
-            case .idle, .waitingForResponseComplete:
-                assertionFailure("Invalid state for request complete: \(self)")
-                
-                fatalError()
-            }
-            
-            self = nextState
-            
-            // signal that the body part stream has completed
-            bodyChannel?.finish()
-        }
-        
-        mutating func confirmFinished() {
-            switch self {
-            case .waitingForResponseComplete, .incomingStreamReset:
-                // nothing to do
-                return
-            case .waitingForRequestBody(let state):
-                state.bodyChannel.finish()
-            case .receivingRequestBody(let state):
-                state.bodyChannel.finish()
-            case .idle:
-                assertionFailure("Invalid state for reset: \(self)")
-                
-                fatalError()
-            }
-            
-            self = .incomingStreamReset
-        }
-    }
-    
-    /**
-     Internal state variable that tracks the progress of the HTTP Response.
-     */
-    private enum ResponseState {
-        case idle
-        case pendingResponseHead(PendingResponseHead)
-        case pendingResponseBody(PendingResponseBody)
-        case sendingResponseBody(SendingResponseBody)
-        case waitingForRequestComplete
-        
-        mutating func waitForResponse(requestHead: HTTPRequestHead) {
-            switch self {
-            case .idle:
-                let pendingResponseHead = PendingResponseHead(requestHead: requestHead)
-                self = .pendingResponseHead(pendingResponseHead)
-            case .pendingResponseHead, .pendingResponseBody, .sendingResponseBody, .waitingForRequestComplete:
-                assertionFailure("Invalid state for requestReceived: \(self)")
-                
-                fatalError()
-            }
-        }
-        
-        mutating func sendResponseHead(response: HTTPServerResponse) -> HTTPResponseHead {
-            switch self {
-            case .pendingResponseHead(let pendingResponseHead):
-                var headers = response.headers
-                
-                // if there is a content type
-                if let body = response.body {
-                    // add the content type header
-                    headers.add(name: HTTP1Headers.contentType, value: body.contentType)
-                
-                    // add the content length header and write the response head to the response
-                    if let bodySize = body.size {
-                        headers.add(name: HTTP1Headers.contentLength, value: "\(bodySize)")
-                    }
-                }
-                
-                let requestHead = pendingResponseHead.requestHead
-                
-                let head = HTTPResponseHead(version: requestHead.version,
-                                            status: response.status,
-                                            headers: headers)
-                
-                self = .pendingResponseBody(PendingResponseBody(pendingResponseHead: pendingResponseHead))
-                
-                return head
-            case .idle, .pendingResponseBody, .sendingResponseBody, .waitingForRequestComplete:
-                assertionFailure("Invalid state for responseFullySent: \(self)")
-                
-                fatalError()
-            }
-        }
-        
-        mutating func sendResponseBodyPart() {
-            switch self {
-            case .pendingResponseBody(let pendingResponseBody):
-                let sendingResponseBody = SendingResponseBody(pendingResponseBody: pendingResponseBody)
-                self = .sendingResponseBody(sendingResponseBody)
-            case .sendingResponseBody(let sendingResponseBody):
-                let sendingResponseBody = SendingResponseBody(sendingResponseBody: sendingResponseBody)
-                self = .sendingResponseBody(sendingResponseBody)
-            case .idle, .pendingResponseHead, .waitingForRequestComplete:
-                assertionFailure("Invalid state for sendResponseBodyPart: \(self)")
-                
-                fatalError()
-            }
-        }
-        
-        mutating func responseFullySent(requestState: inout RequestState) -> Bool {
-            let keepAliveStatus: KeepAliveStatus
-            switch self {
-            case .pendingResponseBody(let pendingResponseBody):
-                keepAliveStatus = pendingResponseBody.keepAliveStatus
-            case .sendingResponseBody(let sendingResponseBody):
-                keepAliveStatus = sendingResponseBody.keepAliveStatus
-            case .idle, .pendingResponseHead, .waitingForRequestComplete:
-                assertionFailure("Invalid state for responseFullySent: \(self)")
-                
-                fatalError()
-            }
-            
-            switch requestState {
-            case .idle, .waitingForRequestBody, .receivingRequestBody, .incomingStreamReset:
-                self = .waitingForRequestComplete
-            case .waitingForResponseComplete:
-                self = .idle
-                requestState = .idle
-            }
-            
-            return keepAliveStatus.state
-        }
-        
-        mutating func updateKeepAliveStatus(keepAliveStatus: Bool) -> Bool {
-            switch self {
-            case .idle:
-                return true
-            case .pendingResponseHead(let pendingResponseHead):
-                self = .pendingResponseHead(PendingResponseHead(pendingResponseHead: pendingResponseHead, keepAliveStatus: keepAliveStatus))
-                
-                return false
-            case .pendingResponseBody(let pendingResponseBody):
-                self = .pendingResponseBody(PendingResponseBody(pendingResponseBody: pendingResponseBody, keepAliveStatus: keepAliveStatus))
-                
-                return false
-            case .sendingResponseBody(let sendingResponseBody):
-                self = .sendingResponseBody(SendingResponseBody(sendingResponseBody: sendingResponseBody, keepAliveStatus: keepAliveStatus))
-                
-                return false
-            case .waitingForRequestComplete:
-                assertionFailure("Invalid state for updateKeepAliveStatus: \(self)")
-                
-                fatalError()
-            }
-        }
-    }
-    
-    private let handler: @Sendable (HTTPServerRequest) async -> HTTPServerResponse
+    private let handler: @Sendable (HTTPServerRequest, HTTPServerResponseWriter) async -> ()
     private let requestChannel: AsyncThrowingChannel<HTTPServerRequest, Error>
     
     private var requestState = RequestState.idle
     private var responseState = ResponseState.idle
+    private var channelRequestId: UInt64 = 0
     private let channelLogger: Logger
     
-    init(handler: @Sendable @escaping (HTTPServerRequest) async -> HTTPServerResponse) {
+    init(handler: @Sendable @escaping (HTTPServerRequest, HTTPServerResponseWriter) async -> ()) {
         self.handler = handler
         
         var newChannelLogger = Logger(label: "HTTP1RequestChannelHandler")
@@ -431,49 +124,146 @@ actor AsyncHTTP1ChannelManager {
     
     private func handle(request: HTTPServerRequest,
                         outboundWriter: NIOAsyncChannelOutboundWriter<AsyncHTTPServerResponsePart>) async {
-        let response = await self.handler(request)
+        self.channelRequestId += 1
+        let allocator: ByteBufferAllocator = .init()
+        let writer = HTTPServerResponseWriter(outboundWriter: outboundWriter, channelManager: self,
+                                              allocator: allocator, channelRequestId: self.channelRequestId)
+        await self.handler(request, writer)
         
         self.requestState.confirmFinished()
-        
-        func sendResponseBodyPart(bodyPart: ByteBuffer) async throws {
-            self.responseState.sendResponseBodyPart()
-            try await outboundWriter.write(.body(bodyPart))
+        self.responseState.confirmFinished()
+    }
+}
+
+extension AsyncHTTP1ChannelManager {
+    
+    func updateStatus(channelRequestId: UInt64,
+                      updateProvider: @Sendable (inout HTTPResponseStatus) throws -> ()) rethrows {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
         }
         
-        do {
-            // write the head
-            let head = self.responseState.sendResponseHead(response: response)
-            try await outboundWriter.write(.head(head))
+        try self.responseState.updateStatus(updateProvider: updateProvider)
+    }
+    
+    func updateContentType(channelRequestId: UInt64,
+                           updateProvider: @Sendable (inout String?) throws -> ()) rethrows {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
             
-            // await the body
-            if let responseBody = response.body {
-                switch responseBody.mode {
-                case .byteBuffer(let buffer, _):
-                    try await sendResponseBodyPart(bodyPart: buffer)
-                case .asyncSequence(_, _, let makeAsyncIterator):
-                    let allocator: ByteBufferAllocator = .init()
-                    let next = makeAsyncIterator()
-                    
-                    while let part = try await next(allocator) {
-                        try await sendResponseBodyPart(bodyPart: part)
-                    }
-                case .sequence(_, _, let makeCompleteBody):
-                    let allocator: ByteBufferAllocator = .init()
-                    let buffer = makeCompleteBody(allocator)
-                    try await sendResponseBodyPart(bodyPart: buffer)
-                }
-            }
-            
-            try await outboundWriter.write(.end(nil))
-            let keepAlive = self.responseState.responseFullySent(requestState: &self.requestState)
-            
-            if !keepAlive {
-                outboundWriter.finish()
-                self.requestChannel.finish()
-            }
-        } catch {
-            self.channelLogger.error(
-                "Error caught while sending body: \(String(describing: error)). Body may not be completely sent.")
+            fatalError()
         }
+        
+        try self.responseState.updateContentType(updateProvider: updateProvider)
+    }
+    
+    func updateBodyLength(channelRequestId: UInt64,
+                          updateProvider: @Sendable (inout ResponseBodyLength) throws -> ()) rethrows {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        try self.responseState.updateBodyLength(updateProvider: updateProvider)
+    }
+    
+    func updateHeaders(channelRequestId: UInt64,
+                       updateProvider: @Sendable (inout HTTPHeaders) throws -> ()) rethrows {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        try self.responseState.updateHeaders(updateProvider: updateProvider)
+    }
+}
+
+extension AsyncHTTP1ChannelManager {
+
+    func getStatus(channelRequestId: UInt64) -> HTTPResponseStatus {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.getStatus()
+    }
+    
+    func getContentType(channelRequestId: UInt64) -> String? {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.getContentType()
+    }
+    
+    func getBodyLength(channelRequestId: UInt64) -> ResponseBodyLength {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.getBodyLength()
+    }
+    
+    func getHeaders(channelRequestId: UInt64) -> HTTPHeaders {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.getHeaders()
+    }
+}
+    
+extension AsyncHTTP1ChannelManager {
+    
+    internal func sendResponseHead(channelRequestId: UInt64) -> HTTPResponseHead {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.sendResponseHead()
+    }
+    
+    internal func sendResponseBodyPart(channelRequestId: UInt64) {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        self.responseState.sendResponseBodyPart()
+    }
+    
+    internal func responseFullySent(channelRequestId: UInt64) -> Bool {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        return self.responseState.responseFullySent(requestState: &self.requestState)
+    }
+    
+    internal func completeChannel(channelRequestId: UInt64) {
+        guard self.channelRequestId == channelRequestId else {
+            assertionFailure("Attempted to use stale request on channel.")
+            
+            fatalError()
+        }
+        
+        self.requestChannel.finish()
     }
 }

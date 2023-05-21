@@ -25,5 +25,5 @@ import NIOHTTP1
 public protocol ErrorTransform {
     associatedtype Context
 
-    func transform(_ input: Swift.Error, context: Context) -> HTTPServerResponse
+    func transform(_ input: Swift.Error, context: Context) async -> ()
 }

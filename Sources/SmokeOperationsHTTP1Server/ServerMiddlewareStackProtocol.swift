@@ -23,12 +23,15 @@ import SmokeOperationsHTTP1
 import SmokeHTTP1ServerMiddleware
 import Logging
 
-public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutableRequestId {
+public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutableRequestId, ContextWithResponseWriter {
+    public let responseWriter: HTTPServerResponseWriter
     public var logger: Logging.Logger?
     public var internalRequestId: String?
     
-    public init(logger: Logging.Logger? = nil,
+    public init(responseWriter: HTTPServerResponseWriter,
+                logger: Logging.Logger? = nil,
                 internalRequestId: String? = nil) {
+        self.responseWriter = responseWriter
         self.logger = logger
         self.internalRequestId = internalRequestId
     }
@@ -46,7 +49,7 @@ public protocol ServerMiddlewareStackProtocol {
          applicationContextProvider:
          @escaping @Sendable (HTTPServerRequestContext<RouterType.OperationIdentifer>) -> ApplicationContextType)
     
-    @Sendable func handle(request: HTTPServerRequest) async -> HTTPServerResponse
+    @Sendable func handle(request: HTTPServerRequest, responseWriter: HTTPServerResponseWriter) async
     
     /**
      Adds a handler for the specified uri and http method using this middleware stack.
@@ -67,10 +70,10 @@ public protocol ServerMiddlewareStackProtocol {
         operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
         requestTransform: RequestTransformType, responseTransform: ResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     RequestTransformType.Input == HTTPServerRequest, RequestTransformType.Output == InnerMiddlewareType.Input,
-    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == HTTPServerResponse,
+    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == Void,
     ResponseTransformType.Context == RouterType.InnerMiddlewareContext, RequestTransformType.Context == RouterType.InnerMiddlewareContext
     
     /**
@@ -92,7 +95,7 @@ public protocol ServerMiddlewareStackProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void
     
@@ -115,7 +118,7 @@ public protocol ServerMiddlewareStackProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void
 }
@@ -130,7 +133,7 @@ public extension ServerMiddlewareStackProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
         let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
@@ -155,7 +158,7 @@ public extension ServerMiddlewareStackProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.Output),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
         let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
@@ -183,7 +186,7 @@ public extension ServerMiddlewareStackProtocol {
         innerMiddleware: InnerMiddlewareType?)
     where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
     InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
@@ -197,7 +200,7 @@ public extension ServerMiddlewareStackProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext {
         let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
         
@@ -212,7 +215,7 @@ public extension ServerMiddlewareStackProtocol {
         operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus)
     {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
@@ -234,7 +237,7 @@ public extension ServerMiddlewareStackProtocol {
             return try await operation()
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
                                            allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
@@ -248,7 +251,7 @@ public extension ServerMiddlewareStackProtocol {
         operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ()),
         allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
         outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == HTTPServerResponse,
+    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
     OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext {
         @Sendable func innerOperation(context: ApplicationContextType) async throws {
             let operation = operationProvider(context)
@@ -273,7 +276,7 @@ public extension ServerMiddlewareStackProtocol {
             return try await operation()
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, HTTPServerResponse, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
         let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
         
         return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
