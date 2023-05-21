@@ -136,17 +136,13 @@ extension AsyncHTTP1ChannelManager.RequestState {
     
     mutating func confirmFinished() {
         switch self {
-        case .waitingForResponseComplete, .incomingStreamReset:
+        case .idle, .waitingForResponseComplete, .incomingStreamReset:
             // nothing to do
             return
         case .waitingForRequestBody(let state):
             state.bodyChannel.finish()
         case .receivingRequestBody(let state):
             state.bodyChannel.finish()
-        case .idle:
-            assertionFailure("Invalid state for reset: \(self)")
-            
-            fatalError()
         }
         
         self = .incomingStreamReset
