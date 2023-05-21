@@ -53,10 +53,6 @@ private extension AsyncHTTP1ChannelManager.ResponseState {
     }
 }
 
-public enum HTTPServerResponseWriterError: Error {
-    case attemptedActionInInvalidWriterState(action: HTTPServerResponseWriterAction, state: HTTPServerResponseWriterState)
-}
-
 public struct HTTPServerResponseWriter: Sendable {
     internal let outboundWriter: NIOAsyncChannelOutboundWriter<AsyncHTTPServerResponsePart>
     internal let channelManager: AsyncHTTP1ChannelManager
@@ -142,7 +138,7 @@ extension HTTPServerResponseWriter {
      the status of the writer to `committed`. This will leave the writer in a state where one or more body parts can be added to the writer.
      
      - throws:
-     - `attemptedActionInInvalidWriterState` if this function is called after the writer has previously been committed or completed.
+        - if the response head fails to be written to the underlying http channel.
      */
     public func commit() async throws {
         // write the head
@@ -156,11 +152,11 @@ extension HTTPServerResponseWriter {
      the status of the writer to `completed`. The response will have been completely sent and no further modification is possible
      
      - throws:
-     - `attemptedActionInInvalidWriterState` if this function is called after the writer has either not been previously committed or
-                                            has been previously completed.
+        - if the response end fails to be written to the underlying http channel.
      */
     public func complete() async throws {
         let keepAlive = await self.channelManager.responseFullySent(channelRequestId: self.channelRequestId)
+        try await self.outboundWriter.write(.end(nil))
             
         if !keepAlive {
             self.outboundWriter.finish()
@@ -176,7 +172,7 @@ extension HTTPServerResponseWriter {
      with no body and will transition the status of the writer to `complete`.
      
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has previously been committed or completed.
+        - if the response head or end fails to be written to the underlying http channel.
      */
     public func commitAndComplete() async throws {
         try await self.commit()
@@ -191,7 +187,7 @@ extension HTTPServerResponseWriter {
      - parameters:
         - bytes: the `ByteBuffer` that will be used as the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has previously been committed or completed.
+        - if the response head, body or end fails to be written to the underlying http channel.
      */
     public func commitAndCompleteWith(_ bytes: ByteBuffer,
                                       bodyLength: Int? = nil) async throws {
@@ -210,7 +206,7 @@ extension HTTPServerResponseWriter {
      - parameters:
         - bytes: the `RandomAccessCollection` that will be used as the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has previously been committed or completed.
+        - if the response head, body or end fails to be written to the underlying http channel.
      */
     public func commitAndCompleteWith<Bytes: RandomAccessCollection & Sendable>(
         _ bytes: Bytes,
@@ -229,7 +225,7 @@ extension HTTPServerResponseWriter {
      - parameters:
         - bytes: the `Sequence` that will be used as the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has previously been committed or completed.
+        - if the response head, body or end fails to be written to the underlying http channel.
      */
     public func commitAndCompleteWith<Bytes: Sequence & Sendable>(
         _ bytes: Bytes,
@@ -244,12 +240,12 @@ extension HTTPServerResponseWriter {
 extension HTTPServerResponseWriter {
 
     /**
-     Submits a `ByteBuffer` to the response as a bodt part.
+     Submits a `ByteBuffer` to the response as a body part.
      
      - parameters:
         - bytes: the `ByteBuffer` that will be used as a part of the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has not previously been committed or has been completed.
+        - if the response body part fails to be written to the underlying http channel.
      */
     public func bodyPart(_ bytes: ByteBuffer) async throws {
         await self.channelManager.sendResponseBodyPart(channelRequestId: self.channelRequestId)
@@ -257,12 +253,12 @@ extension HTTPServerResponseWriter {
     }
     
     /**
-     Submits a `RandomAccessCollection` to the response as a bodt part.
+     Submits a `RandomAccessCollection` to the response as a body part.
      
      - parameters:
         - bytes: the `RandomAccessCollection` that will be used as a part of the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has not previously been committed or has been completed.
+        - if the response body part fails to be written to the underlying http channel.
      */
     public func bodyPart<Bytes: RandomAccessCollection & Sendable>(
         _ bytes: Bytes
@@ -273,12 +269,12 @@ extension HTTPServerResponseWriter {
     }
     
     /**
-     Submits a `Sequence` to the response as a bodt part.
+     Submits a `Sequence` to the response as a body part.
      
      - parameters:
         - bytes: the `Sequence` that will be used as a part of the body of the response.
      - throws:
-        - `attemptedActionInInvalidWriterState` if this function is called after the writer has not previously been committed or has been completed.
+        - if the response body part fails to be written to the underlying http channel.
      */
     public func bodyPart<Bytes: Sequence & Sendable>(
         _ bytes: Bytes
