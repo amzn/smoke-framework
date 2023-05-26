@@ -28,7 +28,7 @@ public extension AsyncHTTPServer {
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer>(
         _ factory: @escaping () async throws -> InitializerType) async
-    where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
+    where InitializerType.MiddlewareStackType.RouterType.OutputWriter == HTTPServerResponseWriter {
         let initalizer: InitializerType
         do {
             initalizer = try await factory()
@@ -82,7 +82,7 @@ public extension AsyncHTTPServer {
     
     static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializer>(
         _ factory: @escaping () async throws -> InitializerType) async
-    where InitializerType.MiddlewareContext == SmokeMiddlewareContext {
+    where InitializerType.MiddlewareStackType.RouterType.OutputWriter == HTTPServerResponseWriter {
         let initalizer: InitializerType
         do {
             initalizer = try await factory()

@@ -26,15 +26,16 @@ internal struct MimeTypes {
 }
 
 internal struct JSONFormat {
-    static func writeErrorResponse(reason: String, errorMessage: String?,
-                                   status: HTTPResponseStatus, logger: Logger?,
-                                   responseWriter: any HTTPServerResponseWriterProtocol) async throws {
+    static func writeErrorResponse<OutputWriter>(reason: String, errorMessage: String?,
+                                                 status: HTTPResponseStatus, logger: Logger?,
+                                                 outputWriter: OutputWriter) async throws
+    where OutputWriter: HTTPServerResponseWriterProtocol {
         let errorResult = SmokeOperationsErrorPayload(errorMessage: errorMessage)
         let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: logger,
                                                      reason: reason)
         
-        await responseWriter.setStatus(status)
-        await responseWriter.setContentType(MimeTypes.json)
-        try await responseWriter.commitAndCompleteWith(encodedError)
+        await outputWriter.setStatus(status)
+        await outputWriter.setContentType(MimeTypes.json)
+        try await outputWriter.commitAndCompleteWith(encodedError)
     }
 }

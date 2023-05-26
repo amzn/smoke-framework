@@ -24,6 +24,7 @@ import NIOHTTP1
 
 public protocol ErrorTransform {
     associatedtype Context
+    associatedtype OutputWriter: HTTPServerResponseWriterProtocol
 
-    func transform(_ input: Swift.Error, context: Context) async -> ()
+    func transform(_ input: Swift.Error, outputWriter: OutputWriter, context: Context) async -> ()
 }

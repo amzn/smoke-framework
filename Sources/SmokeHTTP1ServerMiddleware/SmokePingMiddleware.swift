@@ -26,26 +26,25 @@ internal struct PingParameters {
     static let contentType = "text/plain"
 }
 
-public struct SmokePingMiddleware<Context: ContextWithResponseWriter>: MiddlewareProtocol {
+public struct SmokePingMiddleware<Context, OutputWriter: HTTPServerResponseWriterProtocol>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = Void
     
     public init() {
         
     }
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         // this is the ping url
-        if input.uri == PingParameters.uri {
-            let responseWriter = context.responseWriter
-            
-            await responseWriter.setContentType(PingParameters.contentType)
-            try await responseWriter.commitAndCompleteWith(PingParameters.payload)
+        if input.uri == PingParameters.uri {            
+            await outputWriter.setContentType(PingParameters.contentType)
+            try await outputWriter.commitAndCompleteWith(PingParameters.payload)
             
             return
         }
         
-        return try await next(input, context)
+        try await next(input, outputWriter, context)
     }
 }

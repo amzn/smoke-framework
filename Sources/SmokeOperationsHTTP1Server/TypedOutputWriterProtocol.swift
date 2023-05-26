@@ -11,19 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  VoidRequestTransform.swift
+//  TypedOutputWriterProtocol.swift
 //  SmokeOperationsHTTP1Server
 //
 
-import SwiftMiddleware
 import SmokeAsyncHTTP1Server
 
-public struct VoidRequestTransform<Context>: TransformProtocol {
+public protocol TypedOutputWriterProtocol {
+    associatedtype OutputType
     
-    public init() {
-    }
-    
-    public func transform(_ input: HTTPServerRequest, context: Context) async throws -> () {
-        return
-    }
+    func write(_ new: OutputType) async throws
 }

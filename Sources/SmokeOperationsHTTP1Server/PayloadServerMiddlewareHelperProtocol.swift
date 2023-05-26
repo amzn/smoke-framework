@@ -11,12 +11,12 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// ContextWithResponseWriter.swift
-// SmokeAsyncHTTP1Middleware
+//  PayloadServerMiddlewareHelperProtocol.swift
+//  SmokeOperationsHTTP1Server
 //
 
-import SmokeAsyncHTTP1Server
+import SwiftMiddleware
 
-public protocol ContextWithResponseWriter {
-    var responseWriter: any HTTPServerResponseWriterProtocol { get }
+public protocol PayloadServerMiddlewareHelperProtocol {
+    func getTransformMiddlewareWithInputWithOutput<MiddlewareType: TransformingMiddlewareProtocol>() -> MiddlewareType
 }

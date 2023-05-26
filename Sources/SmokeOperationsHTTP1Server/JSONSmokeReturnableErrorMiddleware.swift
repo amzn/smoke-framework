@@ -24,7 +24,8 @@ import SmokeOperations
 import SmokeHTTP1ServerMiddleware
 
 public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByDescription,
-                                                 Context: ContextWithMutableLogger & ContextWithResponseWriter>: MiddlewareProtocol {
+                                                 Context: ContextWithMutableLogger,
+                                                 OutputWriter: HTTPServerResponseWriterProtocol>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
     public typealias Output = Void
     
@@ -34,11 +35,13 @@ public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByD
         self.allowedErrors = allowedErrors
     }
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         let operationFailure: OperationFailure
         do {
-            return try await next(input, context)
+            return try await next(input, outputWriter, context)
         } catch let error as SmokeReturnableError {
             if let theOperationFailure = fromSmokeReturnableError(error: error) {
                 operationFailure = theOperationFailure
@@ -53,10 +56,9 @@ public struct JSONSmokeReturnableErrorMiddleware<ErrorType: ErrorIdentifiableByD
         
         let encodedOutput = try operationFailure.error.encode(errorEncoder: JSONErrorEncoder(), logger: context.logger)
         
-        let responseWriter = context.responseWriter
-        await responseWriter.setStatus(HTTPResponseStatus(statusCode: operationFailure.code))
-        await responseWriter.setContentType(MimeTypes.json)
-        try await responseWriter.commitAndCompleteWith(encodedOutput)
+        await outputWriter.setStatus(HTTPResponseStatus(statusCode: operationFailure.code))
+        await outputWriter.setContentType(MimeTypes.json)
+        try await outputWriter.commitAndCompleteWith(encodedOutput)
     }
     
     /**

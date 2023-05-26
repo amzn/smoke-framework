@@ -44,7 +44,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle", from: "2.0.0-alpha.1"),
-        .package(url: "https://github.com/tachyonics/swift-middleware", branch: "static_poc_2"),
+        .package(url: "https://github.com/tachyonics/swift-middleware", branch: "poc_3"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0-beta"),
     ],
@@ -90,6 +90,7 @@ let package = Package(
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
+                .target(name: "SmokeOperationsHTTP1Server"),
             ]),
     ],
     swiftLanguageVersions: [.v5]

@@ -21,7 +21,7 @@ import SmokeOperationsHTTP1
 public protocol SmokeAsyncServerPerInvocationContextInitializer {
     associatedtype MiddlewareStackType: ServerMiddlewareStackProtocol
     
-    typealias MiddlewareContext = MiddlewareStackType.RouterType.OuterMiddlewareContext
+    typealias MiddlewareContext = MiddlewareStackType.RouterType.IncomingMiddlewareContext
     typealias OperationIdentifer = MiddlewareStackType.RouterType.OperationIdentifer
     typealias ContextType = MiddlewareStackType.ApplicationContextType
     

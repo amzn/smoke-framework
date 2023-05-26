@@ -95,8 +95,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tachyonics/swift-middleware",
       "state" : {
-        "branch" : "static_poc_2",
-        "revision" : "fef26beca52176d6b1523d2574584de4ae1cb3f5"
+        "branch" : "poc_3",
+        "revision" : "b99988ac110137f67cb4a0001984c5717f5f1b0f"
       }
     },
     {
