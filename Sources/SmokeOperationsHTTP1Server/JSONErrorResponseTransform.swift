@@ -22,7 +22,7 @@ import SmokeOperations
 import Logging
 import NIOHTTP1
 
-public struct JSONErrorResponseTransform<Context: ContextWithMutableLogger & ContextWithResponseWriter>: ErrorTransform {
+public struct JSONErrorResponseTransform<Context, OutputWriter: HTTPServerResponseWriterProtocol>: ErrorTransform {
     private let reason: String
     private let errorMessage: String?
     private let status: HTTPResponseStatus
@@ -35,17 +35,16 @@ public struct JSONErrorResponseTransform<Context: ContextWithMutableLogger & Con
         self.logger = Logger(label: "JSONErrorResponseTransform")
     }
     
-    public func transform(_ input: Error, context: Context) async {
+    public func transform(_ input: Error, outputWriter: OutputWriter, context: Context) async {
         let errorResult = SmokeOperationsErrorPayload(errorMessage: self.errorMessage)
-        let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: context.logger,
+        let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: self.logger,
                                                      reason: self.reason)
         
-        let responseWriter = context.responseWriter
-        await responseWriter.setStatus(self.status)
-        await responseWriter.setContentType(MimeTypes.json)
+        await outputWriter.setStatus(self.status)
+        await outputWriter.setContentType(MimeTypes.json)
         
         do {
-            try await responseWriter.commitAndCompleteWith(encodedError)
+            try await outputWriter.commitAndCompleteWith(encodedError)
         } catch {
             self.logger.error(
                 "Error caught while sending error: \(String(describing: error)). Body may not be completely sent.")

@@ -22,15 +22,22 @@ import SmokeAsyncHTTP1Server
 import SmokeHTTP1ServerMiddleware
 import SmokeOperationsHTTP1
 
-public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareContext, OperationIdentifer> {
-    associatedtype OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithResponseWriter
-    associatedtype InnerMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
-        & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId & ContextWithResponseWriter
+public protocol ServerRouterProtocol<IncomingMiddlewareContext, RouterMiddlewareContext, OutgoingMiddlewareContext,
+                                     OperationIdentifer, OutputWriter> {
+    // The context type that is passed to the router
+    associatedtype IncomingMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId
+    // The context type the router produces and passes to the Middleware stack
+    associatedtype RouterMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
+        & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId
+    // The context type that comes out of the middleware stack for each route
+    associatedtype OutgoingMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
+        & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId
     associatedtype OperationIdentifer: OperationIdentity
+    associatedtype OutputWriter: HTTPServerResponseWriterProtocol
     
     init()
 
-    func handle(_ input: HTTPServerRequest, context: OuterMiddlewareContext) async throws
+    func handle(_ input: HTTPServerRequest, outputWriter: OutputWriter, context: IncomingMiddlewareContext) async throws
     
     /**
      Adds a handler for the specified uri and http method.
@@ -43,32 +50,44 @@ public protocol ServerRouterProtocol<OuterMiddlewareContext, InnerMiddlewareCont
     mutating func addHandlerForOperation(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        handler: @escaping @Sendable (HTTPServerRequest, InnerMiddlewareContext) async throws -> ())
+        handler: @escaping @Sendable (HTTPServerRequest, OutputWriter, RouterMiddlewareContext) async throws -> ())
 }
 
 public extension ServerRouterProtocol {
-    mutating func addHandlerForOperation<ApplicationContext, MiddlewareType: TransformMiddlewareProtocol>(
+    mutating func addHandlerForOperation<ApplicationContext, MiddlewareType: TransformingMiddlewareProtocol>(
             _ operationIdentifer: OperationIdentifer,
             httpMethod: HTTPMethod,
             middlewareStack: MiddlewareType,
-            operation: @escaping @Sendable (MiddlewareType.TransformedInput, ApplicationContext) async throws -> MiddlewareType.OriginalOutput,
-            applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext)
-    where MiddlewareType.TransformedOutput == Void,
-          MiddlewareType.OriginalInput == HTTPServerRequest,
-          MiddlewareType.Context == InnerMiddlewareContext {
-        @Sendable func next(input: MiddlewareType.TransformedInput, middlewareContext: InnerMiddlewareContext) async throws
-        -> MiddlewareType.OriginalOutput {
+            operation: @escaping @Sendable (MiddlewareType.OutgoingInput, ApplicationContext) async throws -> MiddlewareType.OutgoingOutputWriter.OutputType,
+            applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext
+    )
+    where
+    // the middleware must have an output writer at the end that conforms to `TypedOutputWriterProtocol`
+    // the `OutputType` of this writer is the type returned by `operation`
+    MiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the middleware will always have an input type of `HTTPServerRequest`
+    MiddlewareType.IncomingInput == HTTPServerRequest,
+    // the context and output writer types going into the middleware must be the types used by the router
+    MiddlewareType.IncomingContext == RouterMiddlewareContext,
+    MiddlewareType.IncomingOutputWriter == OutputWriter,
+    // requirements for the context coming out of the middleware
+    MiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead
+    {
+        @Sendable func next(input: MiddlewareType.OutgoingInput, outputWriter: MiddlewareType.OutgoingOutputWriter,
+                            middlewareContext: MiddlewareType.OutgoingContext) async throws {
             let requestContext = HTTPServerRequestContext(logger: middlewareContext.logger,
                                                           requestId: middlewareContext.internalRequestId,
                                                           requestHead: middlewareContext.httpServerRequestHead,
                                                           operationIdentifer: operationIdentifer,
                                                           middlewareContext: middlewareContext)
             let applicationContext = applicationContextProvider(requestContext)
-            return try await operation(input, applicationContext)
+            let response = try await operation(input, applicationContext)
+            
+            try await outputWriter.write(response)
         }
         
-        @Sendable func handler(request: HTTPServerRequest, middlewareContext: InnerMiddlewareContext) async throws {
-            return try await middlewareStack.handle(request, context: middlewareContext, next: next)
+        @Sendable func handler(request: HTTPServerRequest, outputWriter: OutputWriter, middlewareContext: RouterMiddlewareContext) async throws {
+            return try await middlewareStack.handle(request, outputWriter: outputWriter, context: middlewareContext, next: next)
         }
         
         self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, handler: handler)

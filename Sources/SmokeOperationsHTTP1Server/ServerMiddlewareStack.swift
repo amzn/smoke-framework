@@ -22,8 +22,7 @@ import SmokeHTTP1ServerMiddleware
 import SmokeAsyncHTTP1Server
 import SmokeOperationsHTTP1
 
-public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContext>: ServerMiddlewareStackProtocol
-where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
+public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContext>: ServerMiddlewareStackProtocol {
     public typealias OperationIdentifer = RouterType.OperationIdentifer
     private var router: RouterType
     
@@ -66,28 +65,46 @@ where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext {
         }
     }
     
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                RequestTransformType: TransformProtocol, ResponseTransformType: TransformProtocol, ErrorType: ErrorIdentifiableByDescription>(
+    public mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                                TransformMiddlewareType: TransformingMiddlewareProtocol, ErrorType: ErrorIdentifiableByDescription>(
         _ operationIdentifer: OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
-        requestTransform: RequestTransformType, responseTransform: ResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    RequestTransformType.Input == HTTPServerRequest, RequestTransformType.Output == InnerMiddlewareType.Input,
-    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == Void,
-    ResponseTransformType.Context == RouterType.InnerMiddlewareContext, RequestTransformType.Context == RouterType.InnerMiddlewareContext {
-        let stack = MiddlewareTransformStack(requestTransform: requestTransform, responseTransform: responseTransform) {
-            if let outerMiddleware = outerMiddleware {
-                outerMiddleware
-            }
+        operation: @escaping @Sendable (InnerMiddlewareType.OutgoingInput, ApplicationContext) async throws
+        -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+        outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType,
+        transformMiddleware: TransformMiddlewareType)
+    where
+    // requirements for OuterMiddlewareType -> TransformMiddleware
+    TransformMiddlewareType.IncomingInput == OuterMiddlewareType.OutgoingInput,
+    TransformMiddlewareType.IncomingOutputWriter == OuterMiddlewareType.OutgoingOutputWriter,
+    TransformMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext,
+    // requirements for TransformMiddleware -> InnerMiddlewareType
+    InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
+    InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,
+    InnerMiddlewareType.IncomingContext == TransformMiddlewareType.OutgoingContext,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead
+    {
+        let stack = MiddlewareStack {
+            outerMiddleware
             
             // Add middleware to all routes within the router but outside the transformation (operates on Request and Response types)
-            JSONSmokeReturnableErrorMiddleware<ErrorType, RouterType.InnerMiddlewareContext>(allowedErrors: allowedErrors)
-        } inner: {
-            if let innerMiddleware = innerMiddleware {
-                innerMiddleware
-            }
+            JSONSmokeReturnableErrorMiddleware<ErrorType, OuterMiddlewareType.OutgoingContext,
+                                               OuterMiddlewareType.OutgoingOutputWriter>(allowedErrors: allowedErrors)
+            
+            transformMiddleware
+            
+            innerMiddleware
             
             // Add middleware to all routes within the transformation (operates on operation Input and Output types)
         }

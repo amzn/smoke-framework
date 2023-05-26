@@ -23,7 +23,7 @@ import SmokeOperationsHTTP1
 import SmokeHTTP1ServerMiddleware
 import Logging
 
-public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutableRequestId, ContextWithResponseWriter {
+public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutableRequestId {
     public let responseWriter: HTTPServerResponseWriterProtocol
     public var logger: Logging.Logger?
     public var internalRequestId: String?
@@ -41,7 +41,7 @@ public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutab
  Protocol that manages adding handlers for operations using a defined middleware stack.
  */
 public protocol ServerMiddlewareStackProtocol {
-    associatedtype RouterType: ServerRouterProtocol where RouterType.OuterMiddlewareContext == SmokeMiddlewareContext
+    associatedtype RouterType: ServerRouterProtocol
     associatedtype ApplicationContextType
     
     init(serverName: String,
@@ -61,20 +61,37 @@ public protocol ServerMiddlewareStackProtocol {
         - operation: the operation handler to add.
         - outerMiddleware: The middleware stack that is called prior to the transformation into the operation's input type
         - innerMiddleware: The middleware stack that is called after to the transformation into the operation's input type
-        - requestTransform: The transformation operation to transform the request into the operation's input type.
-        - responseTransform: The transformation operation to transform the operation's output type into the response.
+        - transformMiddleware: The middleware to transform the request and response into the operation's input and output types.
      */
-    mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                RequestTransformType: TransformProtocol, ResponseTransformType: TransformProtocol, ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?,
-        requestTransform: RequestTransformType, responseTransform: ResponseTransformType)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    RequestTransformType.Input == HTTPServerRequest, RequestTransformType.Output == InnerMiddlewareType.Input,
-    ResponseTransformType.Input == InnerMiddlewareType.Output, ResponseTransformType.Output == Void,
-    ResponseTransformType.Context == RouterType.InnerMiddlewareContext, RequestTransformType.Context == RouterType.InnerMiddlewareContext
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                         TransformMiddlewareType: TransformingMiddlewareProtocol, ErrorType: ErrorIdentifiableByDescription>(
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          operation: @escaping @Sendable (InnerMiddlewareType.OutgoingInput, ApplicationContextType) async throws
+          -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType,
+          transformMiddleware: TransformMiddlewareType)
+    where
+    // requirements for OuterMiddlewareType -> TransformMiddleware
+    TransformMiddlewareType.IncomingInput == OuterMiddlewareType.OutgoingInput,
+    TransformMiddlewareType.IncomingOutputWriter == OuterMiddlewareType.OutgoingOutputWriter,
+    TransformMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext,
+    // requirements for TransformMiddleware -> InnerMiddlewareType
+    InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
+    InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,
+    InnerMiddlewareType.IncomingContext == TransformMiddlewareType.OutgoingContext,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    // requirements for the transform context
+    TransformMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext
     
     /**
      Adds a handler for the specified uri and http method using this middleware stack.
@@ -89,198 +106,232 @@ public protocol ServerMiddlewareStackProtocol {
         - outerMiddleware: The middleware stack that is called prior to the transformation into the operation's input type
         - innerMiddleware: The middleware stack that is called after to the transformation into the operation's input type
      */
-    mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void
-    
-    /**
-     Adds a handler for the specified uri and http method using this middleware stack.
-     The operation has no input or output.
- 
-     - Parameters:
-        - operationIdentifer: The identifer for the handler being added.
-        - httpMethod: The HTTP method this handler will respond to.
-        - allowedErrors: The errors that have been identified as being returned by the operation
-        - statusOnSuccess: The response code to send on a successful operation.
-        - operationProvider: when given a `ContextType` instance will provide the handler method for the operation.
-        - outerMiddleware: The middleware stack that is called prior to the transformation into the operation's input type
-        - innerMiddleware: The middleware stack that is called after to the transformation into the operation's input type
-     */
-    mutating func addHandlerForOperationProvider<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                 ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.Output),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the inner middleware cannot change the input type or the output type of the writer
+    InnerMiddlewareType.IncomingInput == Void, InnerMiddlewareType.IncomingOutputWriter.OutputType == Void,
+    InnerMiddlewareType.OutgoingInput == Void, InnerMiddlewareType.OutgoingOutputWriter.OutputType == Void,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext,
+    // the transform will wrap the writer in a `VoidResponseWriter`
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>
 }
 
 public extension ServerMiddlewareStackProtocol {
     /**
      Default implementation
      */
-    mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
-        let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
-        let responseTransform: VoidResponseTransform<RouterType.InnerMiddlewareContext> =
-            .init(statusOnSuccess: statusOnSuccess)
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the inner middleware cannot change the input type or the output type of the writer
+    InnerMiddlewareType.IncomingInput == Void, InnerMiddlewareType.IncomingOutputWriter.OutputType == Void,
+    InnerMiddlewareType.OutgoingInput == Void, InnerMiddlewareType.OutgoingOutputWriter.OutputType == Void,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext,
+    // the transform will wrap the writer in a `VoidResponseWriter`
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter> {
+        let transformMiddleware = VoidRequestTransformMiddleware<OuterMiddlewareType.OutgoingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingContext> { wrappedWriter in
+            VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
+        }
         
-        @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
+        @Sendable func innerOperation(_ input: InnerMiddlewareType.OutgoingInput, context: ApplicationContextType) async throws
+        -> InnerMiddlewareType.OutgoingOutputWriter.OutputType {
             return try await operation(context)
         }
         
         self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
                                     operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                    requestTransform: requestTransform, responseTransform: responseTransform)
-    }
-    
-    /**
-     Default implementation
-     */
-    mutating func addHandlerForOperationProvider<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                 ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.Output),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext, OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
-        let requestTransform: VoidRequestTransform<RouterType.InnerMiddlewareContext> = .init()
-        let responseTransform: VoidResponseTransform<RouterType.InnerMiddlewareContext> =
-            .init(statusOnSuccess: statusOnSuccess)
-        
-        @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
-            let operation = operationProvider(context)
-            return try await operation()
-        }
-        
-        self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                    operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                    requestTransform: requestTransform, responseTransform: responseTransform)
+                                    transformMiddleware: transformMiddleware)
     }
 }
 
 public extension ServerMiddlewareStackProtocol {
     // -- Inner and no Outer Middleware
-    mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        innerMiddleware: InnerMiddlewareType?)
-    where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          innerMiddleware: InnerMiddlewareType)
+    where
+    // the inner middleware cannot change the input type or the output type of the writer
+    InnerMiddlewareType.IncomingInput == Void, InnerMiddlewareType.IncomingOutputWriter.OutputType == Void,
+    InnerMiddlewareType.OutgoingInput == Void, InnerMiddlewareType.OutgoingOutputWriter.OutputType == Void,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == RouterType.RouterMiddlewareContext,
+    // the transform will wrap the writer in a `VoidResponseWriter`
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<RouterType.OutputWriter> {
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, RouterType.OutputWriter, RouterType.RouterMiddlewareContext> = .init()
         
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                           statusOnSuccess: statusOnSuccess, operation: operation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
     
     // -- No Inner and with Outer Middleware
-    mutating func addHandlerForOperation<OuterMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<OuterMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext {
-        let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
+          outerMiddleware: OuterMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead {
+        let innerMiddleware: EmptyMiddleware<Void, VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>, OuterMiddlewareType.OutgoingContext> = .init()
         
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod,
+                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, operation: operation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
     
     // -- No Inner and no Outer Middleware
     mutating func addHandlerForOperation<ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus)
-    {
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
-        let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operation: @escaping @Sendable (ApplicationContextType) async throws -> ()) {
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, RouterType.OutputWriter, RouterType.RouterMiddlewareContext> = .init()
+        let innerMiddleware: EmptyMiddleware<Void, VoidResponseWriter<RouterType.OutputWriter>, RouterType.RouterMiddlewareContext> = .init()
         
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                           statusOnSuccess: statusOnSuccess, operation: operation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
     
     // -- Inner and no Outer Middleware
-    mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ()),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        innerMiddleware: InnerMiddlewareType?)
-    where InnerMiddlewareType.Context == RouterType.InnerMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.Output == Void {
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.OutgoingOutputWriter.OutputType),
+          innerMiddleware: InnerMiddlewareType)
+    where
+    // the inner middleware cannot change the input type or the output type of the writer
+    InnerMiddlewareType.IncomingInput == Void, InnerMiddlewareType.IncomingOutputWriter.OutputType == Void,
+    InnerMiddlewareType.OutgoingInput == Void, InnerMiddlewareType.OutgoingOutputWriter.OutputType == Void,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == RouterType.RouterMiddlewareContext,
+    // the transform will wrap the writer in a `VoidResponseWriter`
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<RouterType.OutputWriter> {
         @Sendable func innerOperation(context: ApplicationContextType) async throws {
             let operation = operationProvider(context)
             return try await operation()
         }
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, RouterType.OutputWriter, RouterType.RouterMiddlewareContext> = .init()
         
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                           statusOnSuccess: statusOnSuccess, operation: innerOperation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
     
     // -- No Inner and with Outer Middleware
-    mutating func addHandlerForOperation<OuterMiddlewareType: MiddlewareProtocol,
+    mutating func addHandlerForOperation<OuterMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ()),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
-        outerMiddleware: OuterMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.Output == Void,
-    OuterMiddlewareType.Context == RouterType.InnerMiddlewareContext {
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ()),
+          outerMiddleware: OuterMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead {
         @Sendable func innerOperation(context: ApplicationContextType) async throws {
             let operation = operationProvider(context)
             return try await operation()
         }
         
-        let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
+        let innerMiddleware: EmptyMiddleware<Void, VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>, OuterMiddlewareType.OutgoingContext> = .init()
         
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod,
+                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess, operation: innerOperation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
     
     // -- No Inner and no Outer Middleware
     mutating func addHandlerForOperation<ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ()),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus)
-    {
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod, allowedErrors: [(ErrorType, Int)],
+          statusOnSuccess: HTTPResponseStatus,
+          operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> ())) {
         @Sendable func innerOperation(context: ApplicationContextType) async throws {
             let operation = operationProvider(context)
             return try await operation()
         }
+              
+        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, RouterType.OutputWriter, RouterType.RouterMiddlewareContext> = .init()
+        let innerMiddleware: EmptyMiddleware<Void, VoidResponseWriter<RouterType.OutputWriter>, RouterType.RouterMiddlewareContext> = .init()
         
-        let outerMiddleware: EmptyMiddleware<HTTPServerRequest, Void, RouterType.InnerMiddlewareContext>? = nil
-        let innerMiddleware: EmptyMiddleware<Void, Void, RouterType.InnerMiddlewareContext>? = nil
-        
-        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
-                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
+                                           statusOnSuccess: statusOnSuccess, operation: innerOperation,
                                            outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
     }
 }

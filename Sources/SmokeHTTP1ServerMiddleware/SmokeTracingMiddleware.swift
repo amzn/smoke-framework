@@ -22,7 +22,7 @@ import Logging
 import Tracing
 import NIOHTTP1
 
-public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId & ContextWithResponseWriter>: MiddlewareProtocol {
+public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId, OutputWriter: HTTPServerResponseWriterProtocol>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
     public typealias Output = Void
     
@@ -32,8 +32,10 @@ public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId & Cont
         self.serverName = serverName
     }
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         var baggage = Baggage.current ?? .topLevel
         InstrumentationSystem.instrument.extract(input.headers, into: &baggage, using: HTTPHeadersExtractor())
         
@@ -54,13 +56,12 @@ public struct SmokeTracingMiddleware<Context: ContextWithMutableRequestId & Cont
 
         return try await Baggage.withValue(span.baggage) {
             do {
-                try await next(input, context)
-                let responseWriter = context.responseWriter
+                try await next(input, outputWriter, context)
 
-                let statusCode = await responseWriter.getStatus().code
+                let statusCode = await outputWriter.getStatus().code
                 attributes["http.status_code"] = Int(statusCode)
                 
-                if case .known(let bodySize) = await responseWriter.getBodyLength() {
+                if case .known(let bodySize) = await outputWriter.getBodyLength() {
                     attributes["http.response_content_length"] = bodySize
                 }
                 span.attributes = attributes

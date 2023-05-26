@@ -26,15 +26,11 @@ import Logging
 
 private let incomingOperationKey = "incomingOperation"
 
-public typealias BasicSmokeServerRouter<OperationIdentifer: OperationIdentity> = BasicServerRouter<SmokeMiddlewareContext, OperationIdentifer>
-
 public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationIdentity>: ContextWithPathShape &
                                                                                          ContextWithMutableLogger &
                                                                                          ContextWithHTTPServerRequestHead &
                                                                                          ContextWithMutableRequestId &
-                                                                                         ContextWithOperationIdentifer &
-                                                                                         ContextWithResponseWriter {
-    public let responseWriter: HTTPServerResponseWriterProtocol
+                                                                                         ContextWithOperationIdentifer {
     public let operationIdentifer: OperationIdentifer
     public let pathShape: ShapeCoding.Shape
     public var logger: Logging.Logger?
@@ -42,10 +38,17 @@ public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationId
     public var internalRequestId: String?
 }
 
-public struct BasicServerRouter<OuterMiddlewareContext, OperationIdentifer: OperationIdentity>:  ServerRouterProtocol
-where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithResponseWriter {
+public struct BasicServerRouter<IncomingMiddlewareContext, OutgoingMiddlewareContext,
+                                OperationIdentifer, IncomingOutputWriter, OutgoingOutputWriter>: ServerRouterProtocol
+where IncomingMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId,
+OperationIdentifer: OperationIdentity, IncomingOutputWriter: HTTPServerResponseWriterProtocol,
+OutgoingOutputWriter: TypedOutputWriterProtocol,
+IncomingMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId,
+OutgoingMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
+    & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId{
+
     private typealias OperationHandlerType =
-        @Sendable (HTTPServerRequest, BasicServerRouterMiddlewareContext<OperationIdentifer>) async throws -> ()
+        @Sendable (HTTPServerRequest, IncomingOutputWriter, BasicServerRouterMiddlewareContext<OperationIdentifer>) async throws -> ()
     
     private struct BasicEntry {
         let handler: OperationHandlerType
@@ -67,7 +70,7 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
         
     }
 
-    public func handle(_ input: HTTPServerRequest, context: OuterMiddlewareContext) async throws {
+    public func handle(_ input: HTTPServerRequest, outputWriter: IncomingOutputWriter, context: IncomingMiddlewareContext) async throws {
         let lowerCasedUri = input.uri.lowercased()
         
         guard let entry = self.basicEntryMapping[lowerCasedUri]?[input.method] else {
@@ -78,14 +81,13 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
             }
             
             let decoratedLogger = context.logger?.decorateWithOperationIdentifer(operationIdentifer: tokenizedEntry.operationIdentifer)
-            let middlewareContext = BasicServerRouterMiddlewareContext(responseWriter: context.responseWriter,
-                                                                       operationIdentifer: tokenizedEntry.operationIdentifer,
+            let middlewareContext = BasicServerRouterMiddlewareContext(operationIdentifer: tokenizedEntry.operationIdentifer,
                                                                        pathShape: shape,
                                                                        logger: decoratedLogger,
                                                                        httpServerRequestHead: input.asHead(),
                                                                        internalRequestId: context.internalRequestId)
             
-            return try await tokenizedEntry.handler(input, middlewareContext)
+            return try await tokenizedEntry.handler(input, outputWriter, middlewareContext)
         }
         
         context.logger?.trace("Operation handler selected.",
@@ -94,14 +96,13 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
                                          "method": "\(input.method)"])
         
         let decoratedLogger = context.logger?.decorateWithOperationIdentifer(operationIdentifer: entry.operationIdentifer)
-        let middlewareContext = BasicServerRouterMiddlewareContext(responseWriter: context.responseWriter,
-                                                                   operationIdentifer: entry.operationIdentifer,
+        let middlewareContext = BasicServerRouterMiddlewareContext(operationIdentifer: entry.operationIdentifer,
                                                                    pathShape: .null,
                                                                    logger: decoratedLogger,
                                                                    httpServerRequestHead: input.asHead(),
                                                                    internalRequestId: context.internalRequestId)
         
-        return try await entry.handler(input, middlewareContext)
+        return try await entry.handler(input, outputWriter, middlewareContext)
     }
     
     /**
@@ -115,7 +116,7 @@ where OuterMiddlewareContext: ContextWithMutableLogger & ContextWithMutableReque
     public mutating func addHandlerForOperation(
         _ operationIdentifer: OperationIdentifer,
         httpMethod: HTTPMethod,
-        handler: @escaping @Sendable (HTTPServerRequest, BasicServerRouterMiddlewareContext<OperationIdentifer>) async throws -> ())
+        handler: @escaping @Sendable (HTTPServerRequest, IncomingOutputWriter, BasicServerRouterMiddlewareContext<OperationIdentifer>) async throws -> ())
     {
         let uri = operationIdentifer.operationPath
         

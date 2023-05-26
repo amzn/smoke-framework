@@ -20,16 +20,17 @@ import SmokeAsyncHTTP1Server
 import SwiftMiddleware
 import Logging
 
-public struct SmokeLoggerMiddleware<Context: ContextWithMutableLogger & ContextWithMutableRequestId>: MiddlewareProtocol {
+public struct SmokeLoggerMiddleware<Context: ContextWithMutableLogger & ContextWithMutableRequestId, OutputWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = Void
     
     public init() {
         
     }
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         var newLogger = Logger(label: "com.amazon.SmokeFramework.request")
         
         if let internalRequestId = context.internalRequestId {
@@ -39,6 +40,6 @@ public struct SmokeLoggerMiddleware<Context: ContextWithMutableLogger & ContextW
         var updatedContext = context
         updatedContext.logger = newLogger
         
-        return try await next(input, updatedContext)
+        try await next(input, outputWriter, updatedContext)
     }
 }

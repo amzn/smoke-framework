@@ -11,24 +11,27 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  VoidResponseTransform.swift
+//  VoidResponseWriter.swift
 //  SmokeOperationsHTTP1Server
 //
 
-import SwiftMiddleware
-import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
 import NIOHTTP1
+import SmokeAsyncHTTP1Server
 
-public struct VoidResponseTransform<Context: ContextWithResponseWriter>: TransformProtocol {
-    private let statusOnSuccess: HTTPResponseStatus
+public struct VoidResponseWriter<WrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
     
-    public init(statusOnSuccess: HTTPResponseStatus) {
-        self.statusOnSuccess = statusOnSuccess
+    private let status: HTTPResponseStatus
+    private let wrappedWriter: WrappedWriter
+    
+    public init(status: HTTPResponseStatus,
+                wrappedWriter: WrappedWriter) {
+        self.status = status
+        self.wrappedWriter = wrappedWriter
     }
     
-    public func transform(_ input: Void, context: Context) async throws -> Void {
-        await context.responseWriter.setStatus(self.statusOnSuccess)
-        try await context.responseWriter.commitAndComplete()
+    public func write(_ new: Void) async throws {
+        await wrappedWriter.setStatus(self.status)
+        try await wrappedWriter.commit()
+        try await wrappedWriter.complete()
     }
 }

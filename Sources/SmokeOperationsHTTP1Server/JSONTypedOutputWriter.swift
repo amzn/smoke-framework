@@ -11,36 +11,35 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  JSONResponseTransform.swift
+//  JSONTypedOutputWriter.swift
 //  SmokeOperationsHTTP1Server
 //
 
 import Foundation
-import SwiftMiddleware
-import SmokeHTTP1ServerMiddleware
-import SmokeAsyncHTTP1Server
-import HTTPHeadersCoding
 import NIOHTTP1
 import SmokeOperationsHTTP1
+import SmokeAsyncHTTP1Server
+import HTTPHeadersCoding
 
-private let maxBodySize = 1024 * 1024 // 1 MB
-
-public struct JSONResponseTransform<InputType: OperationHTTP1OutputProtocol,
-                                        Context: ContextWithMutableLogger & ContextWithResponseWriter>: TransformProtocol {
-    private let status: HTTPResponseStatus
+public struct JSONTypedOutputWriter<OutputType: OperationHTTP1OutputProtocol,
+                                      WrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
     
-    public init(status: HTTPResponseStatus) {
+    private let status: HTTPResponseStatus
+    private let wrappedWriter: WrappedWriter
+    
+    public init(status: HTTPResponseStatus,
+                wrappedWriter: WrappedWriter) {
         self.status = status
+        self.wrappedWriter = wrappedWriter
     }
     
-    public func transform(_ input: InputType, context: Context) async throws {
-        let responseWriter = context.responseWriter
-        await responseWriter.setStatus(self.status)
+    public func write(_ new: OutputType) async throws {
+        await wrappedWriter.setStatus(self.status)
         
-        if let additionalHeadersEncodable = input.additionalHeadersEncodable {
+        if let additionalHeadersEncodable = new.additionalHeadersEncodable {
             let headers = try HTTPHeadersEncoder().encode(additionalHeadersEncodable)
             
-            await responseWriter.updateHeaders { responseHeaders in
+            await wrappedWriter.updateHeaders { responseHeaders in
                 headers.forEach { header in
                     guard let value = header.1 else {
                         return
@@ -51,11 +50,16 @@ public struct JSONResponseTransform<InputType: OperationHTTP1OutputProtocol,
             }
         }
         
-        if let bodyEncodable = input.bodyEncodable {
+        if let bodyEncodable = new.bodyEncodable {
             let encodedOutput = try JSONEncoder.getFrameworkEncoder().encode(bodyEncodable)
             
-            await responseWriter.setContentType(MimeTypes.json)
-            try await responseWriter.commitAndCompleteWith(encodedOutput)
+            await wrappedWriter.setContentType(MimeTypes.json)
+            try await wrappedWriter.commit()
+            try await wrappedWriter.bodyPart(encodedOutput)
+        } else {
+            try await wrappedWriter.commit()
         }
+        
+        try await wrappedWriter.complete()
     }
 }

@@ -20,19 +20,20 @@ import SmokeAsyncHTTP1Server
 import SwiftMiddleware
 import Logging
 
-public struct SmokeRequestIdMiddleware<Context: ContextWithMutableRequestId>: MiddlewareProtocol {
+public struct SmokeRequestIdMiddleware<Context: ContextWithMutableRequestId, OutputWriter>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
-    public typealias Output = Void
     
     public init() {
         
     }
     
-    public func handle(_ input: HTTPServerRequest, context: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         var updatedContext = context
         updatedContext.internalRequestId = UUID().uuidString
         
-        return try await next(input, updatedContext)
+        try await next(input, outputWriter, updatedContext)
     }
 }
