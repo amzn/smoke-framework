@@ -23,36 +23,39 @@ import NIOHTTP1
 import SmokeOperations
 import SmokeHTTP1ServerMiddleware
 
-public struct JSONDecodingErrorMiddleware<Context: ContextWithMutableLogger & ContextWithResponseWriter>: MiddlewareProtocol {
+public struct JSONDecodingErrorMiddleware<Context: ContextWithMutableLogger,
+                                            OutputWriter: HTTPServerResponseWriterProtocol>: MiddlewareProtocol {
     public typealias Input = HTTPServerRequest
     public typealias Output = Void
     
-    public func handle(_ input: HTTPServerRequest, context middlewareContext: Context,
-                       next: (HTTPServerRequest, Context) async throws -> ()) async throws {
+    public func handle(_ input: Input,
+                       outputWriter: OutputWriter,
+                       context middlewareContext: Context,
+                       next: (Input, OutputWriter, Context) async throws -> Void) async throws {
         do {
-            return try await next(input, middlewareContext)
+            return try await next(input, outputWriter, middlewareContext)
         } catch DecodingError.keyNotFound(let codingKey, let context) {
             let codingPath = context.codingPath + [codingKey]
             let description = "Key not found \(codingPath.pathDescription)."
             try await JSONFormat.writeErrorResponse(reason: "DecodingError", errorMessage: description,
                                                     status: .badRequest, logger: middlewareContext.logger,
-                                                    responseWriter: middlewareContext.responseWriter)
+                                                    outputWriter: outputWriter)
         } catch DecodingError.valueNotFound(_, let context) {
             let description = "Required value not found \(context.codingPath.pathDescription)."
             try await JSONFormat.writeErrorResponse(reason: "DecodingError", errorMessage: description,
                                                     status: .badRequest, logger: middlewareContext.logger,
-                                                    responseWriter: middlewareContext.responseWriter)
+                                                    outputWriter: outputWriter)
         } catch DecodingError.typeMismatch(let expectedType, let context) {
             // Special case for a dictionary, return as "Structure"
             let expectedTypeString = (expectedType == [String: Any].self) ? "Structure" : String(describing: expectedType)
             let description = "Incorrect type \(context.codingPath.pathDescription). Expected \(expectedTypeString)."
             try await JSONFormat.writeErrorResponse(reason: "DecodingError", errorMessage: description,
                                                     status: .badRequest, logger: middlewareContext.logger,
-                                                    responseWriter: middlewareContext.responseWriter)
+                                                    outputWriter: outputWriter)
         } catch DecodingError.dataCorrupted(let context) {
             try await JSONFormat.writeErrorResponse(reason: "DecodingError", errorMessage: context.dataCorruptionPathDescription,
                                                     status: .badRequest, logger: middlewareContext.logger,
-                                                    responseWriter: middlewareContext.responseWriter)
+                                                    outputWriter: outputWriter)
         }
     }
 }

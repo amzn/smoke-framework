@@ -22,7 +22,7 @@ import SmokeAsyncHTTP1Server
 import HTTPHeadersCoding
 
 public struct JSONTypedOutputWriter<OutputType: OperationHTTP1OutputProtocol,
-                                      WrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
+                                    WrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
     
     private let status: HTTPResponseStatus
     private let wrappedWriter: WrappedWriter

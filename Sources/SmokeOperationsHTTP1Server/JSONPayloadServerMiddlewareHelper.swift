@@ -20,9 +20,9 @@ import NIOHTTP1
 import SmokeAsyncHTTP1Server
 import SmokeOperations
 import SmokeOperationsHTTP1
+import SmokeHTTP1ServerMiddleware
 
-public struct JSONPayloadServerMiddlewareHelper<MiddlewareStackType: ServerMiddlewareStackProtocol>:
-FormattedPayloadServerMiddlewareHelperProtocol {
+public struct JSONPayloadServerMiddlewareHelper<MiddlewareStackType: ServerMiddlewareStackProtocol> {
     public typealias RouterType = MiddlewareStackType.RouterType
     public typealias ApplicationContextType = MiddlewareStackType.ApplicationContextType
         
@@ -33,85 +33,134 @@ FormattedPayloadServerMiddlewareHelperProtocol {
     /**
      Input. Output.
      */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, InnerMiddlewareType.OutputWriter, ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.OutputWriter: HTTPServerResponseWriterProtocol,
-    InnerMiddlewareType.Context == RouterType.IncomingMiddlewareContext, OuterMiddlewareType.Context == RouterType.IncomingMiddlewareContext,
-    InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.OutputWriter: TypedOutputWriterProtocol,
-    InnerMiddlewareType.OutputWriter.OutputType: OperationHTTP1OutputProtocol {
-        let transformerMiddleware = JSONRequestTransformMiddleware<OuterMiddlewareType.OutputWriter,
-                                                                   InnerMiddlewareType.Input,
-                                                                   InnerMiddlewareType.OutputWriter,
-                                                                   RouterType.RouterMiddlewareContext> { wrappedWriter in
-            JSONTypedOutputWriter<InnerMiddlewareType.OutputWriter.OutputType, OuterMiddlewareType.OutputWriter>(
-                status: statusOnSuccess, wrappedWriter: wrappedWriter)
+    mutating func addHandlerForOperation<ResponseTransformOutputType: OperationHTTP1OutputProtocol,
+                                         InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                         ErrorType: ErrorIdentifiableByDescription>(
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
+          operation: @escaping @Sendable (InnerMiddlewareType.OutgoingInput, ApplicationContextType) async throws
+          -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.IncomingOutputWriter == JSONTypedOutputWriter<ResponseTransformOutputType, OuterMiddlewareType.OutgoingOutputWriter>,
+    // the inner middleware must produce a `TypedOutputWriterProtocol` output writer
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the inner middleware incoming input and output types must be serializable
+    InnerMiddlewareType.IncomingOutputWriter.OutputType: OperationHTTP1OutputProtocol,
+    InnerMiddlewareType.IncomingInput: OperationHTTP1InputProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead & ContextWithPathShape,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext {
+        let transformMiddleware = JSONRequestTransformMiddleware<OuterMiddlewareType.OutgoingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingInput,
+                                                                 InnerMiddlewareType.IncomingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingContext> { wrappedWriter in
+            JSONTypedOutputWriter<ResponseTransformOutputType,
+                                  OuterMiddlewareType.OutgoingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
         }
         
-        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                               operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                               requestTransform: requestTransform, responseTransform: responseTransform)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
+                                    allowedErrors: allowedErrors, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                    transformMiddleware: transformMiddleware)
     }
     
     /**
      Input. No Output.
      */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (InnerMiddlewareType.Input, ApplicationContextType) async throws -> (),
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.OutputWriter: HTTPServerResponseWriterProtocol,
-    InnerMiddlewareType.Context == RouterType.IncomingMiddlewareContext, OuterMiddlewareType.Context == RouterType.IncomingMiddlewareContext,
-    InnerMiddlewareType.Input: OperationHTTP1InputProtocol, InnerMiddlewareType.OutputWriter: TypedOutputWriterProtocol,
-    InnerMiddlewareType.OutputWriter.OutputType == Void {
-        let requestTransform: JSONRequestTransform<InnerMiddlewareType.Input, RouterType.IncomingMiddlewareContext> =
-            getStandardRequestTransform()
-        let responseTransform: VoidResponseTransform<RouterType.IncomingMiddlewareContext> =
-            .init(statusOnSuccess: statusOnSuccess)
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                         ErrorType: ErrorIdentifiableByDescription>(
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
+          operation: @escaping @Sendable (InnerMiddlewareType.OutgoingInput, ApplicationContextType) async throws
+          -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>,
+    // the inner middleware must produce a `TypedOutputWriterProtocol` output writer
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the inner middleware incoming input and output types must be serializable
+    InnerMiddlewareType.IncomingInput: OperationHTTP1InputProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead & ContextWithPathShape,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext {
+        let transformMiddleware = JSONRequestTransformMiddleware<OuterMiddlewareType.OutgoingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingInput,
+                                                                 InnerMiddlewareType.IncomingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingContext> { wrappedWriter in
+            VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
+        }
         
-        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                               operation: operation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                               requestTransform: requestTransform, responseTransform: responseTransform)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
+                                    allowedErrors: allowedErrors, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                    transformMiddleware: transformMiddleware)
     }
     
     /**
      No Input. Output.
      */
-    public mutating func addHandlerForOperation<InnerMiddlewareType: MiddlewareProtocol, OuterMiddlewareType: MiddlewareProtocol,
-                                                ErrorType: ErrorIdentifiableByDescription>(
-        _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
-        operation: @escaping @Sendable (ApplicationContextType) async throws -> InnerMiddlewareType.Output,
-        allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
-        outerMiddleware: OuterMiddlewareType?, innerMiddleware: InnerMiddlewareType?)
-    where OuterMiddlewareType.Input == HTTPServerRequest, OuterMiddlewareType.OutputWriter: HTTPServerResponseWriterProtocol,
-    InnerMiddlewareType.Context == RouterType.IncomingMiddlewareContext, OuterMiddlewareType.Context == RouterType.IncomingMiddlewareContext,
-    InnerMiddlewareType.Input == Void, InnerMiddlewareType.OutputWriter: TypedOutputWriterProtocol,
-        InnerMiddlewareType.OutputWriter.OutputType: OperationHTTP1OutputProtocol {
-        let requestTransform: VoidRequestTransform<RouterType.IncomingMiddlewareContext> = .init()
-        let responseTransform: JSONResponseTransform<InnerMiddlewareType.Output, RouterType.IncomingMiddlewareContext> =
-            getStandardResponseTransform(statusOnSuccess: statusOnSuccess)
-        
-        @Sendable func innerOperation(input: InnerMiddlewareType.Input, context: ApplicationContextType) async throws -> InnerMiddlewareType.Output {
-            return try await operation(context)
+    mutating func addHandlerForOperation<ResponseTransformOutputType: OperationHTTP1OutputProtocol,
+                                         InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                         ErrorType: ErrorIdentifiableByDescription>(
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
+          operation: @escaping @Sendable (InnerMiddlewareType.OutgoingInput, ApplicationContextType) async throws
+          -> InnerMiddlewareType.OutgoingOutputWriter.OutputType,
+          allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus, toStack middlewareStack: inout MiddlewareStackType,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.IncomingOutputWriter == JSONTypedOutputWriter<ResponseTransformOutputType, OuterMiddlewareType.OutgoingOutputWriter>,
+    // the inner middleware must produce a `TypedOutputWriterProtocol` output writer
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // the inner middleware incoming input and output types must be serializable
+    InnerMiddlewareType.IncomingOutputWriter.OutputType: OperationHTTP1OutputProtocol,
+    InnerMiddlewareType.IncomingInput == Void,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead & ContextWithPathShape,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext {
+        let transformMiddleware = VoidRequestTransformMiddleware<OuterMiddlewareType.OutgoingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingOutputWriter,
+                                                                 InnerMiddlewareType.IncomingContext> { wrappedWriter in
+            JSONTypedOutputWriter<ResponseTransformOutputType,
+                                  OuterMiddlewareType.OutgoingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
         }
         
-        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, allowedErrors: allowedErrors,
-                                               operation: innerOperation, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
-                                               requestTransform: requestTransform, responseTransform: responseTransform)
-    }
-    
-    private func getStandardRequestTransform<OutputType: OperationHTTP1InputProtocol>()
-    -> JSONRequestTransform<OutputType, RouterType.IncomingMiddlewareContext> {
-        return JSONRequestTransform()
-    }
-    
-    private func getStandardResponseTransform<InputType: OperationHTTP1OutputProtocol>(statusOnSuccess: HTTPResponseStatus)
-    -> JSONResponseTransform<InputType, RouterType.IncomingMiddlewareContext> {
-        return JSONResponseTransform(status: statusOnSuccess)
+        middlewareStack.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: operation,
+                                    allowedErrors: allowedErrors, outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                    transformMiddleware: transformMiddleware)
     }
 }
