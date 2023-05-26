@@ -26,6 +26,13 @@ import SwiftMiddleware
 import ShapeCoding
 import Logging
 
+enum TestValues {
+    static let id = "theIDValue"
+    static let header = "theHeaderValue"
+    static let parameter = "theParameterValue"
+    static let token = "theTokenValue"
+}
+
 enum TestOperations: String, OperationIdentity {
     case exampleOperation
     case exampleOperationWithToken
@@ -260,7 +267,16 @@ struct TestVoidResponseWriter<WrappedWrappedWriter: HTTPServerResponseWriterProt
     }
 }
 
-private extension Sequence where Element == UInt8 {
+struct TestJSONResponseWriter<OutputType: OperationHTTP1OutputProtocol,
+                              WrappedWrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
+    let wrapped: JSONTypedOutputWriter<OutputType, WrappedWrappedWriter>
+    
+    func write(_ new: OutputType) async throws {
+        try await self.wrapped.write(new)
+    }
+}
+
+extension Sequence where Element == UInt8 {
     func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
         if let buffer = self.withContiguousStorageIfAvailable({ allocator.buffer(bytes: $0) }) {
             // fastpath
@@ -271,7 +287,7 @@ private extension Sequence where Element == UInt8 {
     }
 }
 
-private extension RandomAccessCollection where Element == UInt8 {
+extension RandomAccessCollection where Element == UInt8 {
     func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
         if let buffer = self.withContiguousStorageIfAvailable({ allocator.buffer(bytes: $0) }) {
             // fastpath
@@ -315,6 +331,36 @@ struct TestVoidTransformingInnerMiddleware: TransformingMiddlewareProtocol {
                 outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter2>,
                 context: TestMiddlewareContext,
                 next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext2 = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(input, .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestTransformingInnerMiddleware<Input,
+                                       Output: OperationHTTP1OutputProtocol>: TransformingMiddlewareProtocol {
+    func handle(_ input: Input,
+                outputWriter: JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext,
+                next: (Input, TestJSONResponseWriter<Output, TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext2 = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(input, .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestTransformingNoOuterMiddlewareInnerMiddleware<Input,
+                                       Output: OperationHTTP1OutputProtocol>: TransformingMiddlewareProtocol {
+    func handle(_ input: Input,
+                outputWriter: JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (Input, TestJSONResponseWriter<Output, TestHTTPServerResponseWriter>, TestMiddlewareContext2) async throws -> Void) async throws {
         let newContext: TestMiddlewareContext2 = .init(operationIdentifer: context.operationIdentifer,
                                                       pathShape: context.pathShape,
                                                       logger: context.logger,
@@ -375,6 +421,40 @@ struct TestVoidOriginalInnerMiddleware: MiddlewareProtocol {
     }
 }
 
+struct TestOriginalInnerMiddleware<Input,
+                                   Output: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias OutputWriter = JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter2>
+    typealias Context = TestMiddlewareContext
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Input,
+                outputWriter: JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext,
+                next: (Input, JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter2>, TestMiddlewareContext) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestOriginalNoOuterMiddlewareInnerMiddleware<Input,
+                                   Output: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias OutputWriter = JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter>
+    typealias Context = BasicServerRouterMiddlewareContext<TestOperations>
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Input,
+                outputWriter: JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (Input, JSONTypedOutputWriter<Output, TestHTTPServerResponseWriter>, BasicServerRouterMiddlewareContext<TestOperations>) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
 struct TestTransformedOuterMiddleware: MiddlewareProtocol {
     typealias Input = HTTPServerRequest
     typealias OutputWriter = TestHTTPServerResponseWriter2
@@ -410,7 +490,6 @@ struct TestVoidTransformedNoOuterMiddlewareInnerMiddleware: MiddlewareProtocol {
 }
 
 struct TestVoidTransformedInnerMiddleware: MiddlewareProtocol {
-    typealias Input = Void
     typealias OutputWriter = TestVoidResponseWriter<TestHTTPServerResponseWriter2>
     typealias Context = TestMiddlewareContext2
     
@@ -420,6 +499,38 @@ struct TestVoidTransformedInnerMiddleware: MiddlewareProtocol {
                 outputWriter: TestVoidResponseWriter<TestHTTPServerResponseWriter2>,
                 context: TestMiddlewareContext2,
                 next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestTransformedInnerMiddleware<Input, OutputType: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias OutputWriter = TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter2>
+    typealias Context = TestMiddlewareContext2
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Input,
+                outputWriter: TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext2,
+                next: (Input, TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestTransformedNoOuterMiddlewareInnerMiddleware<Input, OutputType: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias OutputWriter = TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>
+    typealias Context = TestMiddlewareContext2
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Input,
+                outputWriter: TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>,
+                context: TestMiddlewareContext2,
+                next: (Input, TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>, TestMiddlewareContext2) async throws -> Void) async throws {
         try await next(input, outputWriter, context)
         
         await self.flag.set()
@@ -461,4 +572,86 @@ actor AtomicBoolean {
 
 struct ExampleContext {
     
+}
+
+struct ExampleQueryInput: Codable {
+    let theParameter: String
+}
+
+struct ExamplePathInput: Codable {
+    let theToken: String
+}
+
+struct ExampleBodyInput: Codable {
+    let theID: String
+}
+
+struct ExampleHeaderInput: Codable {
+    let theHeader: String
+}
+
+struct ExampleHTTP1Input: OperationHTTP1InputProtocol, Validatable, Equatable {
+    typealias QueryType = ExampleQueryInput
+    typealias PathType = ExamplePathInput
+    typealias BodyType = ExampleBodyInput
+    typealias HeadersType = ExampleHeaderInput
+    
+    let theID: String
+    let theToken: String
+    let theParameter: String
+    let theHeader: String
+    
+    func validate() throws {
+        if theID.count != 12 {
+            throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
+        }
+    }
+    
+    static func compose(
+            queryDecodableProvider: () throws -> ExampleQueryInput,
+            pathDecodableProvider: () throws -> ExamplePathInput,
+            bodyDecodableProvider: () throws -> ExampleBodyInput,
+            headersDecodableProvider: () throws -> ExampleHeaderInput) throws -> ExampleHTTP1Input {
+        return ExampleHTTP1Input(theID: try bodyDecodableProvider().theID,
+                                 theToken: try pathDecodableProvider().theToken,
+                                 theParameter: try queryDecodableProvider().theParameter,
+                                 theHeader: try headersDecodableProvider().theHeader)
+    }
+}
+
+enum BodyColor: String, Codable {
+    case yellow = "YELLOW"
+    case blue = "BLUE"
+}
+
+struct OutputBodyAttributes: Codable, Equatable {
+    let bodyColor: BodyColor
+    let isGreat: Bool
+}
+
+struct OutputHeaderAttributes: Codable {
+    let theHeader: String
+}
+
+struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatable {
+    typealias BodyType = OutputBodyAttributes
+    typealias AdditionalHeadersType = OutputHeaderAttributes
+    
+    let bodyColor: BodyColor
+    let isGreat: Bool
+    let theHeader: String
+    
+    var bodyEncodable: OutputBodyAttributes? {
+        return OutputBodyAttributes(bodyColor: bodyColor, isGreat: isGreat)
+    }
+    
+    var additionalHeadersEncodable: OutputHeaderAttributes? {
+        return OutputHeaderAttributes(theHeader: theHeader)
+    }
+    
+    func validate() throws {
+        if case .yellow = bodyColor {
+            throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
+        }
+    }
 }
