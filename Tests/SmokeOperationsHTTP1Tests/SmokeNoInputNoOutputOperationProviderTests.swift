@@ -61,8 +61,11 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()
@@ -88,8 +91,11 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.allowedFailureOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()
@@ -119,8 +125,11 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.notAllowedFailureOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()
@@ -161,9 +170,12 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
             TestTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
         }
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(from: outerMiddleware, statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot,
-                                               outerMiddleware: outerMiddleware)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               outerMiddleware: outerMiddleware,
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()
@@ -206,9 +218,12 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
             TestVoidTransformedNoOuterMiddlewareInnerMiddleware(flag: transformedMiddlewareFlag)
         }
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot,
-                                               innerMiddleware: innerMiddleware)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               innerMiddleware: innerMiddleware,
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()
@@ -261,9 +276,12 @@ class SmokeNoInputNoOutputOperationProviderTests: XCTestCase {
             TestVoidTransformedInnerMiddleware(flag: transformedInnerMiddlewareFlag)
         }
         
+        let transformMiddleware = middlewareStack.getNoInputNoOutputTransformingMiddleware(from: outerMiddleware, statusOnSuccess: .imATeapot)
+        
         middlewareStack.addHandlerForOperation(.exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
-                                               allowedErrors: [(TestErrors.allowedError, 404)], statusOnSuccess: .imATeapot,
-                                               outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
+                                               allowedErrors: [(TestErrors.allowedError, 404)],
+                                               outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
+                                               transformMiddleware: transformMiddleware)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         bodyChannel.finish()

@@ -29,4 +29,45 @@ public struct JSONPayloadServerMiddlewareHelper<MiddlewareStackType: ServerMiddl
     public init() {
         
     }
+    
+    func getTransformMiddlewareWithInputWithOutput<ResponseTransformOutputType: OperationHTTP1OutputProtocol,
+                                                   IncomingOutputWriter: HTTPServerResponseWriterProtocol,
+                                                   OutgoingInput: OperationHTTP1InputProtocol,
+                                                   Context: ContextWithPathShape>(
+        statusOnSuccess: HTTPResponseStatus)
+    -> some TransformingMiddlewareProtocol {
+        return JSONRequestTransformMiddleware<IncomingOutputWriter,
+                                              OutgoingInput,
+                                              JSONTypedOutputWriter<ResponseTransformOutputType, IncomingOutputWriter>,
+                                              Context> { wrappedWriter in
+            JSONTypedOutputWriter<ResponseTransformOutputType,
+                                  IncomingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
+        }
+    }
+    
+    func getTransformMiddlewareWithInputNoOutput<IncomingOutputWriter: HTTPServerResponseWriterProtocol,
+                                                OutgoingInput: OperationHTTP1InputProtocol,
+                                                Context: ContextWithPathShape>(
+        statusOnSuccess: HTTPResponseStatus)
+    -> some TransformingMiddlewareProtocol {
+        return JSONRequestTransformMiddleware<IncomingOutputWriter,
+                                              OutgoingInput,
+                                              VoidResponseWriter<IncomingOutputWriter>,
+                                              Context> { wrappedWriter in
+            VoidResponseWriter<IncomingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
+        }
+    }
+    
+    func getTransformMiddlewareNoInputWithOutput<ResponseTransformOutputType: OperationHTTP1OutputProtocol,
+                                                 IncomingOutputWriter: HTTPServerResponseWriterProtocol,
+                                                 Context: ContextWithPathShape>(
+        statusOnSuccess: HTTPResponseStatus)
+    -> some TransformingMiddlewareProtocol {
+        return VoidRequestTransformMiddleware<IncomingOutputWriter,
+                                              JSONTypedOutputWriter<ResponseTransformOutputType, IncomingOutputWriter>,
+                                              Context> { wrappedWriter in
+            JSONTypedOutputWriter<ResponseTransformOutputType,
+                                  IncomingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
+        }
+    }
 }
