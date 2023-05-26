@@ -14,15 +14,17 @@
 // TestConfiguration.swift
 // SmokeOperationsTests
 //
-/*
-import Foundation
-import SmokeOperations
+
 import NIOHTTP1
+import NIOCore
+import SmokeOperations
+import SmokeAsyncHTTP1Server
+import SmokeHTTP1ServerMiddleware
+import SmokeOperationsHTTP1Server
+import SmokeOperationsHTTP1
+import SwiftMiddleware
+import ShapeCoding
 import Logging
-import SmokeInvocation
-import NIO
-@testable import SmokeOperationsHTTP1
-import XCTest
 
 enum TestOperations: String, OperationIdentity {
     case exampleOperation
@@ -78,276 +80,385 @@ enum TestOperations: String, OperationIdentity {
     }
 }
 
-typealias TestJSONPayloadHTTP1OperationDelegate = GenericJSONPayloadHTTP1OperationDelegate<TestHttpResponseHandler, TestInvocationReporting>
+struct TestMiddlewareContext: ContextWithPathShape &
+                              ContextWithMutableLogger &
+                              ContextWithHTTPServerRequestHead &
+                              ContextWithMutableRequestId &
+                              ContextWithOperationIdentifer {
+    let operationIdentifer: TestOperations
+    let pathShape: ShapeCoding.Shape
+    var logger: Logging.Logger?
+    let httpServerRequestHead: SmokeOperationsHTTP1.HTTPServerRequestHead
+    var internalRequestId: String?
+}
+
+struct TestMiddlewareContext2: ContextWithPathShape &
+                              ContextWithMutableLogger &
+                              ContextWithHTTPServerRequestHead &
+                              ContextWithMutableRequestId &
+                              ContextWithOperationIdentifer {
+    let operationIdentifer: TestOperations
+    let pathShape: ShapeCoding.Shape
+    var logger: Logging.Logger?
+    let httpServerRequestHead: SmokeOperationsHTTP1.HTTPServerRequestHead
+    var internalRequestId: String?
+}
+
+enum TestHTTPServerResponseWriterError: Error {
+    case invalidStateToCommitFrom(HTTPServerResponseWriterState)
+    case invalidStateToCompleteFrom(HTTPServerResponseWriterState)
+}
+
+actor TestHTTPServerResponseWriter: HTTPServerResponseWriterProtocol {
+    var bodyParts: [ByteBuffer] = []
+    var status: HTTPResponseStatus = .ok
+    var contentType: String?
+    var bodyLength: ResponseBodyLength = .unknown
+    var headers: HTTPHeaders = .init()
+    var state: HTTPServerResponseWriterState = .notCommitted
+    nonisolated internal let allocator: ByteBufferAllocator = .init()
+    
+    func bodyPart(_ bytes: ByteBuffer) async throws {
+        self.bodyParts.append(bytes)
+    }
+    
+    func updateStatus(updateProvider: @Sendable (inout HTTPResponseStatus) throws -> ()) async rethrows {
+        try updateProvider(&self.status)
+    }
+    
+    func updateContentType(updateProvider: @Sendable (inout String?) throws -> ()) async rethrows {
+        try updateProvider(&self.contentType)
+    }
+    
+    func updateBodyLength(updateProvider: @Sendable (inout ResponseBodyLength) throws -> ()) async rethrows {
+        try updateProvider(&self.bodyLength)
+    }
+    
+    func updateHeaders(updateProvider: @Sendable (inout HTTPHeaders) throws -> ()) async rethrows {
+        try updateProvider(&self.headers)
+    }
+    
+    func getStatus() async -> HTTPResponseStatus {
+        return self.status
+    }
+    
+    func getContentType() async -> String? {
+        return self.contentType
+    }
+    
+    func getBodyLength() async -> ResponseBodyLength {
+        return self.bodyLength
+    }
+    
+    func getHeaders() async -> HTTPHeaders {
+        return self.headers
+    }
+    
+    func getWriterState() async -> HTTPServerResponseWriterState {
+        return self.state
+    }
+    
+    func commit() async throws {
+        switch self.state {
+        case .notCommitted:
+            self.state = .committed
+        case .committed, .completed:
+            throw TestHTTPServerResponseWriterError.invalidStateToCommitFrom(self.state)
+        }
+    }
+    
+    func complete() async throws {
+        switch self.state {
+        case .committed:
+            self.state = .completed
+        case .notCommitted, .completed:
+            throw TestHTTPServerResponseWriterError.invalidStateToCompleteFrom(self.state)
+        }
+    }
+}
+
+// MARK: Data Conversion
+extension TestHTTPServerResponseWriter {
+    nonisolated public func asByteBuffer<Bytes: Sequence & Sendable>(_ bytes: Bytes) -> ByteBuffer
+    where Bytes.Element == UInt8 {
+        return bytes.asByteBuffer(allocator: self.allocator)
+    }
+    
+    nonisolated public func asByteBuffer<Bytes: RandomAccessCollection & Sendable>(_ bytes: Bytes) -> ByteBuffer
+    where Bytes.Element == UInt8 {
+        return bytes.asByteBuffer(allocator: self.allocator)
+    }
+}
+
+struct TestHTTPServerResponseWriter2: HTTPServerResponseWriterProtocol {
+    let wrapped: TestHTTPServerResponseWriter
+    
+    init(wrapped: TestHTTPServerResponseWriter) {
+        self.wrapped = wrapped
+    }
+    
+    func bodyPart(_ bytes: ByteBuffer) async throws {
+        try await self.wrapped.bodyPart(bytes)
+    }
+    
+    func updateStatus(updateProvider: @Sendable (inout HTTPResponseStatus) throws -> ()) async rethrows {
+        try await self.wrapped.updateStatus(updateProvider: updateProvider)
+    }
+    
+    func updateContentType(updateProvider: @Sendable (inout String?) throws -> ()) async rethrows {
+        try await self.wrapped.updateContentType(updateProvider: updateProvider)
+    }
+    
+    func updateBodyLength(updateProvider: @Sendable (inout ResponseBodyLength) throws -> ()) async rethrows {
+        try await self.wrapped.updateBodyLength(updateProvider: updateProvider)
+    }
+    
+    func updateHeaders(updateProvider: @Sendable (inout HTTPHeaders) throws -> ()) async rethrows {
+        try await self.wrapped.updateHeaders(updateProvider: updateProvider)
+    }
+    
+    func getStatus() async -> HTTPResponseStatus {
+        return await self.wrapped.getStatus()
+    }
+    
+    func getContentType() async -> String? {
+        return await self.wrapped.getContentType()
+    }
+    
+    func getBodyLength() async -> ResponseBodyLength {
+        return await self.wrapped.getBodyLength()
+    }
+    
+    func getHeaders() async -> HTTPHeaders {
+        return await self.wrapped.getHeaders()
+    }
+    
+    func getWriterState() async -> HTTPServerResponseWriterState {
+        return await self.wrapped.getWriterState()
+    }
+    
+    func commit() async throws {
+        try await self.wrapped.commit()
+    }
+    
+    func complete() async throws {
+        try await self.wrapped.complete()
+    }
+    
+    func asByteBuffer<Bytes>(_ bytes: Bytes) -> NIOCore.ByteBuffer where Bytes : Sendable, Bytes : Sequence, Bytes.Element == UInt8 {
+        return self.wrapped.asByteBuffer(bytes)
+    }
+}
+
+struct TestVoidResponseWriter<WrappedWrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
+    typealias OutputType = Void
+    
+    let wrapped: VoidResponseWriter<WrappedWrappedWriter>
+    
+    func write(_ new: Void) async throws {
+        try await self.wrapped.write(new)
+    }
+}
+
+private extension Sequence where Element == UInt8 {
+    func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+        if let buffer = self.withContiguousStorageIfAvailable({ allocator.buffer(bytes: $0) }) {
+            // fastpath
+            return buffer
+        }
+        // potentially really slow path
+        return allocator.buffer(bytes: self)
+    }
+}
+
+private extension RandomAccessCollection where Element == UInt8 {
+    func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+        if let buffer = self.withContiguousStorageIfAvailable({ allocator.buffer(bytes: $0) }) {
+            // fastpath
+            return buffer
+        }
+        // potentially really slow path
+        return allocator.buffer(bytes: self)
+    }
+}
+
+struct TestTransformingOuterMiddleware: TransformingMiddlewareProtocol {
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: TestHTTPServerResponseWriter,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (HTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(input, .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestVoidTransformingNoOuterMiddlewareInnerMiddleware: TransformingMiddlewareProtocol {
+    func handle(_ input: Void,
+                outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter>, TestMiddlewareContext2) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext2 = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(input, .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestVoidTransformingInnerMiddleware: TransformingMiddlewareProtocol {
+    func handle(_ input: Void,
+                outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext,
+                next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext2 = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(input, .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestOriginalOuterMiddleware: MiddlewareProtocol {
+    typealias Input = HTTPServerRequest
+    typealias OutputWriter = TestHTTPServerResponseWriter
+    typealias Context = BasicServerRouterMiddlewareContext<TestOperations>
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: TestHTTPServerResponseWriter,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (HTTPServerRequest, TestHTTPServerResponseWriter, BasicServerRouterMiddlewareContext<TestOperations>) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestVoidOriginalNoOuterMiddlewareInnerMiddleware: MiddlewareProtocol {
+    typealias Input = Void
+    typealias OutputWriter = VoidResponseWriter<TestHTTPServerResponseWriter>
+    typealias Context = BasicServerRouterMiddlewareContext<TestOperations>
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Void,
+                outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (Void, VoidResponseWriter<TestHTTPServerResponseWriter>, BasicServerRouterMiddlewareContext<TestOperations>) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestVoidOriginalInnerMiddleware: MiddlewareProtocol {
+    typealias Input = Void
+    typealias OutputWriter = VoidResponseWriter<TestHTTPServerResponseWriter2>
+    typealias Context = TestMiddlewareContext
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Void,
+                outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext,
+                next: (Void, VoidResponseWriter<TestHTTPServerResponseWriter2>, TestMiddlewareContext) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestTransformedOuterMiddleware: MiddlewareProtocol {
+    typealias Input = HTTPServerRequest
+    typealias OutputWriter = TestHTTPServerResponseWriter2
+    typealias Context = TestMiddlewareContext
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: TestHTTPServerResponseWriter2,
+                context: TestMiddlewareContext,
+                next: (HTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestVoidTransformedNoOuterMiddlewareInnerMiddleware: MiddlewareProtocol {
+    typealias Input = Void
+    typealias OutputWriter = TestVoidResponseWriter<TestHTTPServerResponseWriter>
+    typealias Context = TestMiddlewareContext2
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Void,
+                outputWriter: TestVoidResponseWriter<TestHTTPServerResponseWriter>,
+                context: TestMiddlewareContext2,
+                next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter>, TestMiddlewareContext2) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestVoidTransformedInnerMiddleware: MiddlewareProtocol {
+    typealias Input = Void
+    typealias OutputWriter = TestVoidResponseWriter<TestHTTPServerResponseWriter2>
+    typealias Context = TestMiddlewareContext2
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: Void,
+                outputWriter: TestVoidResponseWriter<TestHTTPServerResponseWriter2>,
+                context: TestMiddlewareContext2,
+                next: (Void, TestVoidResponseWriter<TestHTTPServerResponseWriter2>, TestMiddlewareContext2) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+actor TestTypedOutputWriter<OutputType>: TypedOutputWriterProtocol {
+    var result: OutputType?
+    
+    func write(_ new: OutputType) async throws {
+        self.result = new
+    }
+}
+
+typealias RouterType = BasicServerRouter<SmokeMiddlewareContext, BasicServerRouterMiddlewareContext<TestOperations>,
+                                                 TestOperations, TestHTTPServerResponseWriter>
+
+enum TestErrors: SmokeReturnableError {
+    case allowedError
+    case notAllowedError
+    
+    var description: String {
+        switch self {
+        case .allowedError:
+            return "Allowed"
+        case .notAllowedError:
+            return "NotAllowed"
+        }
+    }
+}
+
+actor AtomicBoolean {
+    var value: Bool = false
+    
+    func set(_ new: Bool = true) {
+        self.value = new
+    }
+}
 
 struct ExampleContext {
-}
-
-let serializedInput = """
-    {
-      "theID" : "123456789012"
-    }
-    """
-
-let serializedAlternateInput = """
-    {
-      "theID" : "888888888888"
-    }
-    """
-
-let serializedInvalidInput = """
-    {
-      "theID" : "1789012"
-    }
-    """
-
-struct OperationResponse {
-    let status: HTTPResponseStatus
-    let responseComponents: HTTP1ServerResponseComponents
-}
-
-struct TestInvocationReporting: InvocationReporting {
-    var logger: Logger = Logger(label: "test")
     
-    var internalRequestId: String = "internalRequestId"
 }
-
-class TestHttpResponseHandler: HTTP1ResponseHandler {
-    let continuation: CheckedContinuation<OperationResponse, Never>
-    
-    init(continuation: CheckedContinuation<OperationResponse, Never>) {
-        self.continuation = continuation
-    }
-    
-    func complete(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
-                  responseComponents: HTTP1ServerResponseComponents) {
-        let response = OperationResponse(status: status,
-                                         responseComponents: responseComponents)
-        self.continuation.resume(returning: response)
-    }
-    
-    func completeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
-                             responseComponents: HTTP1ServerResponseComponents) {
-        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
-    }
-    
-    func completeSilentlyInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
-                                     responseComponents: HTTP1ServerResponseComponents) {
-        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
-    }
-    
-    func executeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, execute: @escaping () -> ()) {
-        execute()
-    }
-}
-
-public enum MyError: Swift.Error {
-    case theError(reason: String)
-    
-    enum CodingKeys: String, CodingKey {
-        case reason = "Reason"
-    }
-}
-
-extension MyError: Encodable {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        switch self {
-        case .theError(reason: let reason):
-            try container.encode(reason, forKey: .reason)
-        }
-    }
-}
-
-extension MyError: CustomStringConvertible {
-    public var description: String {
-        return "TheError"
-    }
-}
-
-let allowedErrors = [(MyError.theError(reason: "MyError"), 400)]
-
-struct ErrorResponse: Codable {
-    let type: String
-    let reason: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case type = "__type"
-        case reason = "Reason"
-    }
-}
-
-struct ExampleInput: Codable, Validatable, Equatable {
-    let theID: String
-    
-    func validate() throws {
-        if theID.count != 12 {
-            throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
-        }
-    }
-}
-
-struct ExampleQueryInput: Codable {
-    let theParameter: String
-}
-
-struct ExamplePathInput: Codable {
-    let theToken: String
-}
-
-struct ExampleBodyInput: Codable {
-    let theID: String
-}
-
-struct ExampleHeaderInput: Codable {
-    let theHeader: String
-}
-
-struct ExampleHTTP1Input: OperationHTTP1InputProtocol, Validatable, Equatable {
-    typealias QueryType = ExampleQueryInput
-    typealias PathType = ExamplePathInput
-    typealias BodyType = ExampleBodyInput
-    typealias HeadersType = ExampleHeaderInput
-    
-    let theID: String
-    let theToken: String
-    let theParameter: String
-    let theHeader: String
-    
-    func validate() throws {
-        if theID.count != 12 {
-            throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
-        }
-    }
-    
-    static func compose(
-            queryDecodableProvider: () throws -> ExampleQueryInput,
-            pathDecodableProvider: () throws -> ExamplePathInput,
-            bodyDecodableProvider: () throws -> ExampleBodyInput,
-            headersDecodableProvider: () throws -> ExampleHeaderInput) throws -> ExampleHTTP1Input {
-        return ExampleHTTP1Input(theID: try bodyDecodableProvider().theID,
-                                 theToken: try pathDecodableProvider().theToken,
-                                 theParameter: try queryDecodableProvider().theParameter,
-                                 theHeader: try headersDecodableProvider().theHeader)
-    }
-}
-
-extension ExampleHTTP1Input {
-    func validateForTest() {
-        XCTAssertEqual("headerValue", theHeader)
-        XCTAssertEqual("muchParameter", theParameter)
-        XCTAssertEqual("suchToken", theToken)
-    }
-}
-
-enum BodyColor: String, Codable {
-    case yellow = "YELLOW"
-    case blue = "BLUE"
-}
-
-struct TestInvocationStrategy: InvocationStrategy {
-    func invoke(handler: @escaping () -> ()) {
-        handler()
-    }
-}
-
-struct OutputAttributes: Codable, Validatable, Equatable {
-    let bodyColor: BodyColor
-    let isGreat: Bool
-    
-    func validate() throws {
-        if case .yellow = bodyColor {
-            throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
-        }
-    }
-}
-
-struct OutputBodyAttributes: Codable, Equatable {
-    let bodyColor: BodyColor
-    let isGreat: Bool
-}
-
-struct OutputHeaderAttributes: Codable {
-    let theHeader: String
-}
-
-struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatable {
-    typealias BodyType = OutputBodyAttributes
-    typealias AdditionalHeadersType = OutputHeaderAttributes
-    
-    let bodyColor: BodyColor
-    let isGreat: Bool
-    let theHeader: String
-    
-    var bodyEncodable: OutputBodyAttributes? {
-        return OutputBodyAttributes(bodyColor: bodyColor, isGreat: isGreat)
-    }
-    
-    var additionalHeadersEncodable: OutputHeaderAttributes? {
-        return OutputHeaderAttributes(theHeader: theHeader)
-    }
-    
-    func validate() throws {
-        if case .yellow = bodyColor {
-            throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
-        }
-    }
-}
-
-func verifyPathOutput<SelectorType>(uri: String, body: Data,
-                                    handlerSelector: SelectorType,
-                                    additionalHeaders: [(String, String)] = []) async -> OperationResponse
-where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
-    SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
-    SelectorType.DefaultOperationDelegateType.ResponseHandlerType == TestHttpResponseHandler,
-    SelectorType.OperationIdentifer == TestOperations {
-    let handler = StandardHTTP1OperationRequestHandler<SelectorType>(
-        handlerSelector: handlerSelector,
-        context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeReportingConfiguration<TestOperations>())
-    
-    var httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
-                                          method: .POST,
-                                          uri: uri)
-    additionalHeaders.forEach { header in
-        httpRequestHead.headers.add(name: header.0, value: header.1)
-    }
-            
-    func invocationReportingProvider(logger: Logger) -> TestInvocationReporting {
-        return TestInvocationReporting()
-    }
-        
-    return await withCheckedContinuation { continuation in
-        let responseHandler = TestHttpResponseHandler(continuation: continuation)
-        
-        handler.handle(requestHead: httpRequestHead, body: body,
-                       responseHandler: responseHandler,
-                       invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
-                       internalRequestId: "internalRequestId",
-                       invocationReportingProvider: invocationReportingProvider, reportRequest: { })
-    }
-}
-
-func verifyErrorResponse<SelectorType>(uri: String,
-                                       handlerSelector: SelectorType,
-                                       additionalHeaders: [(String, String)] = []) async throws
-where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
-    SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-    TestHttpResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
-    TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
-    SelectorType.OperationIdentifer == TestOperations {
-    let response = await verifyPathOutput(uri: uri,
-                                          body: serializedAlternateInput.data(using: .utf8)!,
-                                          handlerSelector: handlerSelector,
-                                          additionalHeaders: additionalHeaders)
-    
-    
-    XCTAssertEqual(response.status.code, 400)
-    let body = response.responseComponents.body!
-    let output = try JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: body.data)
-    
-    XCTAssertEqual("TheError", output.type)
-}
-*/

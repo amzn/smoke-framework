@@ -39,10 +39,9 @@ public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationId
 }
 
 public struct BasicServerRouter<IncomingMiddlewareContext, OutgoingMiddlewareContext,
-                                OperationIdentifer, IncomingOutputWriter, OutgoingOutputWriter>: ServerRouterProtocol
+                                OperationIdentifer, IncomingOutputWriter>: ServerRouterProtocol
 where IncomingMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId,
 OperationIdentifer: OperationIdentity, IncomingOutputWriter: HTTPServerResponseWriterProtocol,
-OutgoingOutputWriter: TypedOutputWriterProtocol,
 IncomingMiddlewareContext: ContextWithMutableLogger & ContextWithMutableRequestId,
 OutgoingMiddlewareContext: ContextWithPathShape & ContextWithMutableLogger & ContextWithOperationIdentifer
     & ContextWithHTTPServerRequestHead & ContextWithMutableRequestId{

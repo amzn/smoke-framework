@@ -90,6 +90,7 @@ let package = Package(
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
+                .target(name: "SmokeOperationsHTTP1Server"),
             ]),
     ],
     swiftLanguageVersions: [.v5]

@@ -49,14 +49,13 @@ public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutab
 public protocol ServerMiddlewareStackProtocol {
     associatedtype RouterType: ServerRouterProtocol
     associatedtype ApplicationContextType
-    associatedtype VoidResponseWriterType
     
     init(serverName: String,
          serverConfiguration: SmokeServerConfiguration<RouterType.OperationIdentifer>,
          applicationContextProvider:
          @escaping @Sendable (HTTPServerRequestContext<RouterType.OperationIdentifer>) -> ApplicationContextType)
     
-    @Sendable func handle(request: HTTPServerRequest, responseWriter: HTTPServerResponseWriter) async
+    @Sendable func handle(request: HTTPServerRequest, responseWriter: RouterType.OutputWriter) async
     
     /**
      Adds a handler for the specified uri and http method using this middleware stack.
@@ -195,6 +194,45 @@ public extension ServerMiddlewareStackProtocol {
 }
 
 public extension ServerMiddlewareStackProtocol {
+    // Inner and Outer Middleware
+    mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol, OuterMiddlewareType: TransformingMiddlewareProtocol,
+                                         ErrorType: ErrorIdentifiableByDescription>(
+          _ operationIdentifer: RouterType.OperationIdentifer, httpMethod: HTTPMethod,
+          operationProvider: @escaping (ApplicationContextType) -> (@Sendable () async throws -> InnerMiddlewareType.OutgoingOutputWriter.OutputType),
+          allowedErrors: [(ErrorType, Int)], statusOnSuccess: HTTPResponseStatus,
+          outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType)
+    where
+    // the outer middleware cannot change the input type
+    OuterMiddlewareType.IncomingInput == HTTPServerRequest,
+    OuterMiddlewareType.OutgoingInput == HTTPServerRequest,
+    // the inner middleware cannot change the input type or the output type of the writer
+    InnerMiddlewareType.IncomingInput == Void, InnerMiddlewareType.IncomingOutputWriter.OutputType == Void,
+    InnerMiddlewareType.OutgoingInput == Void, InnerMiddlewareType.OutgoingOutputWriter.OutputType == Void,
+    // the output writer is always transformed from a HTTPServerResponseWriterProtocol to a TypedOutputWriterProtocol by the transform
+    OuterMiddlewareType.OutgoingOutputWriter: HTTPServerResponseWriterProtocol,
+    InnerMiddlewareType.OutgoingOutputWriter: TypedOutputWriterProtocol,
+    // requirements for any added middleware
+    OuterMiddlewareType.OutgoingContext: ContextWithMutableLogger,
+    // the outer middleware output writer and context must be the same as the router itself
+    RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
+    RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext,
+    // requirements for the context coming out of the middleware
+    InnerMiddlewareType.IncomingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    InnerMiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead,
+    // the transform doesn't change the context type
+    InnerMiddlewareType.IncomingContext == OuterMiddlewareType.OutgoingContext,
+    // the transform will wrap the writer in a `VoidResponseWriter`
+    InnerMiddlewareType.IncomingOutputWriter == VoidResponseWriter<OuterMiddlewareType.OutgoingOutputWriter> {
+        @Sendable func innerOperation(context: ApplicationContextType) async throws {
+            let operation = operationProvider(context)
+            return try await operation()
+        }
+                
+        return self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, operation: innerOperation,
+                                           allowedErrors: allowedErrors, statusOnSuccess: statusOnSuccess,
+                                           outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware)
+    }
+    
     // -- Inner and no Outer Middleware
     mutating func addHandlerForOperation<InnerMiddlewareType: TransformingMiddlewareProtocol,
                                          ErrorType: ErrorIdentifiableByDescription>(
