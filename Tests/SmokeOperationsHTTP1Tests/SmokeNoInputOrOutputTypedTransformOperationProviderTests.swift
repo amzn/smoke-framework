@@ -39,7 +39,8 @@ private extension ExampleContext {
         try await outputWriter.commitAndCompleteWith(TestValues.id.data(using: .utf8)!)
     }
     
-    @Sendable func successOperation2<OutputWriter: HTTPServerResponseWriterProtocol>(_ input: HTTPServerRequest,
+    @Sendable func successOperation2<Input: BodyProvider,
+                                     OutputWriter: HTTPServerResponseWriterProtocol>(_ input: Input,
                                                                                      outputWriter: OutputWriter) async throws {
         let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
         let bodyAsString = String(buffer: bodyByteBuffer)
@@ -168,9 +169,9 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         let middleware = MiddlewareStack {
             TestOriginalOuterMiddleware(flag: originalMiddlewareFlag)
             
-            TestTransformingOuterMiddleware()
+            TestWrappingInputTransformingOuterMiddleware()
             
-            TestTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
+            TestWrappingInputTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
         }
         
         // successOperation2 uses the transformed output writer

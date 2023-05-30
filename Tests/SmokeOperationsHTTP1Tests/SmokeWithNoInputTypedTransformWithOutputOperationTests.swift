@@ -38,6 +38,15 @@ import SmokeOperations
     return .init(bodyColor: .blue, isGreat: true, theHeader: "HEADER")
 }
 
+@Sendable private func successOperation2<Input: BodyProvider>(_ input: Input, context: ExampleContext) async throws -> OutputHTTP1Attributes {
+    let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
+    let bodyAsString = String(buffer: bodyByteBuffer)
+            
+    XCTAssertEqual(TestValues.id, bodyAsString)
+    
+    return .init(bodyColor: .blue, isGreat: true, theHeader: "HEADER")
+}
+
 @Sendable private func allowedFailureOperation(_ input: HTTPServerRequest, context: ExampleContext) throws -> OutputHTTP1Attributes {
     throw TestErrors.allowedError
 }
@@ -163,6 +172,49 @@ class SmokeWithNoInputTypedTransformWithOutputOperationTests: XCTestCase {
             .exampleOperation, httpMethod: .POST, operation: successOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             outerMiddleware: outerMiddleware,
+            transformMiddleware: JSONTransformingMiddleware.withNoInputTypedTransformAndWithOutput(statusOnSuccess: .imATeapot))
+        
+        let request = getRequest()
+        
+        await middlewareStack.handle(request: request, responseWriter: responseWriter)
+        
+        let bodyParts = await responseWriter.bodyParts
+        let writerState = await responseWriter.state
+        let status = await responseWriter.status
+        
+        let originalMiddlewareFlagValue = await originalMiddlewareFlag.value
+        let transformedMiddlewareFlagValue = await transformedMiddlewareFlag.value
+        
+        // the writer should be completed, with the success status and with the response body as expected
+        XCTAssertEqual(writerState, HTTPServerResponseWriterState.completed)
+        XCTAssertEqual(status, .imATeapot)
+        XCTAssertEqual(bodyParts.count, 1)
+        
+        XCTAssertTrue(originalMiddlewareFlagValue)
+        XCTAssertTrue(transformedMiddlewareFlagValue)
+    }
+    
+    func testSuccessWithInnerMiddlewareNoOuterMiddleware() async throws {
+        let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
+        let responseWriter = TestHTTPServerResponseWriter()
+        
+        let originalMiddlewareFlag = AtomicBoolean()
+        let transformedMiddlewareFlag = AtomicBoolean()
+        
+        let innerMiddleware = MiddlewareStack {
+            TestWrappingInputOriginalInnerMiddleware<OutputHTTP1Attributes>(flag: originalMiddlewareFlag)
+            
+            TestWrappingInputTransformingInnerMiddleware<OutputHTTP1Attributes>()
+            
+            TestWrappingInputTransformedInnerMiddleware<OutputHTTP1Attributes>(flag: transformedMiddlewareFlag)
+        }
+        
+        middlewareStack.addHandlerForOperation(
+            .exampleOperation, httpMethod: .POST, operation: successOperation2,
+            allowedErrors: [(TestErrors.allowedError, 404)],
+            innerMiddleware: innerMiddleware,
             transformMiddleware: JSONTransformingMiddleware.withNoInputTypedTransformAndWithOutput(statusOnSuccess: .imATeapot))
         
         let request = getRequest()

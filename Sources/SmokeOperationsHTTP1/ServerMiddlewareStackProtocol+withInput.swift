@@ -110,7 +110,6 @@ public extension ServerMiddlewareStackProtocol {
           transformMiddleware: TransformMiddlewareType)
     where
     TransformMiddlewareType.IncomingInput == HTTPServerRequest,
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for TransformMiddleware -> InnerMiddlewareType
     InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
     InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,
@@ -170,7 +169,6 @@ public extension ServerMiddlewareStackProtocol {
           allowedErrors: [(ErrorType, Int)], outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType,
           transformMiddleware: TransformMiddlewareType)
     where
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for OuterMiddlewareType -> TransformMiddleware
     TransformMiddlewareType.IncomingInput == OuterMiddlewareType.OutgoingInput,
     TransformMiddlewareType.IncomingOutputWriter == OuterMiddlewareType.OutgoingOutputWriter,
@@ -251,7 +249,6 @@ public extension ServerMiddlewareStackProtocol {
           transformMiddleware: TransformMiddlewareType)
     where
     TransformMiddlewareType.IncomingInput == HTTPServerRequest,
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for TransformMiddleware -> InnerMiddlewareType
     InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
     InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,

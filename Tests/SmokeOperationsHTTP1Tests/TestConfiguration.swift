@@ -87,6 +87,14 @@ enum TestOperations: String, OperationIdentity {
     }
 }
 
+protocol BodyProvider {
+    var body: HTTPServerRequest.Body { get }
+}
+
+struct WrappedHTTPServerRequest: BodyProvider {
+    let body: HTTPServerRequest.Body
+}
+
 struct TestMiddlewareContext: ContextWithPathShape &
                               ContextWithMutableLogger &
                               ContextWithHTTPServerRequestHead &
@@ -312,6 +320,35 @@ struct TestTransformingOuterMiddleware: TransformingMiddlewareProtocol {
     }
 }
 
+struct TestWrappingInputTransformingOuterMiddleware: TransformingMiddlewareProtocol {
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: TestHTTPServerResponseWriter,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (WrappedHTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(.init(body: input.body), .init(wrapped: outputWriter), newContext)
+    }
+}
+
+struct TestWrappingInputTransformingInnerMiddleware<OutputType: OperationHTTP1OutputProtocol>: TransformingMiddlewareProtocol {
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: JSONTypedOutputWriter<OutputType, TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (WrappedHTTPServerRequest, TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>,
+                       TestMiddlewareContext) async throws -> Void) async throws {
+        let newContext: TestMiddlewareContext = .init(operationIdentifer: context.operationIdentifer,
+                                                      pathShape: context.pathShape,
+                                                      logger: context.logger,
+                                                      httpServerRequestHead: context.httpServerRequestHead,
+                                                      internalRequestId: context.internalRequestId)
+        try await next(.init(body: input.body), .init(wrapped: outputWriter), newContext)
+    }
+}
+
 struct TestNoInputNoOutputTransformingNoOuterMiddlewareInnerMiddleware: TransformingMiddlewareProtocol {
     func handle(_ input: Void,
                 outputWriter: VoidResponseWriter<TestHTTPServerResponseWriter>,
@@ -409,6 +446,24 @@ struct TestOriginalOuterMiddleware: MiddlewareProtocol {
                 outputWriter: TestHTTPServerResponseWriter,
                 context: BasicServerRouterMiddlewareContext<TestOperations>,
                 next: (HTTPServerRequest, TestHTTPServerResponseWriter, BasicServerRouterMiddlewareContext<TestOperations>) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestWrappingInputOriginalInnerMiddleware<OutputType: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias Input = HTTPServerRequest
+    typealias OutputWriter = JSONTypedOutputWriter<OutputType, TestHTTPServerResponseWriter>
+    typealias Context = BasicServerRouterMiddlewareContext<TestOperations>
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: HTTPServerRequest,
+                outputWriter: JSONTypedOutputWriter<OutputType, TestHTTPServerResponseWriter>,
+                context: BasicServerRouterMiddlewareContext<TestOperations>,
+                next: (HTTPServerRequest, JSONTypedOutputWriter<OutputType, TestHTTPServerResponseWriter>,
+                       BasicServerRouterMiddlewareContext<TestOperations>) async throws -> Void) async throws {
         try await next(input, outputWriter, context)
         
         await self.flag.set()
@@ -526,6 +581,41 @@ struct TestTransformedOuterMiddleware: MiddlewareProtocol {
                 outputWriter: TestHTTPServerResponseWriter2,
                 context: TestMiddlewareContext,
                 next: (HTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestWrappingInputTransformedOuterMiddleware: MiddlewareProtocol {
+    typealias Input = WrappedHTTPServerRequest
+    typealias OutputWriter = TestHTTPServerResponseWriter2
+    typealias Context = TestMiddlewareContext
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: WrappedHTTPServerRequest,
+                outputWriter: TestHTTPServerResponseWriter2,
+                context: TestMiddlewareContext,
+                next: (WrappedHTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+        try await next(input, outputWriter, context)
+        
+        await self.flag.set()
+    }
+}
+
+struct TestWrappingInputTransformedInnerMiddleware<OutputType: OperationHTTP1OutputProtocol>: MiddlewareProtocol {
+    typealias Input = WrappedHTTPServerRequest
+    typealias OutputWriter = TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>
+    typealias Context = TestMiddlewareContext
+    
+    let flag: AtomicBoolean
+    
+    func handle(_ input: WrappedHTTPServerRequest,
+                outputWriter: TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>,
+                context: TestMiddlewareContext,
+                next: (WrappedHTTPServerRequest, TestJSONResponseWriter<OutputType, TestHTTPServerResponseWriter>,
+                       TestMiddlewareContext) async throws -> Void) async throws {
         try await next(input, outputWriter, context)
         
         await self.flag.set()

@@ -39,7 +39,8 @@ import SmokeOperations
     try await outputWriter.commitAndCompleteWith(TestValues.id.data(using: .utf8)!)
 }
 
-@Sendable private func successOperation2<OutputWriter: HTTPServerResponseWriterProtocol>(_ input: HTTPServerRequest,
+@Sendable private func successOperation2<Input: BodyProvider,
+                                         OutputWriter: HTTPServerResponseWriterProtocol>(_ input: Input,
                                                                                          outputWriter: OutputWriter,
                                                                                          context: ExampleContext) async throws {
     let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
@@ -168,9 +169,9 @@ class SmokeNoInputOrOutputTypedTransformOperationTests: XCTestCase {
         let middleware = MiddlewareStack {
             TestOriginalOuterMiddleware(flag: originalMiddlewareFlag)
             
-            TestTransformingOuterMiddleware()
+            TestWrappingInputTransformingOuterMiddleware()
             
-            TestTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
+            TestWrappingInputTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
         }
         
         // successOperation2 uses the transformed output writer

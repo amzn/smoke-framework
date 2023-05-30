@@ -30,7 +30,6 @@ public extension ServerMiddlewareStackProtocol {
           allowedErrors: [(ErrorType, Int)], outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType,
           transformMiddleware: TransformMiddlewareType)
     where
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for OuterMiddlewareType -> TransformMiddleware
     TransformMiddlewareType.IncomingInput == OuterMiddlewareType.OutgoingInput,
     TransformMiddlewareType.IncomingOutputWriter == OuterMiddlewareType.OutgoingOutputWriter,
@@ -53,7 +52,7 @@ public extension ServerMiddlewareStackProtocol {
     // the outer middleware output writer and context must be the same as the router itself
     RouterType.OutputWriter == OuterMiddlewareType.IncomingOutputWriter,
     RouterType.RouterMiddlewareContext == OuterMiddlewareType.IncomingContext {
-        @Sendable func innerOperation(_ input: InnerMiddlewareType.IncomingInput,
+        @Sendable func innerOperation(_ input: InnerMiddlewareType.OutgoingInput,
                                       outputWriter: InnerMiddlewareType.OutgoingOutputWriter, context: ApplicationContextType) async throws {
             return try await operation(input, outputWriter, context)
         }
@@ -108,7 +107,6 @@ public extension ServerMiddlewareStackProtocol {
           transformMiddleware: TransformMiddlewareType)
     where
     TransformMiddlewareType.IncomingInput == HTTPServerRequest,
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for TransformMiddleware -> InnerMiddlewareType
     InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
     InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,
@@ -164,7 +162,6 @@ public extension ServerMiddlewareStackProtocol {
           allowedErrors: [(ErrorType, Int)], outerMiddleware: OuterMiddlewareType, innerMiddleware: InnerMiddlewareType,
           transformMiddleware: TransformMiddlewareType)
     where
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for OuterMiddlewareType -> TransformMiddleware
     TransformMiddlewareType.IncomingInput == OuterMiddlewareType.OutgoingInput,
     TransformMiddlewareType.IncomingOutputWriter == OuterMiddlewareType.OutgoingOutputWriter,
@@ -243,7 +240,6 @@ public extension ServerMiddlewareStackProtocol {
           transformMiddleware: TransformMiddlewareType)
     where
     TransformMiddlewareType.IncomingInput == HTTPServerRequest,
-    InnerMiddlewareType.IncomingInput == InnerMiddlewareType.OutgoingInput,
     // requirements for TransformMiddleware -> InnerMiddlewareType
     InnerMiddlewareType.IncomingInput == TransformMiddlewareType.OutgoingInput,
     InnerMiddlewareType.IncomingOutputWriter == TransformMiddlewareType.OutgoingOutputWriter,
