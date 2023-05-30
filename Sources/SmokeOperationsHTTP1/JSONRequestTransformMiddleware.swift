@@ -27,7 +27,7 @@ import QueryCoding
 private let maxBodySize = 1024 * 1024 // 1 MB
 
 public struct JSONRequestTransformMiddleware<IncomingOutputWriter: HTTPServerResponseWriterProtocol, OutgoingInput: OperationHTTP1InputProtocol,
-                                             OutgoingOutputWriter: TypedOutputWriterProtocol, Context: ContextWithPathShape>: TransformingMiddlewareProtocol {
+                                             OutgoingOutputWriter, Context: ContextWithPathShape>: TransformingMiddlewareProtocol {
     public typealias IncomingContext = Context
     public typealias OutgoingContext = Context
     

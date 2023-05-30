@@ -64,4 +64,19 @@ public enum JSONTransformingMiddleware {
             JSONTypedOutputWriter<OutputType, IncomingOutputWriter>(status: statusOnSuccess, wrappedWriter: wrappedWriter)
         }
     }
+    
+    public static func withInputAndWithNoOutputTypedTransform<IncomingOutputWriter: HTTPServerResponseWriterProtocol,
+                                                OutgoingInput: OperationHTTP1InputProtocol,
+                                                Context: ContextWithPathShape>(statusOnSuccess: HTTPResponseStatus)
+    -> JSONRequestTransformMiddleware<IncomingOutputWriter,
+                                      OutgoingInput,
+                                      IncomingOutputWriter,
+                                      Context> {
+        return JSONRequestTransformMiddleware<IncomingOutputWriter,
+                                              OutgoingInput,
+                                              IncomingOutputWriter,
+                                              Context> { wrappedWriter in
+            wrappedWriter
+        }
+    }
 }

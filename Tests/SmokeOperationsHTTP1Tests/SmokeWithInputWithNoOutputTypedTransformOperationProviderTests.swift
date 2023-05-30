@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// SmokeNoInputOrOutputTypedTransformOperationProviderTests.swift
+// SmokeWithInputWithNoOutputTypedTransformOperationProviderTests.swift
 // SmokeOperationsHTTP1Tests
 //
 
@@ -19,6 +19,7 @@ import XCTest
 import Foundation
 import SwiftMiddleware
 import SmokeOperationsHTTP1
+import SmokeOperationsHTTP1Server
 @testable import SmokeAsyncHTTP1Server
 import ShapeCoding
 import NIOPosix
@@ -29,37 +30,35 @@ import AsyncAlgorithms
 import SmokeOperations
 
 private extension ExampleContext {
-    @Sendable func successOperation(_ input: HTTPServerRequest, outputWriter: TestHTTPServerResponseWriter) async throws {
-        let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
-        let bodyAsString = String(buffer: bodyByteBuffer)
-        
-        XCTAssertEqual(TestValues.id, bodyAsString)
+    @Sendable func successOperation(_ input: ExampleHTTP1Input, outputWriter: TestHTTPServerResponseWriter) async throws {
+        XCTAssertEqual(TestValues.id, input.theID)
+        XCTAssertEqual(TestValues.header, input.theHeader)
+        XCTAssertEqual(TestValues.parameter, input.theParameter)
         
         await outputWriter.setStatus(.imATeapot)
         try await outputWriter.commitAndCompleteWith(TestValues.id.data(using: .utf8)!)
     }
     
-    @Sendable func successOperation2<OutputWriter: HTTPServerResponseWriterProtocol>(_ input: HTTPServerRequest,
+    @Sendable func successOperation2<OutputWriter: HTTPServerResponseWriterProtocol>(_ input: ExampleHTTP1Input,
                                                                                      outputWriter: OutputWriter) async throws {
-        let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
-        let bodyAsString = String(buffer: bodyByteBuffer)
-        
-        XCTAssertEqual(TestValues.id, bodyAsString)
+        XCTAssertEqual(TestValues.id, input.theID)
+        XCTAssertEqual(TestValues.header, input.theHeader)
+        XCTAssertEqual(TestValues.parameter, input.theParameter)
         
         await outputWriter.setStatus(.forbidden)
         try await outputWriter.commitAndComplete()
     }
     
-    @Sendable func allowedFailureOperation(_ input: HTTPServerRequest, outputWriter: TestHTTPServerResponseWriter) throws {
+    @Sendable func allowedFailureOperation(_ input: ExampleHTTP1Input, outputWriter: TestHTTPServerResponseWriter) throws {
         throw TestErrors.allowedError
     }
     
-    @Sendable func notAllowedFailureOperation(_ input: HTTPServerRequest, outputWriter: TestHTTPServerResponseWriter) throws {
+    @Sendable func notAllowedFailureOperation(_ input: ExampleHTTP1Input, outputWriter: TestHTTPServerResponseWriter) throws {
         throw TestErrors.notAllowedError
     }
 }
 
-class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
+class SmokeWithNoInputWithNoOutputTypedTransformOperationProviderTests: XCTestCase {
     let allocator: ByteBufferAllocator = .init()
     
     var eventLoopGroup: EventLoopGroup!
@@ -72,15 +71,16 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         try self.eventLoopGroup.syncShutdownGracefully()
     }
     
-    func testSuccessNoMiddleware() async throws {
+    func testSuccessNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
         var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
             serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperationProvider(
-            .exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
-            allowedErrors: [(TestErrors.allowedError, 404)])
+            .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
+            allowedErrors: [(TestErrors.allowedError, 404)],
+            transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutputTypedTransform(statusOnSuccess: .imATeapot))
         
         let request = getRequest()
         
@@ -94,21 +94,18 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         XCTAssertEqual(writerState, HTTPServerResponseWriterState.completed)
         XCTAssertEqual(status, .imATeapot)
         XCTAssertEqual(bodyParts.count, 1)
-        
-        var dataBuffer = bodyParts[0]
-        let bodyAsString = String(data: dataBuffer.readData(length: dataBuffer.readableBytes)!, encoding: .utf8)!
-        XCTAssertEqual(TestValues.id, bodyAsString)
     }
-   
-    func testAllowedFailureNoMiddleware() async throws {
+    
+    func testAllowedFailureNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
         var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
             serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperationProvider(
-            .exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.allowedFailureOperation,
-            allowedErrors: [(TestErrors.allowedError, 404)])
+            .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.allowedFailureOperation,
+            allowedErrors: [(TestErrors.allowedError, 404)],
+            transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutputTypedTransform(statusOnSuccess: .imATeapot))
         
         let request = getRequest()
         
@@ -128,15 +125,16 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         XCTAssertTrue(bodyAsString.contains("\"__type\" : \"Allowed\""))
     }
     
-    func testNotAllowedFailureNoMiddleware() async throws {
+    func testNotAllowedFailureNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
         var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
             serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperationProvider(
-            .exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.notAllowedFailureOperation,
-            allowedErrors: [(TestErrors.allowedError, 404)])
+            .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.notAllowedFailureOperation,
+            allowedErrors: [(TestErrors.allowedError, 404)],
+            transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutputTypedTransform(statusOnSuccess: .imATeapot))
         
         let request = getRequest()
         
@@ -156,7 +154,7 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         XCTAssertTrue(bodyAsString.contains("\"__type\" : \"InternalError\""))
     }
     
-    func testSuccessWithMiddleware() async throws {
+    func testSuccessNoInnerMiddlewareWithOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
         var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
             serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
@@ -165,7 +163,7 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
         let originalMiddlewareFlag = AtomicBoolean()
         let transformedMiddlewareFlag = AtomicBoolean()
         
-        let middleware = MiddlewareStack {
+        let outerMiddleware = MiddlewareStack {
             TestOriginalOuterMiddleware(flag: originalMiddlewareFlag)
             
             TestTransformingOuterMiddleware()
@@ -173,11 +171,11 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
             TestTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
         }
         
-        // successOperation2 uses the transformed output writer
         middlewareStack.addHandlerForOperationProvider(
-            .exampleOperation, httpMethod: .POST, operationProvider: ExampleContext.successOperation2,
+            .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation2,
             allowedErrors: [(TestErrors.allowedError, 404)],
-            middleware: middleware)
+            outerMiddleware: outerMiddleware,
+            transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutputTypedTransform(statusOnSuccess: .imATeapot))
         
         let request = getRequest()
         
@@ -200,7 +198,12 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
     }
     
     private func getRequest() -> HTTPServerRequest {
-        let byteBuffer = TestValues.id.data(using: .utf8)!.asByteBuffer(allocator: self.allocator)
+        let body = """
+            {
+                "theID":  "\(TestValues.id)"
+            }
+            """
+        let byteBuffer = body.data(using: .utf8)!.asByteBuffer(allocator: self.allocator)
         
         let bodyChannel = AsyncThrowingChannel<ByteBuffer, Error>()
         Task {
@@ -208,7 +211,7 @@ class SmokeNoInputOrOutputTypedTransformOperationProviderTests: XCTestCase {
             bodyChannel.finish()
         }
         var request = HTTPServerRequest(method: .POST,
-                                        uri: TestOperations.exampleOperation.operationPath,
+                                        uri: "examplegetoperation/\(TestValues.token)?theParameter=\(TestValues.parameter)",
                                         bodyChannel: bodyChannel)
         request.headers.add(name: "theHeader", value: TestValues.header)
         
