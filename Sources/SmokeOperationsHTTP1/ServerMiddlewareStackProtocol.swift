@@ -46,6 +46,7 @@ public struct SmokeMiddlewareContext: ContextWithMutableLogger, ContextWithMutab
  */
 public protocol ServerMiddlewareStackProtocol {
     associatedtype RouterType: ServerRouterProtocol
+    associatedtype IncomingOutputWriter: HTTPServerResponseWriterProtocol
     associatedtype ApplicationContextType
     
     init(serverName: String,
@@ -53,7 +54,7 @@ public protocol ServerMiddlewareStackProtocol {
          applicationContextProvider:
          @escaping @Sendable (HTTPServerRequestContext<RouterType.OperationIdentifer>) -> ApplicationContextType)
     
-    @Sendable func handle(request: HTTPServerRequest, responseWriter: RouterType.OutputWriter) async
+    @Sendable func handle(request: HTTPServerRequest, responseWriter: IncomingOutputWriter) async
     
     /**
      Adds a handler for the specified uri and http method using this middleware stack.

@@ -56,8 +56,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testSuccessNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperation(
@@ -81,8 +81,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testAllowedFailureNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperation(
@@ -110,8 +110,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testNotAllowedFailureNoInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         middlewareStack.addHandlerForOperation(
@@ -139,8 +139,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testSuccessNoInnerMiddlewareWithOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         let originalMiddlewareFlag = AtomicBoolean()
@@ -182,8 +182,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testSuccessWithInnerMiddlewareNoOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         let originalMiddlewareFlag = AtomicBoolean()
@@ -225,8 +225,8 @@ class SmokeWithNoInputWithOutputOperationTests: XCTestCase {
     
     func testSuccessWithInnerMiddlewareWithOuterMiddleware() async throws {
         let serverConfiguration: SmokeServerConfiguration<TestOperations> = .init(eventLoopGroup: self.eventLoopGroup)
-        var middlewareStack = ServerMiddlewareStack<RouterType, ExampleContext>(serverName: "TestServer",
-                                                                                serverConfiguration: serverConfiguration) { _ in .init() }
+        var middlewareStack = TestableServerMiddlewareStack<RouterType, TestHTTPServerResponseWriter, ExampleContext>(
+            serverName: "TestServer", serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
         let originalOuterMiddlewareFlag = AtomicBoolean()

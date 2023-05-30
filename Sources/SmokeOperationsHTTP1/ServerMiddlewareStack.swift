@@ -20,8 +20,13 @@ import NIOHTTP1
 import SmokeOperations
 import SmokeAsyncHTTP1Server
 
-public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContextType>: ServerMiddlewareStackProtocol
-where RouterType.IncomingMiddlewareContext == SmokeMiddlewareContext , RouterType.OutputWriter: HTTPServerResponseWriterProtocol {
+public typealias ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContextType> =
+    TestableServerMiddlewareStack<RouterType, HTTPServerResponseWriter, ApplicationContextType>
+where RouterType.OutputWriter == HTTPServerResponseWriter, RouterType.IncomingMiddlewareContext == SmokeMiddlewareContext
+
+public struct TestableServerMiddlewareStack<RouterType: ServerRouterProtocol,
+                                            IncomingOutputWriter: HTTPServerResponseWriterProtocol, ApplicationContextType>: ServerMiddlewareStackProtocol
+where RouterType.IncomingMiddlewareContext == SmokeMiddlewareContext, RouterType.OutputWriter == IncomingOutputWriter {
     public typealias OperationIdentifer = RouterType.OperationIdentifer
     private var router: RouterType
     
@@ -43,17 +48,17 @@ where RouterType.IncomingMiddlewareContext == SmokeMiddlewareContext , RouterTyp
                                                                   status: .internalServerError)
     }
     
-    @Sendable public func handle(request: HTTPServerRequest, responseWriter: RouterType.OutputWriter) async {
+    @Sendable public func handle(request: HTTPServerRequest, responseWriter: IncomingOutputWriter) async {
         let initialMiddlewareContext = SmokeMiddlewareContext()
         
         let middlewareStack = MiddlewareStack {
             // Add middleware outside the router (operates on Request and Response types)
-            SmokePingMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>()
-            SmokeTracingMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>(serverName: self.serverName)
-            SmokeRequestIdMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>()
-            SmokeLoggerMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>()
-            JSONSmokeOperationsErrorMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>()
-            JSONDecodingErrorMiddleware<RouterType.IncomingMiddlewareContext, RouterType.OutputWriter>()
+            SmokePingMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>()
+            SmokeTracingMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>(serverName: self.serverName)
+            SmokeRequestIdMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>()
+            SmokeLoggerMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>()
+            JSONSmokeOperationsErrorMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>()
+            JSONDecodingErrorMiddleware<RouterType.IncomingMiddlewareContext, IncomingOutputWriter>()
         }
         do {
             return try await middlewareStack.handle(request, outputWriter: responseWriter,
