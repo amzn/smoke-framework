@@ -11,14 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-// ContextWithOperationIdentifer.swift
-// SmokeOperationsHTTP1Server
+//  TypedOutputWriterProtocol.swift
+//  SmokeOperationsHTTP1
 //
 
-import SmokeOperations
+import SmokeAsyncHTTP1Server
 
-public protocol ContextWithOperationIdentifer {
-    associatedtype OperationIdentifer: OperationIdentity
+public protocol TypedOutputWriterProtocol {
+    associatedtype OutputType
     
-    var operationIdentifer: OperationIdentifer { get }
+    func write(_ new: OutputType) async throws
 }

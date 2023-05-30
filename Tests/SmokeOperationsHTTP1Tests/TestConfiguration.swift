@@ -19,7 +19,6 @@ import NIOHTTP1
 import NIOCore
 import SmokeOperations
 import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
 import SmokeOperationsHTTP1Server
 import SmokeOperationsHTTP1
 import SwiftMiddleware

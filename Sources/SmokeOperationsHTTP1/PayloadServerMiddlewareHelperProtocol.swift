@@ -11,14 +11,12 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  TypedOutputWriterProtocol.swift
-//  SmokeOperationsHTTP1Server
+//  PayloadServerMiddlewareHelperProtocol.swift
+//  SmokeOperationsHTTP1
 //
 
-import SmokeAsyncHTTP1Server
+import SwiftMiddleware
 
-public protocol TypedOutputWriterProtocol {
-    associatedtype OutputType
-    
-    func write(_ new: OutputType) async throws
+public protocol PayloadServerMiddlewareHelperProtocol {
+    func getTransformMiddlewareWithInputWithOutput<MiddlewareType: TransformingMiddlewareProtocol>() -> MiddlewareType
 }

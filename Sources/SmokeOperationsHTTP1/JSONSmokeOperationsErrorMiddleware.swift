@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 // JSONSmokeOperationsErrorMiddleware.swift
-// SmokeOperationsHTTP1Server
+// SmokeOperationsHTTP1
 //
 
 import Foundation
@@ -21,7 +21,6 @@ import SwiftMiddleware
 import Logging
 import NIOHTTP1
 import SmokeOperations
-import SmokeHTTP1ServerMiddleware
 
 public struct JSONSmokeOperationsErrorMiddleware<Context: ContextWithMutableLogger,
                                                  OutputWriter: HTTPServerResponseWriterProtocol>: MiddlewareProtocol {

@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 //  BasicServerRouter.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SmokeOperations
 import NIOHTTP1
 import HTTPPathCoding
 import SmokeAsyncHTTP1Server
-import SmokeOperationsHTTP1
-import SmokeHTTP1ServerMiddleware
 import ShapeCoding
 import Logging
 

@@ -11,12 +11,14 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  PayloadServerMiddlewareHelperProtocol.swift
-//  SmokeOperationsHTTP1Server
+// ContextWithOperationIdentifer.swift
+// SmokeOperationsHTTP1
 //
 
-import SwiftMiddleware
+import SmokeOperations
 
-public protocol PayloadServerMiddlewareHelperProtocol {
-    func getTransformMiddlewareWithInputWithOutput<MiddlewareType: TransformingMiddlewareProtocol>() -> MiddlewareType
+public protocol ContextWithOperationIdentifer {
+    associatedtype OperationIdentifer: OperationIdentity
+    
+    var operationIdentifer: OperationIdentifer { get }
 }

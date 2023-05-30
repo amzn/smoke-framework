@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 //  JSONTransformingMiddleware.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SwiftMiddleware
 import NIOHTTP1
 import SmokeAsyncHTTP1Server
 import SmokeOperations
-import SmokeOperationsHTTP1
-import SmokeHTTP1ServerMiddleware
 
 public enum JSONTransformingMiddleware {
     public static func withInputAndWithOutput<IncomingOutputWriter: HTTPServerResponseWriterProtocol,

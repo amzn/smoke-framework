@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 //  ServerRouterProtocol.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SmokeOperations
 import NIOHTTP1
 import SwiftMiddleware
 import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
-import SmokeOperationsHTTP1
 
 public protocol ServerRouterProtocol<IncomingMiddlewareContext, RouterMiddlewareContext, OutgoingMiddlewareContext,
                                      OperationIdentifer, OutputWriter> {

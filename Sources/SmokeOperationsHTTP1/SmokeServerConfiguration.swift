@@ -12,14 +12,13 @@
 // permissions and limitations under the License.
 //
 // SmokeServerConfiguration.swift
-// SmokeOperationsHTTP1Server
+// SmokeOperationsHTTP1
 //
 
 import NIO
 import SmokeOperations
 import Logging
 import UnixSignals
-import SmokeOperationsHTTP1
 import SmokeAsyncHTTP1Server
 
 public struct SmokeServerConfiguration<OperationIdentifer: OperationIdentity> {
@@ -27,7 +26,7 @@ public struct SmokeServerConfiguration<OperationIdentifer: OperationIdentity> {
     public var reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     public var port: Int
     public var shutdownOnSignals: [UnixSignal]
-    internal var eventLoopGroupStatus: (group: EventLoopGroup, owned: Bool)
+    public var eventLoopGroupStatus: (group: EventLoopGroup, owned: Bool)
     
     public init(port: Int = ServerDefaults.defaultPort,
                 defaultLogger: Logger = Logger(label: "application.initialization"),

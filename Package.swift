@@ -33,9 +33,6 @@ let package = Package(
         .library(
             name: "SmokeAsyncHTTP1Server",
             targets: ["SmokeAsyncHTTP1Server"]),
-        .library(
-            name: "SmokeHTTP1ServerMiddleware",
-            targets: ["SmokeHTTP1ServerMiddleware"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -45,7 +42,6 @@ let package = Package(
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.7.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle", from: "2.0.0-alpha.1"),
         .package(url: "https://github.com/tachyonics/swift-middleware", branch: "poc_3"),
-        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0-beta"),
     ],
     targets: [
@@ -60,13 +56,6 @@ let package = Package(
                 .product(name: "Tracing", package: "swift-distributed-tracing"),
             ]),
         .target(
-            name: "SmokeHTTP1ServerMiddleware", dependencies: [
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "Metrics", package: "swift-metrics"),
-                .target(name: "SmokeAsyncHTTP1Server"),
-                .product(name: "SwiftMiddleware", package: "swift-middleware"),
-            ]),
-        .target(
             name: "SmokeOperations", dependencies: [
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Metrics", package: "swift-metrics"),
@@ -78,19 +67,17 @@ let package = Package(
                 .product(name: "HTTPPathCoding", package: "smoke-http"),
                 .product(name: "HTTPHeadersCoding", package: "smoke-http"),
                 .product(name: "SwiftMiddleware", package: "swift-middleware"),
-                .target(name: "SmokeHTTP1ServerMiddleware"),
+                .product(name: "Metrics", package: "swift-metrics"),
+                .target(name: "SmokeAsyncHTTP1Server"),
             ]),
         .target(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "Algorithms", package: "swift-algorithms"),
-                .target(name: "SmokeAsyncHTTP1Server"),
             ]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
-                .target(name: "SmokeOperationsHTTP1Server"),
             ]),
     ],
     swiftLanguageVersions: [.v5]

@@ -12,12 +12,11 @@
 // permissions and limitations under the License.
 //
 //  JSONErrorResponseTransform.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import Foundation
 import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
 import SmokeOperations
 import Logging
 import NIOHTTP1

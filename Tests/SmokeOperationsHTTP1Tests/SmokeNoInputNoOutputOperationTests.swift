@@ -19,8 +19,6 @@ import XCTest
 import Foundation
 import SwiftMiddleware
 import SmokeOperationsHTTP1
-import SmokeOperationsHTTP1Server
-import SmokeHTTP1ServerMiddleware
 @testable import SmokeAsyncHTTP1Server
 import ShapeCoding
 import NIOPosix

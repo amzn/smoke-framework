@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 //  ServerMiddlewareStackProtocol.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SwiftMiddleware
 import NIOHTTP1
 import SmokeOperations
 import SmokeAsyncHTTP1Server
-import SmokeOperationsHTTP1
-import SmokeHTTP1ServerMiddleware
 import Logging
 
 internal struct EmptyMiddleware<Input, OutputWriter, Context>: MiddlewareProtocol {

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  VoidTransformingMiddleware.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SwiftMiddleware

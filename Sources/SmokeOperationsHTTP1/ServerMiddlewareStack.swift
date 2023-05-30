@@ -12,15 +12,13 @@
 // permissions and limitations under the License.
 //
 //  ServerMiddlewareStack.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import SwiftMiddleware
 import NIOHTTP1
 import SmokeOperations
-import SmokeHTTP1ServerMiddleware
 import SmokeAsyncHTTP1Server
-import SmokeOperationsHTTP1
 
 public struct ServerMiddlewareStack<RouterType: ServerRouterProtocol, ApplicationContextType>: ServerMiddlewareStackProtocol
 where RouterType.IncomingMiddlewareContext == SmokeMiddlewareContext , RouterType.OutputWriter: HTTPServerResponseWriterProtocol {

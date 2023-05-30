@@ -11,20 +11,12 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  ErrorTransform.swift
-//  SmokeOperationsHTTP1Server
+// ContextWithPathShape.swift
+// SmokeOperationsHTTP1
 //
 
-import Foundation
-import SmokeAsyncHTTP1Server
-import SmokeHTTP1ServerMiddleware
-import SmokeOperations
-import Logging
-import NIOHTTP1
+import ShapeCoding
 
-public protocol ErrorTransform {
-    associatedtype Context
-    associatedtype OutputWriter: HTTPServerResponseWriterProtocol
-
-    func transform(_ input: Swift.Error, outputWriter: OutputWriter, context: Context) async -> ()
+public protocol ContextWithPathShape {
+    var pathShape: Shape { get }
 }

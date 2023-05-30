@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 //
 //  JSONFormat.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import Foundation

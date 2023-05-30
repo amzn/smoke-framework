@@ -12,12 +12,11 @@
 // permissions and limitations under the License.
 //
 //  JSONTypedOutputWriter.swift
-//  SmokeOperationsHTTP1Server
+//  SmokeOperationsHTTP1
 //
 
 import Foundation
 import NIOHTTP1
-import SmokeOperationsHTTP1
 import SmokeAsyncHTTP1Server
 import HTTPHeadersCoding
 
