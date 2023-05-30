@@ -265,6 +265,28 @@ struct TestHTTPServerResponseWriter2: HTTPServerResponseWriterProtocol {
     }
 }
 
+protocol CustomWriterProtocol {
+    func setStatus(_ new: HTTPResponseStatus) async
+    
+    func commitAndComplete() async throws
+}
+
+struct CustomWriter: CustomWriterProtocol {
+    let wrapped: TestHTTPServerResponseWriter
+    
+    init(wrapped: TestHTTPServerResponseWriter) {
+        self.wrapped = wrapped
+    }
+    
+    func setStatus(_ new: NIOHTTP1.HTTPResponseStatus) async {
+        await self.wrapped.setStatus(new)
+    }
+    
+    func commitAndComplete() async throws {
+        try await self.wrapped.commitAndComplete()
+    }
+}
+
 struct TestVoidResponseWriter<WrappedWrappedWriter: HTTPServerResponseWriterProtocol>: TypedOutputWriterProtocol {
     typealias OutputType = Void
     
@@ -324,7 +346,7 @@ struct TestWrappingInputTransformingOuterMiddleware: TransformingMiddlewareProto
     func handle(_ input: HTTPServerRequest,
                 outputWriter: TestHTTPServerResponseWriter,
                 context: BasicServerRouterMiddlewareContext<TestOperations>,
-                next: (WrappedHTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+                next: (WrappedHTTPServerRequest, CustomWriter, TestMiddlewareContext) async throws -> Void) async throws {
         let newContext: TestMiddlewareContext = .init(operationIdentifer: context.operationIdentifer,
                                                       pathShape: context.pathShape,
                                                       logger: context.logger,
@@ -589,15 +611,15 @@ struct TestTransformedOuterMiddleware: MiddlewareProtocol {
 
 struct TestWrappingInputTransformedOuterMiddleware: MiddlewareProtocol {
     typealias Input = WrappedHTTPServerRequest
-    typealias OutputWriter = TestHTTPServerResponseWriter2
+    typealias OutputWriter = CustomWriter
     typealias Context = TestMiddlewareContext
     
     let flag: AtomicBoolean
     
     func handle(_ input: WrappedHTTPServerRequest,
-                outputWriter: TestHTTPServerResponseWriter2,
+                outputWriter: CustomWriter,
                 context: TestMiddlewareContext,
-                next: (WrappedHTTPServerRequest, TestHTTPServerResponseWriter2, TestMiddlewareContext) async throws -> Void) async throws {
+                next: (WrappedHTTPServerRequest, CustomWriter, TestMiddlewareContext) async throws -> Void) async throws {
         try await next(input, outputWriter, context)
         
         await self.flag.set()

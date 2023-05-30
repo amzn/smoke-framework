@@ -40,9 +40,9 @@ import SmokeOperations
 }
 
 @Sendable private func successOperation2<Input: BodyProvider,
-                                         OutputWriter: HTTPServerResponseWriterProtocol>(_ input: Input,
-                                                                                         outputWriter: OutputWriter,
-                                                                                         context: ExampleContext) async throws {
+                                         OutputWriter: CustomWriterProtocol>(_ input: Input,
+                                                                             outputWriter: OutputWriter,
+                                                                             context: ExampleContext) async throws {
     let bodyByteBuffer = try await input.body.collect(upTo: TestValues.maxBodySize)
     let bodyAsString = String(buffer: bodyByteBuffer)
             
