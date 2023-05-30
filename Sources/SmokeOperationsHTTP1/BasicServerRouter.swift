@@ -22,7 +22,7 @@ import SmokeAsyncHTTP1Server
 import ShapeCoding
 import Logging
 
-public typealias NonTransformingBasicServerRouter<OperationIdentifer: OperationIdentity> =
+public typealias DefaultBasicServerRouter<OperationIdentifer: OperationIdentity> =
     BasicServerRouter<SmokeMiddlewareContext, BasicServerRouterMiddlewareContext<OperationIdentifer>,
                       OperationIdentifer, HTTPServerResponseWriter>
 
