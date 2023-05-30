@@ -19,7 +19,6 @@ import XCTest
 import Foundation
 import SwiftMiddleware
 import SmokeOperationsHTTP1
-import SmokeOperationsHTTP1Server
 @testable import SmokeAsyncHTTP1Server
 import ShapeCoding
 import NIOPosix
@@ -64,7 +63,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutput(statusOnSuccess: .imATeapot))
@@ -89,7 +88,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.allowedFailureOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             transformMiddleware: JSONTransformingMiddleware.withInputAndWithNoOutput(statusOnSuccess: .imATeapot))
@@ -118,7 +117,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
                                                                                 serverConfiguration: serverConfiguration) { _ in .init() }
         let responseWriter = TestHTTPServerResponseWriter()
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST,
             operationProvider: ExampleContext.notAllowedFailureOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
@@ -159,7 +158,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
             TestTransformedOuterMiddleware(flag: transformedMiddlewareFlag)
         }
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             outerMiddleware: outerMiddleware,
@@ -202,7 +201,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
             TestWithInputNoOutputTransformedNoOuterMiddlewareInnerMiddleware<ExampleHTTP1Input>(flag: transformedMiddlewareFlag)
         }
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             innerMiddleware: innerMiddleware,
@@ -255,7 +254,7 @@ class SmokeWithInputNoOutputOperationProviderTests: XCTestCase {
             TestWithInputNoOutputTransformedInnerMiddleware<ExampleHTTP1Input>(flag: transformedInnerMiddlewareFlag)
         }
         
-        middlewareStack.addHandlerForOperation(
+        middlewareStack.addHandlerForOperationProvider(
             .exampleGetOperationWithToken, httpMethod: .POST, operationProvider: ExampleContext.successOperation,
             allowedErrors: [(TestErrors.allowedError, 404)],
             outerMiddleware: outerMiddleware, innerMiddleware: innerMiddleware,
