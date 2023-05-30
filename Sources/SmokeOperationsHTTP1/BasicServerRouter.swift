@@ -22,6 +22,10 @@ import SmokeAsyncHTTP1Server
 import ShapeCoding
 import Logging
 
+public typealias NonTransformingBasicServerRouter<OperationIdentifer: OperationIdentity> =
+    BasicServerRouter<SmokeMiddlewareContext, BasicServerRouterMiddlewareContext<OperationIdentifer>,
+                      OperationIdentifer, HTTPServerResponseWriter>
+
 private let incomingOperationKey = "incomingOperation"
 
 public struct BasicServerRouterMiddlewareContext<OperationIdentifer: OperationIdentity>: ContextWithPathShape &
