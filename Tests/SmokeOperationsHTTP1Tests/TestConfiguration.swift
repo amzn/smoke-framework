@@ -30,6 +30,7 @@ enum TestValues {
     static let header = "theHeaderValue"
     static let parameter = "theParameterValue"
     static let token = "theTokenValue"
+    static let maxBodySize = 1024 * 1024 // 1 MB
 }
 
 enum TestOperations: String, OperationIdentity {

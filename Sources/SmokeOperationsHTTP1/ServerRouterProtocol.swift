@@ -90,4 +90,38 @@ public extension ServerRouterProtocol {
         
         self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, handler: handler)
     }
+    
+    mutating func addHandlerForOperation<ApplicationContext, MiddlewareType: TransformingMiddlewareProtocol>(
+            _ operationIdentifer: OperationIdentifer,
+            httpMethod: HTTPMethod,
+            middlewareStack: MiddlewareType,
+            operation: @escaping @Sendable (MiddlewareType.OutgoingInput, MiddlewareType.OutgoingOutputWriter, ApplicationContext) async throws -> (),
+            applicationContextProvider: @escaping @Sendable (HTTPServerRequestContext<OperationIdentifer>) -> ApplicationContext
+    )
+    where
+    // the middleware will always have an input type of `HTTPServerRequest`
+    MiddlewareType.IncomingInput == HTTPServerRequest,
+    // the context and output writer types going into the middleware must be the types used by the router
+    MiddlewareType.IncomingContext == RouterMiddlewareContext,
+    MiddlewareType.IncomingOutputWriter == OutputWriter,
+    // requirements for the context coming out of the middleware
+    MiddlewareType.OutgoingContext: ContextWithMutableLogger & ContextWithMutableRequestId & ContextWithHTTPServerRequestHead
+    {
+        @Sendable func next(input: MiddlewareType.OutgoingInput, outputWriter: MiddlewareType.OutgoingOutputWriter,
+                            middlewareContext: MiddlewareType.OutgoingContext) async throws {
+            let requestContext = HTTPServerRequestContext(logger: middlewareContext.logger,
+                                                          requestId: middlewareContext.internalRequestId,
+                                                          requestHead: middlewareContext.httpServerRequestHead,
+                                                          operationIdentifer: operationIdentifer,
+                                                          middlewareContext: middlewareContext)
+            let applicationContext = applicationContextProvider(requestContext)
+            try await operation(input, outputWriter, applicationContext)
+        }
+        
+        @Sendable func handler(request: HTTPServerRequest, outputWriter: OutputWriter, middlewareContext: RouterMiddlewareContext) async throws {
+            return try await middlewareStack.handle(request, outputWriter: outputWriter, context: middlewareContext, next: next)
+        }
+        
+        self.addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, handler: handler)
+    }
 }
