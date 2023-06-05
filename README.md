@@ -5,7 +5,7 @@
 <a href="http://swift.org">
 <img src="https://img.shields.io/badge/swift-5.6|5.7|5.8-orange.svg?style=flat" alt="Swift 5.6, 5.7 and 5.8 Tested">
 </a>
-<img src="https://img.shields.io/badge/ubuntu-18.04|20.04-yellow.svg?style=flat" alt="Ubuntu 16.04 and 20.04 Tested">
+<img src="https://img.shields.io/badge/ubuntu-20.04|22.04-yellow.svg?style=flat" alt="Ubuntu 20.04 and 22.04 Tested">
 <img src="https://img.shields.io/badge/CentOS-8-yellow.svg?style=flat" alt="CentOS 8 Tested">
 <img src="https://img.shields.io/badge/AmazonLinux-2-yellow.svg?style=flat" alt="Amazon Linux 2 Tested">
 <a href="https://gitter.im/SmokeServerSide">
@@ -289,7 +289,7 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
 SmokeHTTP1Server.runAsOperationServer(MyPerInvocationContextInitializer.init)
 ```
 
-# Enabling Distributed Tracing
+# Enabling Distributed Tracing (Swift 5.7 and greater)
 
 To have your application participate in distributed traces, add a property `enableTracingWithSwiftConcurrency` 
 with a value of true to your application initializer.

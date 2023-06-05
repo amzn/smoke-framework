@@ -100,6 +100,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             self.traceId = nil
         }
         
+#if swift(>=5.7.0)
         if case .ifRequired(let parameters) = options?.createRequestSpan {
             var serviceContext = ServiceContext.current ?? .topLevel
             let operationName = parameters.operationName
@@ -122,6 +123,9 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         } else {
             self.span = nil
         }
+#else
+        self.span = nil
+#endif
     }
     
     public func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
