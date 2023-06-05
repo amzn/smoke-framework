@@ -17,61 +17,16 @@
 
 import Foundation
 import Logging
-import Tracing
-
-public struct RequestSpanParameters {
-    public let operationName: String
-    
-    public init(operationName: String) {
-        self.operationName = operationName
-    }
-}
-
-public enum CreateRequestSpan {
-    // A `Tracing.Span` should never be created for a request.
-    case never
-    // A `Tracing.Span` can be created for a request
-    // if the `OperationTraceContext` decides to create one.
-    // It is the responsibility of the OperationTraceContext
-    // to manage the lifecycle of the span if it creates one,
-    // most likely closing it in the
-    // `handleInwardsRequestComplete` function.
-    case ifRequired(RequestSpanParameters)
-}
-
-public struct OperationTraceContextOptions {
-    public let createRequestSpan: CreateRequestSpan
-   
-    public init(createRequestSpan: CreateRequestSpan) {
-        self.createRequestSpan = createRequestSpan
-    }
-}
 
 public protocol OperationTraceContext {
     associatedtype RequestHeadType
     associatedtype ResponseHeadersType
     associatedtype ResponseStatusType
     
-    var span: Span? { get }
-    
     init(requestHead: RequestHeadType, bodyData: Data?)
-    
-    init(requestHead: RequestHeadType, bodyData: Data?, options: OperationTraceContextOptions?)
     
     func handleInwardsRequestStart(requestHead: RequestHeadType, bodyData: Data?, logger: inout Logger, internalRequestId: String)
     
     func handleInwardsRequestComplete(httpHeaders: inout ResponseHeadersType, status: ResponseStatusType, body: (contentType: String, data: Data)?,
                                       logger: Logger, internalRequestId: String)
-}
-
-public extension OperationTraceContext {
-    // Add options accepting initializer while remaining backwards compatible
-    init(requestHead: RequestHeadType, bodyData: Data?, options: OperationTraceContextOptions?) {
-        self.init(requestHead: requestHead, bodyData: bodyData)
-    }
-    
-    // Add span property while remaining backwards compatible
-    var span: Span? {
-        return nil
-    }
 }

@@ -17,7 +17,6 @@
 
 import Foundation
 import Logging
-import Tracing
 
 /**
  A protocol that can report on an invocation.
@@ -25,12 +24,4 @@ import Tracing
 public protocol InvocationReporting {
     var logger: Logger { get }
     var internalRequestId: String { get }
-    var span: Span? { get }
-}
-
-public extension InvocationReporting {
-    // Add span property while remaining backwards compatible
-    var span: Span? {
-        return nil
-    }
 }

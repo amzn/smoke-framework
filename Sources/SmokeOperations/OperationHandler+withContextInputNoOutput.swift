@@ -19,7 +19,6 @@
 
 import Foundation
 import Logging
-import Tracing
 
 public extension OperationHandler {
     /**
@@ -55,13 +54,7 @@ public extension OperationHandler {
             Task {
                 let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                 do {
-                    if let span = invocationContext.invocationReporting.span {
-                        try await ServiceContext.withValue(span.context) {
-                            try await operation(input, context, invocationContext.invocationReporting)
-                        }
-                    } else {
-                        try await operation(input, context, invocationContext.invocationReporting)
-                    }
+                    try await operation(input, context, invocationContext.invocationReporting)
                     
                     handlerResult = .success
                 } catch let smokeReturnableError as SmokeReturnableError {

@@ -355,8 +355,7 @@ public extension SmokeHTTP1Server {
             context: initalizer.getInvocationContext(),
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: initalizer.requestExecutor,
-            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
+            requestExecutor: initalizer.requestExecutor)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,
@@ -418,8 +417,7 @@ public extension SmokeHTTP1Server {
             contextProvider: initalizer.getInvocationContext,
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: initalizer.requestExecutor,
-            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
+            requestExecutor: initalizer.requestExecutor)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,

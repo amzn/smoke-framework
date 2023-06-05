@@ -27,7 +27,6 @@ public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerIn
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
     var requestExecutor: RequestExecutor { get }
-    var enableTracingWithSwiftConcurrency: Bool { get }
 }
 
 public extension SmokeAsyncServerPerInvocationContextInitializer {
@@ -45,10 +44,6 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
     
     var requestExecutor: RequestExecutor {
         return .originalEventLoop
-    }
-    
-    var enableTracingWithSwiftConcurrency: Bool {
-        return false
     }
 }
 #endif

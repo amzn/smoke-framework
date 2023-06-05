@@ -20,12 +20,6 @@ import SmokeHTTPClient
 import SmokeOperations
 import NIOHTTP1
 import AsyncHTTPClient
-import Tracing
-
-private enum OperationFailure: Error {
-    case withResponseBody(String)
-    case withNoResponseBody
-}
 
 private extension Data {
     var debugString: String {
@@ -54,23 +48,16 @@ public struct SmokeInvocationTraceContext {
     private let externalRequestId: String?
     private let traceId: String?
     
-    public let span: Span?
-    
     public init(externalRequestId: String? = nil,
-                traceId: String? = nil,
-                span: Span? = nil) {
+                traceId: String? = nil) {
         self.externalRequestId = externalRequestId
         self.traceId = traceId
-        self.span = span
     }
 }
 
 extension SmokeInvocationTraceContext: OperationTraceContext {
-    public init(requestHead: HTTPRequestHead, bodyData: Data?) {
-        self.init(requestHead: requestHead, bodyData: bodyData, options: nil)
-    }
     
-    public init(requestHead: NIOHTTP1.HTTPRequestHead, bodyData: Data?, options: OperationTraceContextOptions?) {
+    public init(requestHead: HTTPRequestHead, bodyData: Data?) {
         let requestIds = requestHead.headers[requestIdHeader]
         let traceIds = requestHead.headers[traceIdHeader]
         
@@ -99,29 +86,6 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         } else {
             self.traceId = nil
         }
-        
-        if case .ifRequired(let parameters) = options?.createRequestSpan {
-            var serviceContext = ServiceContext.current ?? .topLevel
-            let operationName = parameters.operationName
-            InstrumentationSystem.instrument.extract(requestHead.headers, into: &serviceContext, using: HTTPHeadersExtractor())
-            
-            let span = InstrumentationSystem.tracer.startSpan(operationName, context: serviceContext, ofKind: .server)
-            
-            var attributes: SpanAttributes = [:]
-            
-            attributes["aws.operation"] = operationName
-            attributes["http.method"] = requestHead.method.rawValue
-            attributes["http.target"] = requestHead.uri
-            attributes["http.flavor"] = "\(requestHead.version.major).\(requestHead.version.minor)"
-            attributes["http.user_agent"] = requestHead.headers.first(name: "user-agent")
-            attributes["http.request_content_length"] = requestHead.headers.first(name: "content-length")
-            
-            span.attributes = attributes
-            
-            self.span = span
-        } else {
-            self.span = nil
-        }
     }
     
     public func handleInwardsRequestStart(requestHead: HTTPRequestHead, bodyData: Data?, logger: inout Logger, internalRequestId: String) {
@@ -141,10 +105,6 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             logMetadata["bodyData"] = "\(bodyData.debugString)"
         }
         
-        if let span = self.span {
-            span.attributes["smoke.internalRequestId"] = internalRequestId
-        }
-        
         // log details about the incoming request
         logger.info("Incoming request received.", metadata: logMetadata)
     }
@@ -162,16 +122,10 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         var logMetadata: Logger.Metadata = ["status": "\(status.reasonPhrase)",
                                             "statusCode": "\(status.code)"]
         
-        let bodyData: String?
         if let body = body {
-            let theBodyData = body.data.debugString
             logMetadata["contentType"] = "\(body.contentType)"
             logMetadata["bodyBytesCount"] = "\(body.data.count)"
-            logMetadata["bodyData"] = "\(theBodyData)"
-            
-            bodyData = theBodyData
-        } else {
-            bodyData = nil
+            logMetadata["bodyData"] = "\(body.data.debugString)"
         }
         
         let level: Logger.Level
@@ -180,20 +134,6 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             level = .error
         } else {
             level = .info
-        }
-        
-        if let span = self.span {
-            span.attributes["http.status_code"] = Int(status.code)
-            
-            if status.code >= 500 && status.code < 600 {
-                if let bodyData = bodyData {
-                    span.recordError(OperationFailure.withResponseBody(bodyData))
-                } else {
-                    span.recordError(OperationFailure.withNoResponseBody)
-                }
-            }
-            
-            span.end()
         }
         
         logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)
@@ -281,11 +221,5 @@ extension SmokeInvocationTraceContext: InvocationTraceContext {
         }
         
         logger.log(level: level, "Outgoing request completed.", metadata: logMetadata)
-    }
-}
-
-private struct HTTPHeadersExtractor: Extractor {
-    func extract(key name: String, from headers: HTTPHeaders) -> String? {
-        headers.first(name: name)
     }
 }
