@@ -289,6 +289,22 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
 SmokeHTTP1Server.runAsOperationServer(MyPerInvocationContextInitializer.init)
 ```
 
+# Enabling Distributed Tracing
+
+To have your application participate in distributed traces, add a property `enableTracingWithSwiftConcurrency` 
+with a value of true to your application initializer.
+
+```swift
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
+    let enableTracingWithSwiftConcurrency = true
+
+    ...
+}
+```
+
+This will enable tracing for any operation handlers that use Swift Concurrency (async/await). You will also 
+need to setup an Instrumentation backend by following the instructions [here](https://swiftpackageindex.com/apple/swift-distributed-tracing/1.0.0/documentation/tracing/traceyourapplication).
+
 # Further Concepts
 
 ## The Application Context

@@ -20,6 +20,7 @@ import SmokeOperations
 import Logging
 import NIO
 import SmokeHTTPClient
+import Tracing
 
 public protocol InvocationReportingWithTraceContext: InvocationReporting {
     associatedtype TraceContextType: OperationTraceContext
@@ -37,6 +38,10 @@ public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceCon
     public let outwardsRequestAggregator: OutwardsRequestAggregator?
     public let internalRequestId: String
     public let traceContext: TraceContextType
+    
+    public var span: Span? {
+        return self.traceContext.span
+    }
     
     public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType,
                 eventLoop: EventLoop? = nil, outwardsRequestAggregator: OutwardsRequestAggregator? = nil) {

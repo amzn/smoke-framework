@@ -25,6 +25,7 @@ import ShapeCoding
 import Logging
 import SmokeInvocation
 import SmokeHTTPClient
+import Tracing
 
 /**
  Implementation of the HttpRequestHandler protocol that handles an
@@ -48,25 +49,29 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
     
     init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
          reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-         requestExecutor: RequestExecutor = .originalEventLoop) {
+         requestExecutor: RequestExecutor = .originalEventLoop,
+         enableTracingWithSwiftConcurrency: Bool = false) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             context: context,
             serverName: serverName,
             reportingConfiguration: reportingConfiguration,
-            requestExecutor: requestExecutor)
+            requestExecutor: requestExecutor,
+            enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
     }
     
     init(handlerSelector: SelectorType,
          contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
          serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-         requestExecutor: RequestExecutor = .originalEventLoop) {
+         requestExecutor: RequestExecutor = .originalEventLoop,
+         enableTracingWithSwiftConcurrency: Bool = false) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             contextProvider: contextProvider,
             serverName: serverName,
             reportingConfiguration: reportingConfiguration,
-            requestExecutor: requestExecutor)
+            requestExecutor: requestExecutor,
+            enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
     }
     
     // Function required to confirm to protocol, delegate to the variant that provides the event loop
@@ -81,20 +86,26 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?,
                        outwardsRequestAggregator: OutwardsRequestAggregator?, internalRequestId: String) {
         
-        let traceContext = TraceContextType(requestHead: requestHead, bodyData: body)
-        func requestStartTraceAction() -> Logger {
-            var decoratedRequestLogger: Logger = requestLogger
-            traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
-                                                   logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
+        func actionsProvider(options: OperationTraceContextOptions?)
+        -> StandardHTTP1OperationRequestHandler<SelectorType>.Actions {
+            let traceContext = TraceContextType(requestHead: requestHead, bodyData: body, options: options)
             
-            return decoratedRequestLogger
-        }
-        
-        func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
-            return SmokeServerInvocationReporting(logger: logger,
-                                                  internalRequestId: internalRequestId, traceContext: traceContext,
-                                                  eventLoop: eventLoop,
-                                                  outwardsRequestAggregator: outwardsRequestAggregator)
+            func requestStartTraceAction() -> Logger {
+                var decoratedRequestLogger: Logger = requestLogger
+                traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
+                                                       logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
+                
+                return decoratedRequestLogger
+            }
+            
+            func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
+                return SmokeServerInvocationReporting(logger: logger,
+                                                      internalRequestId: internalRequestId, traceContext: traceContext,
+                                                      eventLoop: eventLoop,
+                                                      outwardsRequestAggregator: outwardsRequestAggregator)
+            }
+            
+            return .init(invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
         }
         
         // let it be handled
@@ -104,7 +115,6 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
                                             invocationStrategy: invocationStrategy,
                                             requestLogger: requestLogger,
                                             internalRequestId: internalRequestId,
-                                            invocationReportingProvider: invocationReportingProvider,
-                                            requestStartTraceAction: requestStartTraceAction)
+                                            actionsProvider: actionsProvider)
     }
 }
