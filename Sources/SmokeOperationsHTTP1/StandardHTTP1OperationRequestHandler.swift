@@ -43,6 +43,35 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
         SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> == SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
     public typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
     
+    // The providers that are used to delay some actions
+    public struct Actions {
+        // used to instantiate invocationReporting from a decorated logger
+        public let invocationReportingProvider: (Logger) -> InvocationReportingType
+        // used to call `handleInwardsRequestStart` on the trace context after ping requests have been handled
+        public let requestStartTraceAction: (() -> (Logger))?
+        
+        public init(invocationReportingProvider: @escaping (Logger) -> InvocationReportingType, requestStartTraceAction: (() -> (Logger))?) {
+            self.invocationReportingProvider = invocationReportingProvider
+            self.requestStartTraceAction = requestStartTraceAction
+        }
+    }
+    
+    // The caller can provide two different styles actions provided
+    private enum ActionsVariant {
+        // for backwards compatibility, one that does not require knowledge of the Span created
+        case `static`(Actions)
+        // a newer style that constructs the provider from trace options
+        case fromTraceOptions((OperationTraceContextOptions?) -> Actions)
+        
+        func forTraceOptions(_ options: OperationTraceContextOptions?) -> Actions {
+            switch self {
+            case .static(let actions):
+                return actions
+            case .fromTraceOptions(let actionsGivenTraceOptions):
+                return actionsGivenTraceOptions(options)
+            }
+        }
+    }
     
     typealias InvocationContext = ResponseHandlerType.InvocationContext
     public typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
@@ -53,10 +82,12 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
     let unknownOperationReporting: SmokeOperationReporting
     let errorDeterminingOperationReporting: SmokeOperationReporting
     let requestExecutor: RequestExecutor
+    let enableTracingWithSwiftConcurrency: Bool
     
     public init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
                 reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-                requestExecutor: RequestExecutor = .originalEventLoop) {
+                requestExecutor: RequestExecutor = .originalEventLoop,
+                enableTracingWithSwiftConcurrency: Bool = false) {
         self.handlerSelector = handlerSelector
         self.context = .static(context)
         
@@ -68,12 +99,14 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
         self.requestExecutor = requestExecutor
+        self.enableTracingWithSwiftConcurrency = enableTracingWithSwiftConcurrency
     }
     
     public init(handlerSelector: SelectorType,
                 contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
                 serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-                requestExecutor: RequestExecutor = .originalEventLoop) {
+                requestExecutor: RequestExecutor = .originalEventLoop,
+                enableTracingWithSwiftConcurrency: Bool = false) {
         self.handlerSelector = handlerSelector
         self.context = .provider(contextProvider)
         
@@ -85,6 +118,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                                                 request: .errorDeterminingOperation,
                                                                                 configuration: reportingConfiguration)
         self.requestExecutor = requestExecutor
+        self.enableTracingWithSwiftConcurrency = enableTracingWithSwiftConcurrency
     }
     
     private func getInvocationContextForAnonymousRequest(requestReporting: SmokeOperationReporting,
@@ -99,26 +133,58 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                       requestReporting: requestReporting)
     }
     
+    /**
+     The original handle method, retained for backwards compatibility.
+     The `invocationReportingProvider` is a workaround to construct the InvocationReporting instance from an appropriately decorated `Logger`.
+     */
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
                        invocationReportingProvider: @escaping (Logger) -> InvocationReportingType) {
-        handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
-               invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
-               invocationReportingProvider: invocationReportingProvider,
-               requestStartTraceAction: nil)
+        let actions = Actions(invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: nil)
+        
+        handleForActionsVariant(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                actionsVariant: .static(actions))
     }
-
+    
+    /**
+     An updated handle method but now also retained for backwards compatibility.
+     The `invocationReportingProvider` is a workaround to construct the InvocationReporting instance from an appropriately decorated `Logger`.
+     The `requestStartTraceAction` is a workaround to call `handleInwardsRequestStart` on the trace context after ping requests have been handled
+     */
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
                        invocationReportingProvider: @escaping (Logger) -> InvocationReportingType,
                        requestStartTraceAction: (() -> (Logger))?) {
+        let actions = Actions(invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+        
+        handleForActionsVariant(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                actionsVariant: .static(actions))
+    }
+    
+    /**
+     The currently used handle method where actions can be created based on a provided span.
+     */
+    public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                       invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
+                       actionsFromTraceOptions: @escaping (OperationTraceContextOptions?) -> Actions) {
+        handleForActionsVariant(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                                invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
+                                actionsVariant: .fromTraceOptions(actionsFromTraceOptions))
+    }
+
+    private func handleForActionsVariant(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
+                                         invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String,
+                                         actionsVariant: ActionsVariant) {
         // this is the ping url
         if requestHead.uri == PingParameters.uri {
             let body = (contentType: "text/plain", data: PingParameters.payload)
+            let actions = actionsVariant.forTraceOptions(nil)
             let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
             let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: pingOperationReporting,
                                                                             requestLogger: requestLogger,
-                                                                            invocationReportingProvider: invocationReportingProvider)
+                                                                            invocationReportingProvider: actions.invocationReportingProvider)
             responseHandler.completeSilentlyInEventLoop(invocationContext: invocationContext,
                                                         status: .ok, responseComponents: responseComponents)
             
@@ -130,32 +196,24 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
             Task {
                 handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
                                           invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
-                                          invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+                                          actionsVariant: actionsVariant)
             }
         case .dispatchQueue:
             DispatchQueue.global().async {
                 handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
                                           invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
-                                          invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+                                          actionsVariant: actionsVariant)
             }
         case .originalEventLoop:
             handleOnDesiredThreadPool(requestHead: requestHead, body: body, responseHandler: responseHandler,
                                       invocationStrategy: invocationStrategy, requestLogger: requestLogger, internalRequestId: internalRequestId,
-                                      invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
+                                      actionsVariant: actionsVariant)
         }
     }
     
     private func handleOnDesiredThreadPool(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                                            invocationStrategy: InvocationStrategy, requestLogger originalLogger: Logger, internalRequestId: String,
-                                           invocationReportingProvider: @escaping (Logger) -> InvocationReportingType,
-                                           requestStartTraceAction: (() -> (Logger))?) {
-        let requestLogger: Logger
-        if let requestStartTraceAction = requestStartTraceAction {
-            requestLogger = requestStartTraceAction()
-        } else {
-            requestLogger = originalLogger
-        }
-        
+                                           actionsVariant: ActionsVariant) {
         let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
         let path = String(uriComponents[0])
         let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
@@ -169,15 +227,19 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
         do {
             (handler, shape) = try handlerSelector.getHandlerForOperation(
                 path,
-                httpMethod: requestHead.method, requestLogger: requestLogger)
+                httpMethod: requestHead.method, requestLogger: originalLogger)
         } catch SmokeOperationsError.invalidOperation(reason: let reason) {
             let smokeHTTP1RequestHead = SmokeHTTP1RequestHead(httpRequestHead: requestHead,
                                                               query: query,
                                                               pathShape: .null)
             
+            let tracingOptions = getTracingOptions(for: "InvalidOperation")
+            let actions = actionsVariant.forTraceOptions(tracingOptions)
+            let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
+            
             let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: unknownOperationReporting,
                                                                             requestLogger: requestLogger,
-                                                                            invocationReportingProvider: invocationReportingProvider)
+                                                                            invocationReportingProvider: actions.invocationReportingProvider)
             defaultOperationDelegate.handleResponseForInvalidOperation(
                 requestHead: smokeHTTP1RequestHead,
                 message: reason,
@@ -185,6 +247,10 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                 invocationContext: invocationContext)
             return
         } catch {
+            let tracingOptions = getTracingOptions(for: "FailedHandlerSelection")
+            let actions = actionsVariant.forTraceOptions(tracingOptions)
+            let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
+            
             requestLogger.error("Unexpected handler selection error.",
                                 metadata: ["cause": "\(String(describing: error))"])
             let smokeHTTP1RequestHead = SmokeHTTP1RequestHead(httpRequestHead: requestHead,
@@ -193,7 +259,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
             
             let invocationContext = getInvocationContextForAnonymousRequest(requestReporting: errorDeterminingOperationReporting,
                                                                             requestLogger: requestLogger,
-                                                                            invocationReportingProvider: invocationReportingProvider)
+                                                                            invocationReportingProvider: actions.invocationReportingProvider)
             defaultOperationDelegate.handleResponseForInternalServerError(
                 requestHead: smokeHTTP1RequestHead,
                 responseHandler: responseHandler,
@@ -205,10 +271,27 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                           query: query,
                                                           pathShape: shape)
         
+        let tracingOptions = getTracingOptions(for: handler.operationIdentifer.description)
+        let actions = actionsVariant.forTraceOptions(tracingOptions)
+        let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
+        
         // let it be handled
         handler.handle(smokeHTTP1RequestHead, body: body, withContext: context,
                        responseHandler: responseHandler, invocationStrategy: invocationStrategy,
                        requestLogger: requestLogger, internalRequestId: internalRequestId,
-                       invocationReportingProvider: invocationReportingProvider)
+                       invocationReportingProvider: actions.invocationReportingProvider)
+    }
+    
+    private func getTracingOptions(for operationName: String)
+    -> OperationTraceContextOptions {
+        let createRequestSpan: CreateRequestSpan
+        if self.enableTracingWithSwiftConcurrency {
+            let parameters = RequestSpanParameters(operationName: operationName)
+            createRequestSpan = .ifRequired(parameters)
+        } else {
+            createRequestSpan = .never
+        }
+        
+        return .init(createRequestSpan: createRequestSpan)
     }
 }

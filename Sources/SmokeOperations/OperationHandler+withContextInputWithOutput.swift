@@ -19,6 +19,7 @@
 
 import Foundation
 import Logging
+import Tracing
 
 public extension OperationHandler {
     /**
@@ -57,8 +58,15 @@ public extension OperationHandler {
             Task {
                 let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                 do {
-                    let output = try await operation(input, context, invocationContext.invocationReporting)
-                    
+                    let output: OutputType
+                    if let span = invocationContext.invocationReporting.span {
+                        output = try await ServiceContext.withValue(span.context) {
+                            return try await operation(input, context, invocationContext.invocationReporting)
+                        }
+                    } else {
+                        output = try await operation(input, context, invocationContext.invocationReporting)
+                    }
+                                        
                     handlerResult = .success(output)
                 } catch let smokeReturnableError as SmokeReturnableError {
                     handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
