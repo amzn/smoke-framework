@@ -67,7 +67,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -130,7 +132,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -193,7 +197,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -259,7 +265,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -326,7 +334,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try await factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -355,7 +365,8 @@ public extension SmokeHTTP1Server {
             context: initalizer.getInvocationContext(),
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: initalizer.requestExecutor)
+            requestExecutor: initalizer.requestExecutor,
+            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,
@@ -388,7 +399,9 @@ public extension SmokeHTTP1Server {
         do {
             initalizer = try await factory(eventLoopGroup)
         } catch {
-            let logger = Logger.init(label: "application.initialization")
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger.init(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
             
             logger.error("Unable to initialize application from factory.",
                          metadata: ["cause": "\(String(describing: error))"])
@@ -417,7 +430,8 @@ public extension SmokeHTTP1Server {
             contextProvider: initalizer.getInvocationContext,
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
-            requestExecutor: initalizer.requestExecutor)
+            requestExecutor: initalizer.requestExecutor,
+            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
         let server = StandardSmokeHTTP1Server(handler: handler,
                                               port: initalizer.port,
                                               invocationStrategy: initalizer.invocationStrategy,
