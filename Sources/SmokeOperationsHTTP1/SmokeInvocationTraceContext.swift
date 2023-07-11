@@ -123,7 +123,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             
             self.parentSpan = parentSpan
             
-            self.span = InstrumentationSystem.tracer.startSpan(operationName, context: serviceContext)
+            self.span = InstrumentationSystem.tracer.startSpan(operationName, context: parentSpan.context)
         } else {
             self.parentSpan = nil
             self.span = nil
