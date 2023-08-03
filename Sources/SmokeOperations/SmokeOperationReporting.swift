@@ -44,6 +44,7 @@ public struct SmokeOperationReporting {
     public let outwardsServiceCallLatencySumTimer: Metrics.Timer?
     public let outwardsServiceCallRetryWaitSumTimer: Metrics.Timer?
     
+    // swiftlint:disable function_body_length
     public init<OperationIdentifer: OperationIdentity>(serverName: String, request: RequestType<OperationIdentifer>,
                                                        configuration: SmokeReportingConfiguration<OperationIdentifer>) {
         let operationName = request.description
@@ -134,4 +135,5 @@ public struct SmokeOperationReporting {
             outwardsServiceCallRetryWaitSumTimer = nil
         }
     }
+    // swiftlint:enable function_body_length
 }
