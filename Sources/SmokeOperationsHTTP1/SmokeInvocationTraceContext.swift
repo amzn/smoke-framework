@@ -54,13 +54,16 @@ public struct SmokeInvocationTraceContext {
     private let externalRequestId: String?
     private let traceId: String?
     
+    private let parentSpan: Span?
     public let span: Span?
     
     public init(externalRequestId: String? = nil,
                 traceId: String? = nil,
+                parentSpan: Span? = nil,
                 span: Span? = nil) {
         self.externalRequestId = externalRequestId
         self.traceId = traceId
+        self.parentSpan = parentSpan
         self.span = span
     }
 }
@@ -106,24 +109,27 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             let operationName = parameters.operationName
             InstrumentationSystem.instrument.extract(requestHead.headers, into: &serviceContext, using: HTTPHeadersExtractor())
             
-            let span = InstrumentationSystem.tracer.startSpan(operationName, context: serviceContext, ofKind: .server)
+            let parentSpan = InstrumentationSystem.tracer.startSpan("ServerRequest", context: serviceContext, ofKind: .server)
             
             var attributes: SpanAttributes = [:]
             
-            attributes["aws.operation"] = operationName
             attributes["http.method"] = requestHead.method.rawValue
             attributes["http.target"] = requestHead.uri
             attributes["http.flavor"] = "\(requestHead.version.major).\(requestHead.version.minor)"
             attributes["http.user_agent"] = requestHead.headers.first(name: "user-agent")
             attributes["http.request_content_length"] = requestHead.headers.first(name: "content-length")
             
-            span.attributes = attributes
+            parentSpan.attributes = attributes
             
-            self.span = span
+            self.parentSpan = parentSpan
+            
+            self.span = InstrumentationSystem.tracer.startSpan(operationName, context: parentSpan.context)
         } else {
+            self.parentSpan = nil
             self.span = nil
         }
 #else
+        self.parentSpan = nil
         self.span = nil
 #endif
     }
@@ -145,12 +151,18 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             logMetadata["bodyData"] = "\(bodyData.debugString)"
         }
         
-        if let span = self.span {
-            span.attributes["smoke.internalRequestId"] = internalRequestId
+        func logIncomingRequest() {
+            // log details about the incoming request
+            logger.info("Incoming request received.", metadata: logMetadata)
         }
         
-        // log details about the incoming request
-        logger.info("Incoming request received.", metadata: logMetadata)
+        if let span = self.span {
+            span.attributes["smoke.internalRequestId"] = internalRequestId
+            
+            ServiceContext.withValue(span.context, operation: logIncomingRequest)
+        } else {
+            logIncomingRequest()
+        }
     }
     
     public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
@@ -198,6 +210,10 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             }
             
             span.end()
+        }
+        
+        if let parentSpan = self.parentSpan {
+            parentSpan.end()
         }
         
         logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)

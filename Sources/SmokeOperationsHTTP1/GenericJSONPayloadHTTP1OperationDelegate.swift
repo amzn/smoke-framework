@@ -122,25 +122,13 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
     }
     
     public func handleResponseForOperation<OutputType>(
-                requestHead: SmokeHTTP1RequestHead, output: OutputType,
-                responseHandler: ResponseHandlerType,
-                invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: OperationHTTP1OutputProtocol {
-        switch self.responseExecutor {
-        case .existingThread:
+            requestHead: SmokeHTTP1RequestHead, output: OutputType,
+            responseHandler: ResponseHandlerType,
+            invocationContext: SmokeInvocationContext<InvocationReportingType>)
+    where OutputType: OperationHTTP1OutputProtocol {
+        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
             self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
                                                                invocationContext: invocationContext)
-        case .dispatchQueue:
-            DispatchQueue.global().async {
-                self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
-                                                                   invocationContext: invocationContext)
-            }
-        case .eventLoop:
-            // encode the response within the event loop of the server to limit the number of response
-            // `Data` objects that exist at single time to the number of threads in the event loop
-            responseHandler.executeInEventLoop(invocationContext: invocationContext) {
-                self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
-                                                                   invocationContext: invocationContext)
-            }
         }
     }
         
@@ -236,17 +224,15 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             operationFailure: OperationFailure,
             responseHandler: ResponseHandlerType,
             invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        // encode the response within the event loop of the server to limit the number of response
-        // `Data` objects that exist at single time to the number of threads in the event loop
-        responseHandler.executeInEventLoop(invocationContext: invocationContext) {
-            self.handleResponseForOperationFailureInEventLoop(requestHead: requestHead,
-                                                              operationFailure: operationFailure,
-                                                              responseHandler: responseHandler,
-                                                              invocationContext: invocationContext)
+        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
+            self.handleResponseForOperationFailureOnDesiredThreadPool(requestHead: requestHead,
+                                                                      operationFailure: operationFailure,
+                                                                      responseHandler: responseHandler,
+                                                                      invocationContext: invocationContext)
         }
     }
     
-    private func handleResponseForOperationFailureInEventLoop(
+    private func handleResponseForOperationFailureOnDesiredThreadPool(
             requestHead: SmokeHTTP1RequestHead,
             operationFailure: OperationFailure,
             responseHandler: ResponseHandlerType,
@@ -306,19 +292,17 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
                               message: String?,
                               responseHandler: ResponseHandlerType,
                               invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        // encode the response within the event loop of the server to limit the number of response
-        // `Data` objects that exist at single time to the number of threads in the event loop
-        responseHandler.executeInEventLoop(invocationContext: invocationContext) {
-            self.handleErrorInEventLoop(code: code, reason: reason, message: message,
-                                        responseHandler: responseHandler, invocationContext: invocationContext)
+        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
+            self.handleErrorOnDesiredThreadPool(code: code, reason: reason, message: message,
+                                                responseHandler: responseHandler, invocationContext: invocationContext)
         }
     }
     
-    internal func handleErrorInEventLoop(code: Int,
-                                         reason: String,
-                                         message: String?,
-                                         responseHandler: ResponseHandlerType,
-                                         invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+    internal func handleErrorOnDesiredThreadPool(code: Int,
+                                                 reason: String,
+                                                 message: String?,
+                                                 responseHandler: ResponseHandlerType,
+                                                 invocationContext: SmokeInvocationContext<InvocationReportingType>) {
         let errorResult = SmokeOperationsErrorPayload(errorMessage: message)
         let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: invocationContext.invocationReporting.logger,
                                                      reason: reason)
@@ -328,5 +312,24 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
 
         responseHandler.complete(invocationContext: invocationContext, status: .custom(code: UInt(code), reasonPhrase: reason),
                                  responseComponents: responseComponents)
+    }
+    
+    internal func handleUsingDesiredThreadPool(responseHandler: ResponseHandlerType,
+                                               invocationContext: SmokeInvocationContext<InvocationReportingType>,
+                                               body: @escaping () -> ()) {
+        switch self.responseExecutor {
+        case .existingThread:
+            body()
+        case .dispatchQueue:
+            DispatchQueue.global().async {
+                body()
+            }
+        case .eventLoop:
+            // encode the response within the event loop of the server to limit the number of response
+            // `Data` objects that exist at single time to the number of threads in the event loop
+            responseHandler.executeInEventLoop(invocationContext: invocationContext) {
+                body()
+            }
+        }
     }
 }
