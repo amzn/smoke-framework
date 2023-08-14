@@ -56,33 +56,28 @@ public extension OperationHandler {
                                  responseHandler: OperationDelegateType.ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
             Task {
-                let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
-                do {
-                    let output: OutputType
-                    if let span = invocationContext.invocationReporting.span {
-                        output = try await ServiceContext.withValue(span.context) {
-                            return try await operation(input, context, invocationContext.invocationReporting)
-                        }
-                    } else {
-                        output = try await operation(input, context, invocationContext.invocationReporting)
+                await Self.withSpanContext(invocationContext: invocationContext) {
+                    let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
+                    do {
+                        let output = try await operation(input, context, invocationContext.invocationReporting)
+                        
+                        handlerResult = .success(output)
+                    } catch let smokeReturnableError as SmokeReturnableError {
+                        handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                    } catch SmokeOperationsError.validationError(reason: let reason) {
+                        handlerResult = .validationError(reason)
+                    } catch {
+                        handlerResult = .internalServerError(error)
                     }
-                                        
-                    handlerResult = .success(output)
-                } catch let smokeReturnableError as SmokeReturnableError {
-                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
-                } catch SmokeOperationsError.validationError(reason: let reason) {
-                    handlerResult = .validationError(reason)
-                } catch {
-                    handlerResult = .internalServerError(error)
+                    
+                    OperationHandler.handleWithOutputOperationHandlerResult(
+                        handlerResult: handlerResult,
+                        operationDelegate: operationDelegate,
+                        requestHead: requestHead,
+                        responseHandler: responseHandler,
+                        outputHandler: outputHandler,
+                        invocationContext: invocationContext)
                 }
-                
-                OperationHandler.handleWithOutputOperationHandlerResult(
-                    handlerResult: handlerResult,
-                    operationDelegate: operationDelegate,
-                    requestHead: requestHead,
-                    responseHandler: responseHandler,
-                    outputHandler: outputHandler,
-                    invocationContext: invocationContext)
             }
         }
         
