@@ -151,12 +151,18 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             logMetadata["bodyData"] = "\(bodyData.debugString)"
         }
         
-        if let span = self.span {
-            span.attributes["smoke.internalRequestId"] = internalRequestId
+        func logIncomingRequest() {
+            // log details about the incoming request
+            logger.info("Incoming request received.", metadata: logMetadata)
         }
         
-        // log details about the incoming request
-        logger.info("Incoming request received.", metadata: logMetadata)
+        if let span = self.span {
+            span.attributes["smoke.internalRequestId"] = internalRequestId
+            
+            ServiceContext.withValue(span.context, operation: logIncomingRequest)
+        } else {
+            logIncomingRequest()
+        }
     }
     
     public func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,

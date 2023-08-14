@@ -53,31 +53,27 @@ public extension OperationHandler {
                                  responseHandler: ResponseHandlerType,
                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
             Task {
-                let handlerResult: NoOutputOperationHandlerResult<ErrorType>
-                do {
-                    if let span = invocationContext.invocationReporting.span {
-                        try await ServiceContext.withValue(span.context) {
-                            try await operation(input, context, invocationContext.invocationReporting)
-                        }
-                    } else {
+                await Self.withSpanContext(invocationContext: invocationContext) {
+                    let handlerResult: NoOutputOperationHandlerResult<ErrorType>
+                    do {
                         try await operation(input, context, invocationContext.invocationReporting)
+                        
+                        handlerResult = .success
+                    } catch let smokeReturnableError as SmokeReturnableError {
+                        handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                    } catch SmokeOperationsError.validationError(reason: let reason) {
+                        handlerResult = .validationError(reason)
+                    } catch {
+                        handlerResult = .internalServerError(error)
                     }
                     
-                    handlerResult = .success
-                } catch let smokeReturnableError as SmokeReturnableError {
-                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
-                } catch SmokeOperationsError.validationError(reason: let reason) {
-                    handlerResult = .validationError(reason)
-                } catch {
-                    handlerResult = .internalServerError(error)
+                    OperationHandler.handleNoOutputOperationHandlerResult(
+                        handlerResult: handlerResult,
+                        operationDelegate: operationDelegate,
+                        requestHead: requestHead,
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 }
-                
-                OperationHandler.handleNoOutputOperationHandlerResult(
-                    handlerResult: handlerResult,
-                    operationDelegate: operationDelegate,
-                    requestHead: requestHead,
-                    responseHandler: responseHandler,
-                    invocationContext: invocationContext)
             }
         }
         

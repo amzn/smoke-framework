@@ -16,6 +16,7 @@
 //
 import Foundation
 import Logging
+import Tracing
 
 /**
  Possible results of an operation that has no output.

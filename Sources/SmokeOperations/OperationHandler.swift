@@ -18,6 +18,7 @@
 import Foundation
 import Logging
 import SmokeInvocation
+import Tracing
 
 private let incomingOperationKey = "incomingOperation"
 
@@ -69,9 +70,13 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 let logger = invocationContext.invocationReporting.logger
                 
                 if let reportableType = reportableType {
-                    logger.info("DecodingError [\(reportableType): \(description)")
+                    withSpanContext(invocationContext: invocationContext) {
+                        logger.info("DecodingError [\(reportableType): \(description)")
+                    }
                 } else {
-                    logger.info("DecodingError: \(description)")
+                    withSpanContext(invocationContext: invocationContext) {
+                        logger.info("DecodingError: \(description)")
+                    }
                 }
                 
                 operationDelegate.handleResponseForDecodingError(
@@ -85,7 +90,9 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                     // attempt to validate the input
                     try input.validate()
                 } catch SmokeOperationsError.validationError(let reason) {
-                    logger.info("ValidationError: \(reason)")
+                    withSpanContext(invocationContext: invocationContext) {
+                        logger.info("ValidationError: \(reason)")
+                    }
                     
                     operationDelegate.handleResponseForValidationError(
                         requestHead: requestHead,
@@ -94,7 +101,9 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                         invocationContext: invocationContext)
                     return
                 } catch {
-                    logger.info("ValidationError: \(error)")
+                    withSpanContext(invocationContext: invocationContext) {
+                        logger.info("ValidationError: \(error)")
+                    }
                     
                     operationDelegate.handleResponseForValidationError(
                         requestHead: requestHead,
@@ -113,6 +122,15 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                 }
                 
                 inputHandler(input, requestHead, contextForInvocation, responseHandler, invocationContext)
+            }
+        }
+        
+        private func withSpanContext(invocationContext: SmokeInvocationContext<InvocationReportingType>,
+                                     operation: () -> ()) {
+            if let span = invocationContext.invocationReporting.span {
+                ServiceContext.withValue(span.context, operation: operation)
+            } else {
+                operation()
             }
         }
     }
@@ -238,6 +256,15 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
         
         self.operationFunction = newFunction
         self.operationIdentifer = operationIdentifer
+    }
+    
+    public static func withSpanContext(invocationContext: SmokeInvocationContext<InvocationReportingType>,
+                                       operation: () async -> ()) async {
+        if let span = invocationContext.invocationReporting.span {
+            await ServiceContext.withValue(span.context, operation: operation)
+        } else {
+            await operation()
+        }
     }
 }
 
