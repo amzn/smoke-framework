@@ -18,6 +18,10 @@
 import Foundation
 import Logging
 
+public protocol Identifiable {
+    var identity: String { get }
+}
+
 /// Type alias for an error that also can be identified by its description
 public typealias ErrorIdentifiableByDescription =
     Swift.Error & CustomStringConvertible

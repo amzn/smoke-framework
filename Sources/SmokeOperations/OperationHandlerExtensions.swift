@@ -53,13 +53,26 @@ public extension OperationHandler {
         error: SmokeReturnableError,
         allowedErrors: [(ShapeType, Int)])
         -> OperationFailure? where ShapeType: ErrorIdentifiableByDescription {
-            let requiredIdentity = error.description
+            let requiredIdentity: String
+            if let identifiableError = error as? Identifiable {
+                requiredIdentity = identifiableError.identity
+            } else {
+                requiredIdentity = error.description
+            }
             
             // get the code of the first entry in the allowedErrors array that has
             // the required identity.
-            let code = allowedErrors.filter { entry in entry.0.description == requiredIdentity }
-                .map { entry in entry.1 }
-                .first
+            let code = allowedErrors.filter { entry in
+                let identity: String
+                if let identifiableError = entry.0 as? Identifiable {
+                    identity = identifiableError.identity
+                } else {
+                    identity = entry.0.description
+                }
+                
+                return identity == requiredIdentity
+            }.map { entry in entry.1 }
+            .first
             
             if let code = code {
                 return OperationFailure(code: code,
