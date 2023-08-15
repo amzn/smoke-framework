@@ -17,6 +17,7 @@
 
 import Foundation
 import SmokeOperations
+import NIOHTTP1
 import HTTPPathCoding
 import HTTPHeadersCoding
 import QueryCoding
@@ -28,8 +29,15 @@ internal struct MimeTypes {
 
 internal struct JSONErrorEncoder: ErrorEncoder {
     public func encode<InputType>(_ input: InputType, logger: Logger) throws -> Data where InputType: SmokeReturnableError {
+        let reason: String
+        if let identifiableError = input as? Identifiable {
+            reason = identifiableError.identity
+        } else {
+            reason = input.description
+        }
+        
         return JSONEncoder.encodePayload(payload: input, logger: logger,
-                                         reason: input.description)
+                                         reason: reason)
     }
 }
 
@@ -254,8 +262,16 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
         let body = (contentType: MimeTypes.json, data: encodedOutput)
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
-        responseHandler.complete(invocationContext: invocationContext, status: .custom(code: UInt(operationFailure.code),
-                                                                                       reasonPhrase: operationFailure.error.description),
+        let status: HTTPResponseStatus
+        if let identifiableError = operationFailure.error as? Identifiable {
+            status = .custom(code: UInt(operationFailure.code),
+                             reasonPhrase: identifiableError.identity)
+        } else {
+            status = .custom(code: UInt(operationFailure.code),
+                             reasonPhrase: operationFailure.error.description)
+        }
+                
+        responseHandler.complete(invocationContext: invocationContext, status: status,
                                  responseComponents: responseComponents)
     }
     
