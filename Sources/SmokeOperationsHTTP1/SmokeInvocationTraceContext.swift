@@ -188,12 +188,12 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         }
         
         if let span = self.span {
-            span.attributes["http.status_code"] = Int(status.code)
-            
             span.end()
         }
         
         if let parentSpan = self.parentSpan {
+            parentSpan.attributes["http.status_code"] = Int(status.code)
+            
             parentSpan.end()
         }
         
