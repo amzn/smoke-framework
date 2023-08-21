@@ -25,6 +25,8 @@ public enum SmokeOperationsError: Error {
     case validationError(reason: String)
     /// There was no registered operation for the incoming request.
     case invalidOperation(reason: String)
+    /// The operation failed due to a serialization error.
+    case serializationError(description: String, reportableType: String?)
 }
 
 /**
