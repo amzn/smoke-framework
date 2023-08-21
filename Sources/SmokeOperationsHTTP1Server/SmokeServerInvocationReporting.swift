@@ -43,6 +43,10 @@ public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceCon
         return self.traceContext.span
     }
     
+    public func recordErrorForInvocation(_ error: Swift.Error) {
+        self.traceContext.recordErrorForInvocation(error)
+    }
+    
     public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType,
                 eventLoop: EventLoop? = nil, outwardsRequestAggregator: OutwardsRequestAggregator? = nil) {
         self.logger = logger

@@ -199,6 +199,12 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         
         logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)
     }
+    
+    public func recordErrorForInvocation(_ error: Swift.Error) {
+        span?.recordError(error)
+        span?.setStatus(.init(code: .error))
+        parentSpan?.setStatus(.init(code: .error))
+    }
 }
     
 extension SmokeInvocationTraceContext: InvocationTraceContext {

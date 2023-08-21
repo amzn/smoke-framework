@@ -76,8 +76,8 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                         logger.info("DecodingError: \(description)")
                     }
                     
-                    invocationContext.invocationReporting.span?.recordError(SmokeOperationsError.serializationError(description: description,
-                                                                                                                    reportableType: reportableType))
+                    invocationContext.invocationReporting.recordErrorForInvocation(SmokeOperationsError.serializationError(description: description,
+                                                                                                                           reportableType: reportableType))
                     operationDelegate.handleResponseForDecodingError(
                         requestHead: requestHead,
                         message: description,
@@ -90,7 +90,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                     // attempt to validate the input
                     try input.validate()
                 } catch SmokeOperationsError.validationError(let reason) {
-                    invocationContext.invocationReporting.span?.recordError(SmokeOperationsError.validationError(reason: reason))
+                    invocationContext.invocationReporting.recordErrorForInvocation(SmokeOperationsError.validationError(reason: reason))
                     
                     withSpanContext(invocationContext: invocationContext) {
                         logger.info("ValidationError: \(reason)")
@@ -103,7 +103,7 @@ public struct OperationHandler<ContextType, RequestHeadType, InvocationReporting
                     }
                     return
                 } catch {
-                    invocationContext.invocationReporting.span?.recordError(error)
+                    invocationContext.invocationReporting.recordErrorForInvocation(error)
                     
                     withSpanContext(invocationContext: invocationContext) {
                         logger.info("ValidationError: \(error)")
