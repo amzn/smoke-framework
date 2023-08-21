@@ -179,29 +179,21 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             logMetadata["bodyData"] = "\(body.data.debugString)"
         }
         
-        let isError = (status.code >= 500 && status.code < 600)
         let level: Logger.Level
         // log at error if this is a server error
-        if isError {
+        if status.code >= 500 && status.code < 600 {
             level = .error
         } else {
             level = .info
         }
         
         if let span = self.span {
-            // log at error if this is a server error
-            if isError {
-                span.setStatus(.init(code: .error))
-            }
+            span.attributes["http.status_code"] = Int(status.code)
+            
             span.end()
         }
         
         if let parentSpan = self.parentSpan {
-            // log at error if this is a server error
-            if isError {
-                parentSpan.setStatus(.init(code: .error))
-            }
-            
             parentSpan.attributes["http.status_code"] = Int(status.code)
             
             parentSpan.end()
@@ -212,6 +204,8 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
     
     public func recordErrorForInvocation(_ error: Swift.Error) {
         span?.recordError(error)
+        span?.setStatus(.init(code: .error))
+        parentSpan?.setStatus(.init(code: .error))
     }
 }
     
