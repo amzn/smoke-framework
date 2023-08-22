@@ -109,7 +109,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             var attributes: SpanAttributes = [:]
             
             attributes["http.method"] = requestHead.method.rawValue
-            attributes["http.target"] = requestHead.uri
+            attributes["http.url"] = requestHead.uri
             attributes["http.flavor"] = "\(requestHead.version.major).\(requestHead.version.minor)"
             attributes["http.user_agent"] = requestHead.headers.first(name: "user-agent")
             attributes["http.request_content_length"] = requestHead.headers.first(name: "content-length")
