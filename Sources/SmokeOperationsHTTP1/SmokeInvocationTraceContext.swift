@@ -22,11 +22,6 @@ import NIOHTTP1
 import AsyncHTTPClient
 import Tracing
 
-private enum OperationFailure: Error {
-    case withResponseBody(String)
-    case withNoResponseBody
-}
-
 private extension Data {
     var debugString: String {
         return String(data: self, encoding: .utf8) ?? ""
@@ -114,7 +109,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
             var attributes: SpanAttributes = [:]
             
             attributes["http.method"] = requestHead.method.rawValue
-            attributes["http.target"] = requestHead.uri
+            attributes["http.url"] = "http://127.0.0.1\(requestHead.uri)" 
             attributes["http.flavor"] = "\(requestHead.version.major).\(requestHead.version.minor)"
             attributes["http.user_agent"] = requestHead.headers.first(name: "user-agent")
             attributes["http.request_content_length"] = requestHead.headers.first(name: "content-length")
@@ -178,16 +173,10 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         var logMetadata: Logger.Metadata = ["status": "\(status.reasonPhrase)",
                                             "statusCode": "\(status.code)"]
         
-        let bodyData: String?
         if let body = body {
-            let theBodyData = body.data.debugString
             logMetadata["contentType"] = "\(body.contentType)"
             logMetadata["bodyBytesCount"] = "\(body.data.count)"
-            logMetadata["bodyData"] = "\(theBodyData)"
-            
-            bodyData = theBodyData
-        } else {
-            bodyData = nil
+            logMetadata["bodyData"] = "\(body.data.debugString)"
         }
         
         let level: Logger.Level
@@ -201,22 +190,22 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
         if let span = self.span {
             span.attributes["http.status_code"] = Int(status.code)
             
-            if status.code >= 500 && status.code < 600 {
-                if let bodyData = bodyData {
-                    span.recordError(OperationFailure.withResponseBody(bodyData))
-                } else {
-                    span.recordError(OperationFailure.withNoResponseBody)
-                }
-            }
-            
             span.end()
         }
         
         if let parentSpan = self.parentSpan {
+            parentSpan.attributes["http.status_code"] = Int(status.code)
+            
             parentSpan.end()
         }
         
         logger.log(level: level, "Response to incoming request sent.", metadata: logMetadata)
+    }
+    
+    public func recordErrorForInvocation(_ error: Swift.Error) {
+        span?.recordError(error)
+        span?.setStatus(.init(code: .error))
+        parentSpan?.setStatus(.init(code: .error))
     }
 }
     

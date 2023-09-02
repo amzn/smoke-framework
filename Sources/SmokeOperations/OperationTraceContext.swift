@@ -62,6 +62,8 @@ public protocol OperationTraceContext {
     
     func handleInwardsRequestComplete(httpHeaders: inout ResponseHeadersType, status: ResponseStatusType, body: (contentType: String, data: Data)?,
                                       logger: Logger, internalRequestId: String)
+    
+    func recordErrorForInvocation(_ error: Swift.Error)
 }
 
 public extension OperationTraceContext {
@@ -73,5 +75,10 @@ public extension OperationTraceContext {
     // Add span property while remaining backwards compatible
     var span: Span? {
         return nil
+    }
+    
+    // Retain backwards-compatibility
+    func recordErrorForInvocation(_ error: Swift.Error) {
+        // do nothing by default
     }
 }

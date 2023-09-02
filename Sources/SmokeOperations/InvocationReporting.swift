@@ -26,11 +26,18 @@ public protocol InvocationReporting {
     var logger: Logger { get }
     var internalRequestId: String { get }
     var span: Span? { get }
+    
+    func recordErrorForInvocation(_ error: Swift.Error)
 }
 
 public extension InvocationReporting {
     // Add span property while remaining backwards compatible
     var span: Span? {
         return nil
+    }
+    
+    // Retain backwards-compatibility
+    func recordErrorForInvocation(_ error: Swift.Error) {
+        // be default do nothing
     }
 }

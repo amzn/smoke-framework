@@ -109,11 +109,13 @@ public extension OperationHandler {
             case .internalServerError(let error):
                 logger.error("Unexpected failure.",
                              metadata: ["cause": "\(String(describing: error))"])
+                invocationContext.invocationReporting.recordErrorForInvocation(error)
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
             case .smokeReturnableError(let error, let allowedErrors):
+                invocationContext.invocationReporting.recordErrorForInvocation(error)
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
@@ -137,6 +139,7 @@ public extension OperationHandler {
                     invocationContext: invocationContext)
             case .validationError(let reason):
                 logger.warning("ValidationError: \(reason)")
+                invocationContext.invocationReporting.recordErrorForInvocation(SmokeOperationsError.validationError(reason: reason))
                 operationDelegate.handleResponseForValidationError(
                     requestHead: requestHead,
                     message: reason,
@@ -173,11 +176,13 @@ public extension OperationHandler {
             case .internalServerError(let error):
                 logger.error("Unexpected failure.",
                              metadata: ["cause": "\(String(describing: error))"])
+                invocationContext.invocationReporting.recordErrorForInvocation(error)
                 operationDelegate.handleResponseForInternalServerError(
                     requestHead: requestHead,
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
             case .smokeReturnableError(let error, let allowedErrors):
+                invocationContext.invocationReporting.recordErrorForInvocation(error)
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
@@ -200,6 +205,7 @@ public extension OperationHandler {
                     
                     outputHandler(requestHead, output, responseHandler, invocationContext)
                 } catch {
+                    invocationContext.invocationReporting.recordErrorForInvocation(error)
                     logger.error("Serialization error: unable to get response.",
                                  metadata: ["cause": "\(String(describing: error))"])
                     
@@ -209,6 +215,7 @@ public extension OperationHandler {
                         invocationContext: invocationContext)
                 }
             case .validationError(let reason):
+                invocationContext.invocationReporting.recordErrorForInvocation(SmokeOperationsError.validationError(reason: reason))
                 logger.warning("ValidationError: \(reason)")
                 operationDelegate.handleResponseForValidationError(
                     requestHead: requestHead,
