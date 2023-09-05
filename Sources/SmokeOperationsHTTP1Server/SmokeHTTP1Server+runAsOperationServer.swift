@@ -326,7 +326,7 @@ public extension SmokeHTTP1Server {
     where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
           InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
           InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-            StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+            HBHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -359,20 +359,21 @@ public extension SmokeHTTP1Server {
         
         var handlerSelector = initalizer.handlerSelectorProvider()
         initalizer.operationsInitializer(&handlerSelector)
-        
-        let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
+                
+        let responser = SmokeServerHBHTTPResponder(
             handlerSelector: handlerSelector,
             context: initalizer.getInvocationContext(),
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
+            invocationStrategy: initalizer.invocationStrategy,
             requestExecutor: initalizer.requestExecutor,
             enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
-        let server = StandardSmokeHTTP1Server(handler: handler,
-                                              port: initalizer.port,
-                                              invocationStrategy: initalizer.invocationStrategy,
-                                              defaultLogger: initalizer.defaultLogger,
-                                              eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignals: initalizer.shutdownOnSignals)
+        let server = HBSmokeHTTP1Server(responder: responser,
+                                        port: initalizer.port,
+                                        defaultLogger: initalizer.defaultLogger,
+                                        eventLoopProvider: eventLoopProvider,
+                                        shutdownOnSignals: initalizer.shutdownOnSignals)
+
         do {
             try server.start()
             
@@ -391,7 +392,7 @@ public extension SmokeHTTP1Server {
     where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
           InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
           InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
-            StandardHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+            HBHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
         let eventLoopGroup =
             MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         
@@ -425,19 +426,19 @@ public extension SmokeHTTP1Server {
         var handlerSelector = initalizer.handlerSelectorProvider()
         initalizer.operationsInitializer(&handlerSelector)
         
-        let handler = OperationServerHTTP1RequestHandler<InitializerType.SelectorType, TraceContextType>(
+        let responser = SmokeServerHBHTTPResponder(
             handlerSelector: handlerSelector,
             contextProvider: initalizer.getInvocationContext,
             serverName: initalizer.serverName,
             reportingConfiguration: initalizer.reportingConfiguration,
+            invocationStrategy: initalizer.invocationStrategy,
             requestExecutor: initalizer.requestExecutor,
             enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
-        let server = StandardSmokeHTTP1Server(handler: handler,
-                                              port: initalizer.port,
-                                              invocationStrategy: initalizer.invocationStrategy,
-                                              defaultLogger: initalizer.defaultLogger,
-                                              eventLoopProvider: eventLoopProvider,
-                                              shutdownOnSignals: initalizer.shutdownOnSignals)
+        let server = HBSmokeHTTP1Server(responder: responser,
+                                        port: initalizer.port,
+                                        defaultLogger: initalizer.defaultLogger,
+                                        eventLoopProvider: eventLoopProvider,
+                                        shutdownOnSignals: initalizer.shutdownOnSignals)
         do {
             try server.start()
             

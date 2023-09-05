@@ -22,3 +22,8 @@ public typealias JSONPayloadHTTP1OperationDelegate<TraceContextType: HTTP1Operat
     GenericJSONPayloadHTTP1OperationDelegate<
         StandardHTTP1ResponseHandler<SmokeInvocationContext<SmokeServerInvocationReporting<TraceContextType>>>,
         SmokeServerInvocationReporting<TraceContextType>>
+
+public typealias JSONPayloadHBHTTP1OperationDelegate<TraceContextType: HTTP1OperationTraceContext> =
+    GenericJSONPayloadHTTP1OperationDelegate<
+        HBHTTP1ResponseHandler<SmokeInvocationContext<SmokeServerInvocationReporting<TraceContextType>>>,
+        SmokeServerInvocationReporting<TraceContextType>>

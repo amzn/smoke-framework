@@ -30,7 +30,7 @@ import SmokeOperations
  */
 public protocol StandardJSONSmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncServerPerInvocationContextInitializer
         where SelectorType ==
-                StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>,
+                StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHBHTTP1OperationDelegate<SmokeInvocationTraceContext>,
                                                   OperationIdentifer> {
     associatedtype ContextType
 #if swift(>=5.6)
@@ -39,7 +39,7 @@ public protocol StandardJSONSmokeAsyncServerPerInvocationContextInitializer: Smo
     associatedtype OperationIdentifer: OperationIdentity
 #endif
     
-    typealias OperationsInitializerType = ((inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1OperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void)
+    typealias OperationsInitializerType = ((inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHBHTTP1OperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void)
 }
 
 public extension StandardJSONSmokeAsyncServerPerInvocationContextInitializer {
@@ -54,7 +54,7 @@ public extension StandardJSONSmokeAsyncServerPerInvocationContextInitializer {
     }
     
     var defaultOperationDelegate: SelectorType.DefaultOperationDelegateType {
-        return JSONPayloadHTTP1OperationDelegate()
+        return JSONPayloadHBHTTP1OperationDelegate()
     }
 }
 

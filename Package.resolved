@@ -11,6 +11,15 @@
         }
       },
       {
+        "package": "hummingbird-core",
+        "repositoryURL": "https://github.com/hummingbird-project/hummingbird-core.git",
+        "state": {
+          "branch": null,
+          "revision": "4458f691653db58ac55a1aa8ef978709cd7e0749",
+          "version": "1.3.1"
+        }
+      },
+      {
         "package": "smoke-http",
         "repositoryURL": "https://github.com/amzn/smoke-http.git",
         "state": {
