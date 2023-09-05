@@ -95,7 +95,7 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         
         self.server = HBHTTPServer(
             group: eventLoopGroup,
-            configuration: .init(address: .hostname("127.0.0.1", port: port))
+            configuration: .init(address: .hostname(ServerDefaults.defaultHost, port: port))
         )
         
         let newSignalSources: [(DispatchSourceSignal, Int32, SmokeHTTP1Server.ShutdownOnSignal)] = shutdownOnSignals.compactMap { shutdownOnSignal in

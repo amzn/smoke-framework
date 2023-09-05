@@ -19,7 +19,7 @@ import Foundation
 import NIO
 
 public struct ServerDefaults {
-    static let defaultHost = "0.0.0.0"
+    public static let defaultHost = "0.0.0.0"
     public static let defaultPort = 8080
 }
 
