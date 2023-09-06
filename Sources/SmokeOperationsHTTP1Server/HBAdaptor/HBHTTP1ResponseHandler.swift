@@ -172,22 +172,18 @@ public struct HBHTTP1ResponseHandler<
                                             status: status,
                                             headers: headers)
         
-        executeInEventLoop(invocationContext: invocationContext) {
-            let responseBody: HBResponseBody
-            // if there is a body, write it to the response
-            if let data = data {
-                // create a buffer for the body and copy the body into it
-                var buffer = context.channel.allocator.buffer(capacity: data.count)
-                buffer.writeBytes(data)
-                
-                responseBody = .byteBuffer(buffer)
-            } else {
-                responseBody = .empty
-            }
+        let responseBody: HBResponseBody
+        // if there is a body, write it to the response
+        if let data = data {
+            let body = ByteBuffer(data: data)
             
-            let response = HBHTTPResponse(head: responseHead, body: responseBody)
-            onComplete(.success(response))
+            responseBody = .byteBuffer(body)
+        } else {
+            responseBody = .empty
         }
+        
+        let response = HBHTTPResponse(head: responseHead, body: responseBody)
+        onComplete(.success(response))
     }
 }
 

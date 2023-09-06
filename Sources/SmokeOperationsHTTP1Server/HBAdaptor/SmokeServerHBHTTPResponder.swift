@@ -79,26 +79,16 @@ where SelectorType: SmokeHTTP1HandlerSelector,
         let bodyReadCompleteFuture: EventLoopFuture<Data?>
         switch request.body {
         case .byteBuffer(let byteBufferOptional):
-            let body: Data?
-            if var byteBuffer  = byteBufferOptional{
-                let byteBufferSize = byteBuffer.readableBytes
-                body = byteBuffer.readData(length: byteBufferSize)
-            } else {
-                body = nil
-            }
+            let body = byteBufferOptional.map { Data(buffer: $0, byteTransferStrategy: .noCopy) }
             
             bodyReadCompleteFuture = context.eventLoop.makeSucceededFuture(body)
         case .stream(let stream):
             var bodyData: Data?
             bodyReadCompleteFuture = stream.consumeAll(on: context.eventLoop) { bodyPart in
-                var mutableBodyPart = bodyPart
-                let byteBufferSize = mutableBodyPart.readableBytes
-                let newBodyPart = mutableBodyPart.readData(length: byteBufferSize)
+                let newBodyPart = Data(buffer: bodyPart, byteTransferStrategy: .noCopy)
                 
                 if let existingBody = bodyData {
-                    if let newBodyPart = newBodyPart {
-                        bodyData = existingBody + newBodyPart
-                    }
+                    bodyData = existingBody + newBodyPart
                 } else {
                     bodyData = newBodyPart
                 }
