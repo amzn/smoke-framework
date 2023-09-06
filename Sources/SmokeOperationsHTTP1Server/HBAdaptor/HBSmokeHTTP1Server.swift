@@ -143,7 +143,7 @@ internal class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
      either shutdown() is called or the surrounding application is being terminated.
      */
     internal func start() throws {
-        defaultLogger.info("HBSmokeHTTP1Server starting.",
+        defaultLogger.info("SmokeHTTP1Server (hummingbird-core) starting.",
                            metadata: ["port": "\(self.port)"])
         
         guard updateOnStart() else {
@@ -152,7 +152,7 @@ internal class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         }
         
         try self.server.start(responder: self.responder).wait()
-        defaultLogger.info("HBSmokeHTTP1Server started.",
+        defaultLogger.info("SmokeHTTP1Server (hummingbird-core) started.",
                            metadata: ["port": "\(self.port)"])
     }
     
@@ -204,7 +204,7 @@ internal class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
                                          metadata: ["cause": "\(String(describing: error))"])
             }
             
-            self.defaultLogger.info("HBSmokeHTTP1Server shutdown.")
+            self.defaultLogger.info("SmokeHTTP1Server (hummingbird-core) shutdown.")
         }
     }
     
