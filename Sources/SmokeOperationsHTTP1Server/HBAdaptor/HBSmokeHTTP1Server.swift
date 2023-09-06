@@ -25,6 +25,7 @@ import SmokeHTTP1
 import HummingbirdCore
 
 private struct ServerShutdownDetails {
+    let completionHandlers: [() -> Void]
     let awaitingContinuations: [CheckedContinuation<Void, Error>]
 }
 
@@ -32,12 +33,14 @@ private struct ServerShutdownDetails {
  A basic non-blocking HTTP server that handles a request with an
  optional body and returns a response with an optional body.
  */
-public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
+internal class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
     let server: HBHTTPServer
     let port: Int
     let responder: HBHTTPResponderType
     let signalSources: [DispatchSourceSignal]
     let defaultLogger: Logger
+    let shutdownDispatchGroup: DispatchGroup
+    let shutdownCompletionHandlerInvocationStrategy: InvocationStrategy
     
     enum State {
         case initialized
@@ -45,6 +48,7 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         case shuttingDown
         case shutDown
     }
+    private var shutdownCompletionHandlers: [() -> Void] = []
     private var shutdownWaitingContinuations: [CheckedContinuation<Void, Error>] = []
     private var serverState: State = .initialized
     private var stateLock: NSLock = NSLock()
@@ -56,12 +60,10 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
      Initializer.
  
      - Parameters:
-        - handler: the HTTPRequestHandler to handle incoming requests.
+        - responder: the HBHTTPResponder to handle incoming requests.
         - port: Optionally the localhost port for the server to listen on.
                 If not specified, defaults to 8080.
-        - invocationStrategy: Optionally the invocation strategy for incoming requests.
-                              If not specified, the handler for incoming requests will
-                              be invoked on DispatchQueue.global().
+        - defaultLogger: The logger to use for server events.
         - shutdownCompletionHandlerInvocationStrategy: Optionally the invocation strategy for shutdown completion handlers.
                                                        If not specified, the shutdown completion handlers will
                                                        be invoked on DispatchQueue.global() synchronously so that callers
@@ -73,16 +75,22 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         - shutdownOnSignals: Specifies if the server should be shutdown when one of the given signals is received.
                             If not specified, the server will be shutdown if a SIGINT is received.
      */
-    public init(responder: HBHTTPResponderType,
-                port: Int = ServerDefaults.defaultPort,
-                defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.HBSmokeHTTP1Server"),
-                eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
-                shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] = [.sigint]) {
+    internal init(responder: HBHTTPResponderType,
+                  port: Int = ServerDefaults.defaultPort,
+                  defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.HBSmokeHTTP1Server"),
+                  shutdownCompletionHandlerInvocationStrategy: InvocationStrategy = GlobalDispatchQueueSyncInvocationStrategy(),
+                  eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads,
+                  shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] = [.sigint]) {
         let signalQueue = DispatchQueue(label: "io.smokeframework.HBSmokeHTTP1Server.SignalHandlingQueue")
         
         self.port = port
         self.responder = responder
         self.defaultLogger = defaultLogger
+        self.shutdownCompletionHandlerInvocationStrategy = shutdownCompletionHandlerInvocationStrategy
+        self.shutdownDispatchGroup = DispatchGroup()
+        // enter the DispatchGroup during initialization so waiting for the
+        // shutdown of an initalized or started server will wait
+        shutdownDispatchGroup.enter()
         
         switch eventLoopProvider {
         case .spawnNewThreads:
@@ -134,7 +142,7 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
      when the server is started. The server will continue running until
      either shutdown() is called or the surrounding application is being terminated.
      */
-    public func start() throws {
+    internal func start() throws {
         defaultLogger.info("HBSmokeHTTP1Server starting.",
                            metadata: ["port": "\(self.port)"])
         
@@ -149,6 +157,27 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
     }
     
     /**
+     Blocks until the server has been shutdown and all completion handlers
+     have been executed. The provided closure will be added to the list of
+     completion handlers to be executed on shutdown. If the server is already
+     shutdown, the provided closure will be immediately executed.
+     
+     - Parameters:
+        - onShutdown: the closure to be executed after the server has been
+                      fully shutdown.
+     */
+    internal func waitUntilShutdownAndThen(onShutdown: @escaping () -> Void) throws {
+        let handlerQueuedForFutureShutdownComplete = addShutdownHandler(onShutdown: onShutdown)
+        
+        if handlerQueuedForFutureShutdownComplete {
+            shutdownDispatchGroup.wait()
+        } else {
+            // the server is already shutdown, immediately call the handler
+            shutdownCompletionHandlerInvocationStrategy.invoke(handler: onShutdown)
+        }
+    }
+    
+    /**
      Initiates the process of shutting down the server.
      */
     private func shutdown() throws {
@@ -160,6 +189,9 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
                 try self.server.stop().wait()
                 
                 let serverShutdownDetails = self.updateStateOnShutdownComplete()
+                
+                // execute all the completion handlers
+                serverShutdownDetails.completionHandlers.forEach { self.shutdownCompletionHandlerInvocationStrategy.invoke(handler: $0) }
                 
                 // resume any continuations
                 serverShutdownDetails.awaitingContinuations.forEach { $0.resume(returning: ()) }
@@ -176,7 +208,7 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         }
     }
     
-    public func untilShutdown() async throws {
+    internal func untilShutdown() async throws {
         return try await withCheckedThrowingContinuation { cont in
             if !addContinuationIfShutdown(newContinuation: cont) {
                 // continuation will be resumed when the server shuts down
@@ -254,10 +286,39 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         
         serverState = .shutDown
         
+        let completionHandlers = self.shutdownCompletionHandlers
+        self.shutdownCompletionHandlers = []
+        
         let waitingContinuations = self.shutdownWaitingContinuations
         self.shutdownWaitingContinuations = []
         
-        return ServerShutdownDetails(awaitingContinuations: waitingContinuations)
+        return ServerShutdownDetails(completionHandlers: completionHandlers, awaitingContinuations: waitingContinuations)
+    }
+    
+    /**
+     Adds a shutdown completion handler to be executed when server shutdown is complete.
+
+     - Returns: if the handler has been queued for execution when server shutdown is
+                complete in the future. Will be false if the server is already shutdown; in
+                this case, the handler can be immediately executed.
+     */
+    private func addShutdownHandler(onShutdown: @escaping () -> Void) -> Bool {
+        stateLock.lock()
+        defer {
+            stateLock.unlock()
+        }
+        
+        let handlerQueuedForFutureShutdownComplete: Bool
+        switch serverState {
+        case .initialized, .running, .shuttingDown:
+            shutdownCompletionHandlers.append(onShutdown)
+            handlerQueuedForFutureShutdownComplete = true
+        case .shutDown:
+            // already shutdown; immediately call the handler
+            handlerQueuedForFutureShutdownComplete = false
+        }
+        
+        return handlerQueuedForFutureShutdownComplete
     }
     
     /**
@@ -278,7 +339,7 @@ public class HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder> {
         return false
     }
     
-    public func addContinuationIfShutdown(newContinuation: CheckedContinuation<Void, Error>) -> Bool {
+    internal func addContinuationIfShutdown(newContinuation: CheckedContinuation<Void, Error>) -> Bool {
         stateLock.lock()
         defer {
             stateLock.unlock()

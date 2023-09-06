@@ -25,7 +25,7 @@ import SmokeHTTP1
 import Logging
 import SmokeInvocation
 
-public struct SmokeServerHBHTTPResponder<SelectorType, TraceContextType: OperationTraceContext>: HBHTTPResponder
+internal struct SmokeServerHBHTTPResponder<SelectorType, TraceContextType: OperationTraceContext>: HBHTTPResponder
 where SelectorType: SmokeHTTP1HandlerSelector,
       SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
       SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
@@ -69,7 +69,7 @@ where SelectorType: SmokeHTTP1HandlerSelector,
         self.invocationStrategy = invocationStrategy
     }
     
-    public func respond(to request: HummingbirdCore.HBHTTPRequest, context: NIOCore.ChannelHandlerContext,
+    internal func respond(to request: HummingbirdCore.HBHTTPRequest, context: NIOCore.ChannelHandlerContext,
                         onComplete: @escaping (Result<HummingbirdCore.HBHTTPResponse, Error>) -> Void) {
         let headReceiveDate = Date()
         let internalRequestId = UUID().uuidString
