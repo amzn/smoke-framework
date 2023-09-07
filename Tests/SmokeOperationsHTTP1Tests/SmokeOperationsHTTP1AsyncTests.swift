@@ -379,21 +379,4 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
         
         XCTAssertEqual("InvalidOperation", output.type)
     }
-
-    static var allTests = [
-        ("testExampleHandler", testExampleHandler),
-        ("testExampleHandlerWithTokenHeaderQuery", testExampleHandlerWithTokenHeaderQuery),
-        ("testExampleVoidHandler", testExampleVoidHandler),
-        ("testExampleVoidHandlerWithTokenHeaderQuery", testExampleVoidHandlerWithTokenHeaderQuery),
-        ("testInputValidationError", testInputValidationError),
-        ("testInputValidationErrorWithTokenHeaderQuery", testInputValidationErrorWithTokenHeaderQuery),
-        ("testOutputValidationError", testOutputValidationError),
-        ("testOutputValidationErrorWithTokenHeaderQuery", testOutputValidationErrorWithTokenHeaderQuery),
-        ("testThrownError", testThrownError),
-        ("testThrownErrorWithTokenHeaderQuery", testThrownErrorWithTokenHeaderQuery),
-        ("testInvalidOperation", testInvalidOperation),
-        ("testInvalidOperationWithTokenHeaderQuery", testInvalidOperationWithTokenHeaderQuery),
-        ("testIncorrectHTTPMethodOperation", testIncorrectHTTPMethodOperation),
-        ("testIncorrectHTTPMethodOperationWithTokenHeaderQuery", testIncorrectHTTPMethodOperationWithTokenHeaderQuery),
-    ]
 }
