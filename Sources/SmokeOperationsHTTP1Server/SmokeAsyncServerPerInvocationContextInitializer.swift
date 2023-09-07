@@ -19,8 +19,6 @@ import Foundation
 import SmokeOperationsHTTP1
 import SmokeHTTP1
 
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     
     var port: Int { get }
@@ -51,4 +49,3 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
         return false
     }
 }
-#endif

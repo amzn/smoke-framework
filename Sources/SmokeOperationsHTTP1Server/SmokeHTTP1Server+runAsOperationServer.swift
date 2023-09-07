@@ -320,7 +320,6 @@ public extension SmokeHTTP1Server {
         }
     }
     
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
     static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializer, TraceContextType>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
     where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
@@ -450,5 +449,4 @@ public extension SmokeHTTP1Server {
             logger.error("Operations Server lifecycle error: '\(error)'")
         }
     }
-#endif
 }
