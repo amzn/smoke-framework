@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,21 +16,21 @@
 //
 
 import Foundation
+import Logging
 import NIO
 import NIOHTTP1
-import Logging
-import SmokeInvocation
 import SmokeHTTPClient
+import SmokeInvocation
 
 /**
  Protocol that specifies a handler for a HttpRequest.
  */
 public protocol HTTP1RequestHandler {
     associatedtype ResponseHandlerType: ChannelHTTP1ResponseHandler
-    
+
     /**
      Handles an incoming request.
- 
+
      - Parameters:
         - requestHead: the parameters specified in the head of the HTTP request.
         - body: the body of the request, if any.
@@ -41,10 +41,10 @@ public protocol HTTP1RequestHandler {
      */
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                 invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String)
-    
+
     /**
      Handles an incoming request.
- 
+
      - Parameters:
          - requestHead: the parameters specified in the head of the HTTP request.
          - body: the body of the request, if any.
@@ -56,10 +56,10 @@ public protocol HTTP1RequestHandler {
      */
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                 invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String)
-    
+
     /**
      Handles an incoming request.
- 
+
      - Parameters:
          - requestHead: the parameters specified in the head of the HTTP request.
          - body: the body of the request, if any.
@@ -79,17 +79,17 @@ public extension HTTP1RequestHandler {
     // The function is being added as a non-breaking change, so add a default implementation that delegates to the existing
     // function that must be implemented.
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
-                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?, internalRequestId: String) {
-        handle(requestHead: requestHead, body: body, responseHandler: responseHandler, invocationStrategy: invocationStrategy,
-               requestLogger: requestLogger, internalRequestId: internalRequestId)
+                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop _: EventLoop?, internalRequestId: String) {
+        self.handle(requestHead: requestHead, body: body, responseHandler: responseHandler, invocationStrategy: invocationStrategy,
+                    requestLogger: requestLogger, internalRequestId: internalRequestId)
     }
-    
+
     // The function is being added as a non-breaking change, so add a default implementation that delegates to the existing
     // function that must be implemented.
     func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
-                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?,
-                outwardsRequestAggregator: OutwardsRequestAggregator?, internalRequestId: String) {
-        handle(requestHead: requestHead, body: body, responseHandler: responseHandler, invocationStrategy: invocationStrategy,
-               requestLogger: requestLogger, internalRequestId: internalRequestId)
+                invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop _: EventLoop?,
+                outwardsRequestAggregator _: OutwardsRequestAggregator?, internalRequestId: String) {
+        self.handle(requestHead: requestHead, body: body, responseHandler: responseHandler, invocationStrategy: invocationStrategy,
+                    requestLogger: requestLogger, internalRequestId: internalRequestId)
     }
 }

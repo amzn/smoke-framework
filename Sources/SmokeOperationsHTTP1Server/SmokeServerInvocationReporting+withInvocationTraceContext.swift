@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 
 import Foundation
 import Logging
-import SmokeOperations
-import SmokeHTTPClient
 import NIO
+import SmokeHTTPClient
+import SmokeOperations
 
 public struct DelegatedInvocationReporting<TraceContextType: InvocationTraceContext>: HTTPClientCoreInvocationReporting {
     public let logger: Logger
@@ -26,7 +26,7 @@ public struct DelegatedInvocationReporting<TraceContextType: InvocationTraceCont
     public var traceContext: TraceContextType
     public var eventLoop: EventLoop?
     public var outwardsRequestAggregator: OutwardsRequestAggregator?
-    
+
     public init(logger: Logger,
                 internalRequestId: String,
                 traceContext: TraceContextType,
@@ -41,17 +41,14 @@ public struct DelegatedInvocationReporting<TraceContextType: InvocationTraceCont
 }
 
 public extension SmokeServerInvocationReporting {
-    
     /**
      * Creates an instance conforming to the `HTTPClientCoreInvocationReporting` protocol from this instance and the provided trace context.
      */
-    func withInvocationTraceContext<TraceContextType: InvocationTraceContext>(
-        traceContext: TraceContextType) -> DelegatedInvocationReporting<TraceContextType> {
+    func withInvocationTraceContext<TraceContextType: InvocationTraceContext>(traceContext: TraceContextType) -> DelegatedInvocationReporting<TraceContextType> {
         return DelegatedInvocationReporting(logger: self.logger,
                                             internalRequestId: self.internalRequestId,
                                             traceContext: traceContext,
                                             eventLoop: self.eventLoop,
                                             outwardsRequestAggregator: self.outwardsRequestAggregator)
-        
     }
 }

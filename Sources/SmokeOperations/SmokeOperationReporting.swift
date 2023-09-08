@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -45,51 +45,55 @@ public struct SmokeOperationReporting {
     public let serviceLatencyTimer: Metrics.Timer?
     public let outwardsServiceCallLatencySumTimer: Metrics.Timer?
     public let outwardsServiceCallRetryWaitSumTimer: Metrics.Timer?
-    
+
     public init<OperationIdentifer: OperationIdentity>(serverName: String, request: RequestType<OperationIdentifer>,
                                                        configuration: SmokeReportingConfiguration<OperationIdentifer>) {
         let operationName = request.description
-        
+
         func getCounter(metricName: String) -> Counter {
-            let counterDimensions = [(namespaceDimension, serverName),
-                                     (operationNameDimension, operationName),
-                                     (metricNameDimension, metricName)]
+            let counterDimensions = [
+                (namespaceDimension, serverName),
+                (operationNameDimension, operationName),
+                (metricNameDimension, metricName)
+            ]
             return Counter(label: "\(serverName).\(operationName).\(metricName)",
                            dimensions: counterDimensions)
         }
-        
+
         func getTimer(metricName: String) -> Timer {
-            let timerDimensions = [(namespaceDimension, serverName),
-                                   (operationNameDimension, operationName),
-                                   (metricNameDimension, metricName)]
+            let timerDimensions = [
+                (namespaceDimension, serverName),
+                (operationNameDimension, operationName),
+                (metricNameDimension, metricName)
+            ]
             return Timer(label: "\(serverName).\(operationName).\(metricName)",
                          dimensions: timerDimensions)
         }
-        
+
         if configuration.reportSuccessForRequest(request) {
-            successCounter = getCounter(metricName: successCountMetric)
+            self.successCounter = getCounter(metricName: successCountMetric)
         } else {
-            successCounter = nil
+            self.successCounter = nil
         }
-        
+
         if configuration.reportFailure5XXForRequest(request) {
-            failure5XXCounter = getCounter(metricName: failure5XXCountMetric)
+            self.failure5XXCounter = getCounter(metricName: failure5XXCountMetric)
         } else {
-            failure5XXCounter = nil
+            self.failure5XXCounter = nil
         }
-        
+
         if configuration.reportFailure4XXForRequest(request) {
-            failure4XXCounter = getCounter(metricName: failure4XXCountMetric)
+            self.failure4XXCounter = getCounter(metricName: failure4XXCountMetric)
         } else {
-            failure4XXCounter = nil
+            self.failure4XXCounter = nil
         }
-        
+
         if configuration.reportRequestReadLatencyForRequest(request) {
-            requestReadLatencyTimer = getTimer(metricName: requestReadLatencyTimeMetric)
+            self.requestReadLatencyTimer = getTimer(metricName: requestReadLatencyTimeMetric)
         } else {
-            requestReadLatencyTimer = nil
+            self.requestReadLatencyTimer = nil
         }
-        
+
         if configuration.reportSpecificFailureStatusesForRequest(request),
            let specificFailureStatusesToReport = configuration.specificFailureStatusesToReport {
             let countersWithStatusCodes: [(UInt, Counter)] = specificFailureStatusesToReport.map { statusCode in
@@ -97,33 +101,33 @@ public struct SmokeOperationReporting {
                 let specificFailureStatusCounter = getCounter(metricName: metricName)
                 return (statusCode, specificFailureStatusCounter)
             }
-            specificFailureStatusCounters = Dictionary(uniqueKeysWithValues: countersWithStatusCodes)
+            self.specificFailureStatusCounters = Dictionary(uniqueKeysWithValues: countersWithStatusCodes)
         } else {
-            specificFailureStatusCounters = nil
+            self.specificFailureStatusCounters = nil
         }
-        
+
         if configuration.reportLatencyForRequest(request) {
-            latencyTimer = getTimer(metricName: latencyTimeMetric)
+            self.latencyTimer = getTimer(metricName: latencyTimeMetric)
         } else {
-            latencyTimer = nil
+            self.latencyTimer = nil
         }
-        
+
         if configuration.reportServiceLatencyForRequest(request) {
-            serviceLatencyTimer = getTimer(metricName: serviceLatencyTimeMetric)
+            self.serviceLatencyTimer = getTimer(metricName: serviceLatencyTimeMetric)
         } else {
-            serviceLatencyTimer = nil
+            self.serviceLatencyTimer = nil
         }
-        
+
         if configuration.reportOutwardsServiceCallLatencySumForRequest(request) {
-            outwardsServiceCallLatencySumTimer = getTimer(metricName: outwardsServiceCallLatencySumMetric)
+            self.outwardsServiceCallLatencySumTimer = getTimer(metricName: outwardsServiceCallLatencySumMetric)
         } else {
-            outwardsServiceCallLatencySumTimer = nil
+            self.outwardsServiceCallLatencySumTimer = nil
         }
-        
+
         if configuration.reportOutwardsServiceCallRetryWaitLatencySumForRequest(request) {
-            outwardsServiceCallRetryWaitSumTimer = getTimer(metricName: outwardsServiceCallRetryWaitSumMetric)
+            self.outwardsServiceCallRetryWaitSumTimer = getTimer(metricName: outwardsServiceCallRetryWaitSumMetric)
         } else {
-            outwardsServiceCallRetryWaitSumTimer = nil
+            self.outwardsServiceCallRetryWaitSumTimer = nil
         }
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -23,10 +23,9 @@ import NIOHTTP1
  A protocol that specifies a handler for a HTTP response.
  */
 public protocol ChannelHTTP1ResponseHandler {
-    
     /**
      Initializer.
-     
+
      - Parameters:
          - requestHead: the head of the request that this handler will respond to.
          - keepAliveStatus: if the request should be kept alive.
@@ -38,11 +37,11 @@ public protocol ChannelHTTP1ResponseHandler {
          keepAliveStatus: KeepAliveStatus,
          context: ChannelHandlerContext,
          wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
-         onComplete: @escaping () -> ())
-    
+         onComplete: @escaping () -> Void)
+
     /**
      Initializer.
-     
+
      - Parameters:
          - requestHead: the head of the request that this handler will respond to.
          - keepAliveStatus: if the request should be kept alive.
@@ -56,8 +55,7 @@ public protocol ChannelHTTP1ResponseHandler {
          context: ChannelHandlerContext,
          smokeInwardsRequestContext: SmokeInwardsRequestContext?,
          wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
-         onComplete: @escaping () -> ())
-    
+         onComplete: @escaping () -> Void)
 }
 
 public extension ChannelHTTP1ResponseHandler {
@@ -66,9 +64,9 @@ public extension ChannelHTTP1ResponseHandler {
     init(requestHead: HTTPRequestHead,
          keepAliveStatus: KeepAliveStatus,
          context: ChannelHandlerContext,
-         smokeInwardsRequestContext: SmokeInwardsRequestContext?,
+         smokeInwardsRequestContext _: SmokeInwardsRequestContext?,
          wrapOutboundOut: @escaping (_ value: HTTPServerResponsePart) -> NIOAny,
-         onComplete: @escaping () -> ()) {
+         onComplete: @escaping () -> Void) {
         self.init(requestHead: requestHead,
                   keepAliveStatus: keepAliveStatus,
                   context: context,

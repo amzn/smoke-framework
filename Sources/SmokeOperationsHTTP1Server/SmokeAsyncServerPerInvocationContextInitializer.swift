@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@
 //
 
 import Foundation
-import SmokeOperationsHTTP1
 import SmokeHTTP1
+import SmokeOperationsHTTP1
 
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
-    
     var port: Int { get }
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] { get }
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider { get }
@@ -32,19 +31,19 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
     var port: Int {
         return ServerDefaults.defaultPort
     }
-    
+
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
         return [.sigint]
     }
-    
+
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {
         return .spawnNewThreads
     }
-    
+
     var requestExecutor: RequestExecutor {
         return .originalEventLoop
     }
-    
+
     var enableTracingWithSwiftConcurrency: Bool {
         return false
     }

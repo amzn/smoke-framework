@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 //
 
 import Foundation
+import Logging
 import NIO
 import NIOHTTP1
-import Logging
 import SmokeInvocation
 import SmokeOperations
 
@@ -28,10 +28,10 @@ import SmokeOperations
 public protocol HTTP1OperationRequestHandler {
     associatedtype ResponseHandlerType
     associatedtype InvocationReportingType: InvocationReporting
-    
+
     /**
      Handles an incoming request.
- 
+
      - Parameters:
         - requestHead: the parameters specified in the head of the HTTP request.
         - body: the body of the request, if any.

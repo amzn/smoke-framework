@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import Logging
  Defines that a `SmokeServerInvocationReporting` instance can be retrieved from conforming types.
  */
 public protocol RequestLoggerDecorator {
-
     /// The `Logging.Logger` to use for logging for this invocation.
     func decorate(requestLogger: inout Logger)
 }

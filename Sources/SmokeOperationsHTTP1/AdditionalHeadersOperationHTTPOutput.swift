@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import Foundation
 public struct AdditionalHeadersOperationHTTPOutput<AdditionalHeadersType: Encodable>: OperationHTTP1OutputProtocol {
     public let bodyEncodable: AdditionalHeadersType?
     public let additionalHeadersEncodable: AdditionalHeadersType?
-    
+
     public init(additionalHeadersEncodable: AdditionalHeadersType) {
         self.bodyEncodable = nil
         self.additionalHeadersEncodable = additionalHeadersEncodable

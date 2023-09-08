@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ import SmokeHTTPClient
 
 public protocol SmokeInwardsRequestContext {
     var headReceiveDate: Date? { get }
-    
+
     var requestStart: Date { get }
-    
+
     var retriableOutputRequestRecords: [RetriableOutputRequestRecord] { get }
-    
+
     var retryAttemptRecords: [RetryAttemptRecord] { get }
 }
 
@@ -39,56 +39,56 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
     let requestStart: Date
     private(set) var retriableOutputRequestRecords: [RetriableOutputRequestRecord]
     private(set) var retryAttemptRecords: [RetryAttemptRecord]
-    
+
     internal let accessQueue = DispatchQueue(
-                label: "com.amazon.SmokeFramework.StandardSmokeInwardsRequestContext.accessQueue",
-                target: DispatchQueue.global())
-    
+        label: "com.amazon.SmokeFramework.StandardSmokeInwardsRequestContext.accessQueue",
+        target: DispatchQueue.global())
+
     init(headReceiveDate: Date?, requestStart: Date) {
         self.headReceiveDate = headReceiveDate
         self.requestStart = requestStart
         self.retriableOutputRequestRecords = []
         self.retryAttemptRecords = []
     }
-    
-    func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord, onCompletion: @escaping () -> ()) {
+
+    func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
-            
+
             self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
-            
+
             onCompletion()
         }
     }
-    
-    func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord, onCompletion: @escaping () -> ()) {
+
+    func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             self.retryAttemptRecords.append(retryAttemptRecord)
-            
+
             onCompletion()
         }
     }
-    
-    func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord, onCompletion: @escaping () -> ()) {
+
+    func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
-            
+
             onCompletion()
         }
     }
-    
+
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord) {
         let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
-        
+
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
     }
-    
+
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord) {
         self.retryAttemptRecords.append(retryAttemptRecord)
     }
-    
+
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
     func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord) {
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)

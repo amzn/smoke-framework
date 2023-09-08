@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import Foundation
 public struct OperationFailure {
     public let code: Int
     public let error: SmokeReturnableError
-    
+
     public init(code: Int, error: SmokeReturnableError) {
         self.code = code
         self.error = error

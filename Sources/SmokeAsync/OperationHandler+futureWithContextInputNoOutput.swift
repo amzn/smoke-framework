@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 
 import Foundation
 import Logging
-import SmokeOperations
 import NIO
+import SmokeOperations
 
 public extension OperationHandler {
     /**
        Initializer for non-blocking operation handler that has input
        returns a result with an empty body.
-     
+
      - Parameters:
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
@@ -33,75 +33,74 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
-    init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer,
-            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
-            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping ((InputType, ContextType,
-                       InvocationReportingType) throws -> EventLoopFuture<Void>),
-            allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        
+    init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: OperationDelegate>(serverName: String, operationIdentifer: OperationIdentifer,
+                                                  reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
+                                                  inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
+                                                  operation: @escaping ((InputType, ContextType,
+                                                                         InvocationReportingType) throws -> EventLoopFuture<Void>),
+                                                  allowedErrors: [(ErrorType, Int)],
+                                                  operationDelegate: OperationDelegateType)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         /**
          * The wrapped input handler takes the provided operation handler and wraps it the responseHandler is
          * called to indicate success when the input handler's response handler is called. If the provided operation
          * provides an error, the responseHandler is called with that error.
          */
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
-            responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>) in
-            let handlerResult: NoOutputOperationHandlerResult<ErrorType>?
-            do {
-                let future = try operation(input, context, invocationContext.invocationReporting)
-                
-                future.whenComplete { result in
-                    let asyncHandlerResult: NoOutputOperationHandlerResult<ErrorType>
-                    
-                    switch result {
-                    case .failure(let error):
-                        if let smokeReturnableError = error as? SmokeReturnableError {
-                            asyncHandlerResult = .smokeReturnableError(smokeReturnableError,
-                                                                       allowedErrors)
-                        } else if case SmokeOperationsError.validationError(reason: let reason) = error {
-                            asyncHandlerResult = .validationError(reason)
-                        } else {
-                            asyncHandlerResult = .internalServerError(error)
+                                     responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>) in
+                let handlerResult: NoOutputOperationHandlerResult<ErrorType>?
+                do {
+                    let future = try operation(input, context, invocationContext.invocationReporting)
+
+                    future.whenComplete { result in
+                        let asyncHandlerResult: NoOutputOperationHandlerResult<ErrorType>
+
+                        switch result {
+                            case .failure(let error):
+                                if let smokeReturnableError = error as? SmokeReturnableError {
+                                    asyncHandlerResult = .smokeReturnableError(smokeReturnableError,
+                                                                               allowedErrors)
+                                } else if case SmokeOperationsError.validationError(reason: let reason) = error {
+                                    asyncHandlerResult = .validationError(reason)
+                                } else {
+                                    asyncHandlerResult = .internalServerError(error)
+                                }
+                            case .success:
+                                asyncHandlerResult = .success
                         }
-                    case .success:
-                        asyncHandlerResult = .success
+
+                        OperationHandler.handleNoOutputOperationHandlerResult(
+                            handlerResult: asyncHandlerResult,
+                            operationDelegate: operationDelegate,
+                            requestHead: requestHead,
+                            responseHandler: responseHandler,
+                            invocationContext: invocationContext)
                     }
-                    
+
+                    // no immediate result
+                    handlerResult = nil
+                } catch let smokeReturnableError as SmokeReturnableError {
+                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                } catch SmokeOperationsError.validationError(reason: let reason) {
+                    handlerResult = .validationError(reason)
+                } catch {
+                    handlerResult = .internalServerError(error)
+                }
+
+                // if this handler is throwing an error immediately
+                if let handlerResult = handlerResult {
                     OperationHandler.handleNoOutputOperationHandlerResult(
-                        handlerResult: asyncHandlerResult,
+                        handlerResult: handlerResult,
                         operationDelegate: operationDelegate,
                         requestHead: requestHead,
                         responseHandler: responseHandler,
                         invocationContext: invocationContext)
                 }
-                
-                // no immediate result
-                handlerResult = nil
-            } catch let smokeReturnableError as SmokeReturnableError {
-                handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
-            } catch SmokeOperationsError.validationError(reason: let reason) {
-                handlerResult = .validationError(reason)
-            } catch {
-                handlerResult = .internalServerError(error)
-            }
-            
-            // if this handler is throwing an error immediately
-            if let handlerResult = handlerResult {
-                OperationHandler.handleNoOutputOperationHandlerResult(
-                    handlerResult: handlerResult,
-                    operationDelegate: operationDelegate,
-                    requestHead: requestHead,
-                    responseHandler: responseHandler,
-                    invocationContext: invocationContext)
-            }
         }
-        
+
         self.init(serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
                   inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,

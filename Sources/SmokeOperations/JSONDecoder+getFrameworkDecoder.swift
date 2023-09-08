@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ private func createDecoder() -> JSONDecoder {
     if #available(OSX 10.12, *) {
         jsonDecoder.dateDecodingStrategy = .iso8601
     }
-    
+
     return jsonDecoder
 }
 
-extension JSONDecoder {
+public extension JSONDecoder {
     /// Return a SmokeFramework compatible JSON Decoder
-    public static func getFrameworkDecoder() -> JSONDecoder {
+    static func getFrameworkDecoder() -> JSONDecoder {
         return createDecoder()
     }
 }

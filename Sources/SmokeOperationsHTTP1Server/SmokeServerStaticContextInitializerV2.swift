@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@
 //
 
 import Foundation
-import SmokeOperationsHTTP1
 import SmokeHTTP1
+import SmokeOperationsHTTP1
 
 public protocol SmokeServerStaticContextInitializerV2: SmokeStaticContextInitializerV2 {
-    
     var port: Int { get }
     @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal { get }
@@ -32,17 +31,17 @@ public extension SmokeServerStaticContextInitializerV2 {
     var port: Int {
         return ServerDefaults.defaultPort
     }
-    
+
     @available(swift, deprecated: 3.0, message: "Migrate to use shutdownOnSignals.")
     var shutdownOnSignal: SmokeHTTP1Server.ShutdownOnSignal {
         return .sigint
     }
-    
+
     @available(swift, deprecated: 3.0, message: "To avoid a breaking change, by default shutdownOnSignals() is a singleton list of `shutdownOnSignal`")
     var shutdownOnSignals: [SmokeHTTP1Server.ShutdownOnSignal] {
-        return [shutdownOnSignal]
+        return [self.shutdownOnSignal]
     }
-    
+
     var eventLoopProvider: SmokeHTTP1Server.EventLoopProvider {
         return .spawnNewThreads
     }

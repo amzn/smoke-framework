@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 
 import Foundation
 import Logging
-import NIOHTTP1
 import Metrics
+import NIOHTTP1
 
 public protocol HTTP1RequestInvocationContext {
-    
     var logger: Logger { get }
-    
+
     var successCounter: Metrics.Counter? { get }
     var failure5XXCounter: Metrics.Counter? { get }
     var failure4XXCounter: Metrics.Counter? { get }
@@ -33,7 +32,7 @@ public protocol HTTP1RequestInvocationContext {
     var serviceLatencyTimer: Metrics.Timer? { get }
     var outwardsServiceCallLatencySumTimer: Metrics.Timer? { get }
     var outwardsServiceCallRetryWaitSumTimer: Metrics.Timer? { get }
-    
+
     func handleInwardsRequestComplete(httpHeaders: inout HTTPHeaders, status: HTTPResponseStatus,
                                       body: (contentType: String, data: Data)?)
 }
@@ -43,35 +42,35 @@ public extension HTTP1RequestInvocationContext {
     var successCounter: Metrics.Counter? {
         return nil
     }
-    
+
     var failure5XXCounter: Metrics.Counter? {
         return nil
     }
-    
+
     var failure4XXCounter: Metrics.Counter? {
         return nil
     }
-    
+
     var requestReadLatencyTimer: Metrics.Timer? {
         return nil
     }
-    
+
     var specificFailureStatusCounters: [Int: Metrics.Counter]? {
         return nil
     }
-    
+
     var latencyTimer: Metrics.Timer? {
         return nil
     }
-    
+
     var serviceLatencyTimer: Metrics.Timer? {
         return nil
     }
-    
+
     var outwardsServiceCallLatencySumTimer: Metrics.Timer? {
         return nil
     }
-    
+
     var outwardsServiceCallRetryWaitSumTimer: Metrics.Timer? {
         return nil
     }

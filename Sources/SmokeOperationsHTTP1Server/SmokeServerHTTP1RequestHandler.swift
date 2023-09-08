@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 //
 
 import Foundation
-import SmokeOperations
-import SmokeOperationsHTTP1
+import Logging
 import NIO
 import NIOHTTP1
-import SmokeHTTP1
 import ShapeCoding
-import Logging
-import SmokeInvocation
+import SmokeHTTP1
 import SmokeHTTPClient
+import SmokeInvocation
+import SmokeOperations
+import SmokeOperationsHTTP1
 import Tracing
 
 /**
@@ -32,21 +32,21 @@ import Tracing
  incoming Http request as an operation.
  */
 struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1RequestHandler
-        where SelectorType: SmokeHTTP1HandlerSelector,
-        SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
-        SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
-        HTTPRequestHead == TraceContextType.RequestHeadType,
-        SelectorType.DefaultOperationDelegateType.ResponseHandlerType: ChannelHTTP1ResponseHandler & HTTP1ResponseHandler,
-        SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> ==
-            SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
+    where SelectorType: SmokeHTTP1HandlerSelector,
+    SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
+    SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
+    HTTPRequestHead == TraceContextType.RequestHeadType,
+    SelectorType.DefaultOperationDelegateType.ResponseHandlerType: ChannelHTTP1ResponseHandler & HTTP1ResponseHandler,
+    SmokeInvocationContext<SelectorType.DefaultOperationDelegateType.InvocationReportingType> ==
+    SelectorType.DefaultOperationDelegateType.ResponseHandlerType.InvocationContext {
     typealias ResponseHandlerType = SelectorType.DefaultOperationDelegateType.ResponseHandlerType
-    
+
     typealias InvocationContext = ResponseHandlerType.InvocationContext
     typealias InvocationReportingType = SelectorType.DefaultOperationDelegateType.InvocationReportingType
     typealias TraceContextType = InvocationReportingType.TraceContextType
-        
+
     let operationRequestHandler: StandardHTTP1OperationRequestHandler<SelectorType>
-    
+
     init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
          reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
          requestExecutor: RequestExecutor = .originalEventLoop,
@@ -59,7 +59,7 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
             requestExecutor: requestExecutor,
             enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
     }
-    
+
     init(handlerSelector: SelectorType,
          contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
          serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
@@ -73,41 +73,40 @@ struct OperationServerHTTP1RequestHandler<SelectorType, TraceContextType>: HTTP1
             requestExecutor: requestExecutor,
             enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
     }
-    
+
     // Function required to confirm to protocol, delegate to the variant that provides the event loop
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, internalRequestId: String) {
-        handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
-               invocationStrategy: invocationStrategy, requestLogger: requestLogger, eventLoop: nil,
-               outwardsRequestAggregator: nil, internalRequestId: internalRequestId)
+        self.handle(requestHead: requestHead, body: body, responseHandler: responseHandler,
+                    invocationStrategy: invocationStrategy, requestLogger: requestLogger, eventLoop: nil,
+                    outwardsRequestAggregator: nil, internalRequestId: internalRequestId)
     }
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: ResponseHandlerType,
                        invocationStrategy: InvocationStrategy, requestLogger: Logger, eventLoop: EventLoop?,
                        outwardsRequestAggregator: OutwardsRequestAggregator?, internalRequestId: String) {
-        
         func actionsProvider(options: OperationTraceContextOptions?)
         -> StandardHTTP1OperationRequestHandler<SelectorType>.Actions {
             let traceContext = TraceContextType(requestHead: requestHead, bodyData: body, options: options)
-            
+
             func requestStartTraceAction() -> Logger {
                 var decoratedRequestLogger: Logger = requestLogger
                 traceContext.handleInwardsRequestStart(requestHead: requestHead, bodyData: body,
                                                        logger: &decoratedRequestLogger, internalRequestId: internalRequestId)
-                
+
                 return decoratedRequestLogger
             }
-            
+
             func invocationReportingProvider(logger: Logger) -> SmokeServerInvocationReporting<TraceContextType> {
                 return SmokeServerInvocationReporting(logger: logger,
                                                       internalRequestId: internalRequestId, traceContext: traceContext,
                                                       eventLoop: eventLoop,
                                                       outwardsRequestAggregator: outwardsRequestAggregator)
             }
-            
+
             return .init(invocationReportingProvider: invocationReportingProvider, requestStartTraceAction: requestStartTraceAction)
         }
-        
+
         // let it be handled
         self.operationRequestHandler.handle(requestHead: requestHead,
                                             body: body,

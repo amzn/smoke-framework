@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ private func createEncoder() -> JSONEncoder {
     #if DEBUG
         jsonEncoder.outputFormatting = .prettyPrinted
     #endif
-    
+
     return jsonEncoder
 }
 
@@ -38,40 +38,39 @@ private let encodedInternalError = try! createEncoder().encode(
                   payload: SmokeOperationsErrorPayload(errorMessage: nil)))
 // swiftlint:enable force_try
 
-extension JSONEncoder {
+public extension JSONEncoder {
     /// Return a SmokeFramework compatible JSON Encoder
-    public static func getFrameworkEncoder() -> JSONEncoder {
+    static func getFrameworkEncoder() -> JSONEncoder {
         return createEncoder()
     }
-    
+
     /**
      Encodes a payload for use as a response, optionally with a reason.
- 
+
      - Parameters:
         - payload: The payload to encode.
         - reason: Optionally the reason to include in the payload.
      */
-    public static func encodePayload<EncodableType: Encodable>(
-        payload: EncodableType,
-        logger: Logger,
-        reason: String? = nil) -> Data {
-            let encodedError: Data
-            
-            do {
-                if let reason = reason {
-                    let errorWithReason = ErrorWithType(type: reason,
-                                                        payload: payload)
-                    encodedError = try createEncoder().encode(errorWithReason)
-                } else {
-                    encodedError = try createEncoder().encode(payload)
-                }
-            } catch {
-                logger.error("Unable to encode error message.",
-                             metadata: ["cause": "\(String(describing: error))"])
-                
-                encodedError = encodedInternalError
+    static func encodePayload<EncodableType: Encodable>(payload: EncodableType,
+                                                        logger: Logger,
+                                                        reason: String? = nil) -> Data {
+        let encodedError: Data
+
+        do {
+            if let reason = reason {
+                let errorWithReason = ErrorWithType(type: reason,
+                                                    payload: payload)
+                encodedError = try createEncoder().encode(errorWithReason)
+            } else {
+                encodedError = try createEncoder().encode(payload)
             }
-            
-            return encodedError
+        } catch {
+            logger.error("Unable to encode error message.",
+                         metadata: ["cause": "\(String(describing: error))"])
+
+            encodedError = encodedInternalError
+        }
+
+        return encodedError
     }
 }

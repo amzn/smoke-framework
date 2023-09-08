@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public extension OperationHandler {
     /**
        Initializer for async operation handler that has input returns
        a result with an empty body.
-     
+
      - Parameters:
         - serverName: the name of the server this operation is part of.
         - operationIdentifer: the identifer for the operation being handled.
@@ -35,17 +35,16 @@ public extension OperationHandler {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation.
      */
-    init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer,
-            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
-            inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping ((InputType, ContextType) async throws -> ()),
-            allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        
+    init<InputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: OperationDelegate>(serverName: String, operationIdentifer: OperationIdentifer,
+                                                  reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
+                                                  inputProvider: @escaping (OperationDelegateType.RequestHeadType, Data?) throws -> InputType,
+                                                  operation: @escaping ((InputType, ContextType) async throws -> Void),
+                                                  allowedErrors: [(ErrorType, Int)],
+                                                  operationDelegate: OperationDelegateType)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         /**
          * The wrapped input handler takes the provided operation handler and wraps it so that if it
          * returns, the responseHandler is called to indicate success. If the provided operation
@@ -59,7 +58,7 @@ public extension OperationHandler {
                     let handlerResult: NoOutputOperationHandlerResult<ErrorType>
                     do {
                         try await operation(input, context)
-                        
+
                         handlerResult = .success
                     } catch let smokeReturnableError as SmokeReturnableError {
                         handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
@@ -68,7 +67,7 @@ public extension OperationHandler {
                     } catch {
                         handlerResult = .internalServerError(error)
                     }
-                    
+
                     OperationHandler.handleNoOutputOperationHandlerResult(
                         handlerResult: handlerResult,
                         operationDelegate: operationDelegate,
@@ -78,7 +77,7 @@ public extension OperationHandler {
                 }
             }
         }
-        
+
         self.init(serverName: serverName,
                   operationIdentifer: operationIdentifer,
                   reportingConfiguration: reportingConfiguration,

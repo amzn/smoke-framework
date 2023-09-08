@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -21,4 +21,5 @@ import SmokeOperationsHTTP1
 public typealias JSONPayloadHTTP1OperationDelegate<TraceContextType: HTTP1OperationTraceContext> =
     GenericJSONPayloadHTTP1OperationDelegate<
         StandardHTTP1ResponseHandler<SmokeInvocationContext<SmokeServerInvocationReporting<TraceContextType>>>,
-        SmokeServerInvocationReporting<TraceContextType>>
+        SmokeServerInvocationReporting<TraceContextType>
+    >

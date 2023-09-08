@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ public extension OperationHandler {
     /**
       Initializer for blocking operation handler that has input returns
       a result body.
-     
+
      - Parameters:
         - serverName: the name of the server this operation is part of.
         - operationIdentifer: the identifer for the operation being handled.
@@ -36,18 +36,18 @@ public extension OperationHandler {
           handling the operation.
      */
     init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer,
-            reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
-            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping (InputType, ContextType) throws -> OutputType,
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
-            allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        
+        OperationDelegateType: OperationDelegate>(serverName: String,
+                                                  operationIdentifer: OperationIdentifer,
+                                                  reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
+                                                  inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
+                                                  operation: @escaping (InputType, ContextType) throws -> OutputType,
+                                                  outputHandler: @escaping (
+                                                      (RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
+                                                  allowedErrors: [(ErrorType, Int)],
+                                                  operationDelegate: OperationDelegateType)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         /**
          * The wrapped input handler takes the provided operation handler and wraps it so that if it
          * returns, the responseHandler is called with the result. If the provided operation
@@ -56,28 +56,28 @@ public extension OperationHandler {
         let wrappedInputHandler = { (input: InputType, requestHead: RequestHeadType, context: ContextType,
                                      responseHandler: OperationDelegateType.ResponseHandlerType,
                                      invocationContext: SmokeInvocationContext<InvocationReportingType>) in
-            let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
-            do {
-                let output = try operation(input, context)
-                
-                handlerResult = .success(output)
-            } catch let smokeReturnableError as SmokeReturnableError {
-                handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
-            } catch SmokeOperationsError.validationError(reason: let reason) {
-                handlerResult = .validationError(reason)
-            } catch {
-                handlerResult = .internalServerError(error)
-            }
-            
-            OperationHandler.handleWithOutputOperationHandlerResult(
-                handlerResult: handlerResult,
-                operationDelegate: operationDelegate,
-                requestHead: requestHead,
-                responseHandler: responseHandler,
-                outputHandler: outputHandler,
-                invocationContext: invocationContext)
+                let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
+                do {
+                    let output = try operation(input, context)
+
+                    handlerResult = .success(output)
+                } catch let smokeReturnableError as SmokeReturnableError {
+                    handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
+                } catch SmokeOperationsError.validationError(reason: let reason) {
+                    handlerResult = .validationError(reason)
+                } catch {
+                    handlerResult = .internalServerError(error)
+                }
+
+                OperationHandler.handleWithOutputOperationHandlerResult(
+                    handlerResult: handlerResult,
+                    operationDelegate: operationDelegate,
+                    requestHead: requestHead,
+                    responseHandler: responseHandler,
+                    outputHandler: outputHandler,
+                    invocationContext: invocationContext)
         }
-        
+
         self.init(serverName: serverName,
                   operationIdentifer: operationIdentifer,
                   reportingConfiguration: reportingConfiguration,

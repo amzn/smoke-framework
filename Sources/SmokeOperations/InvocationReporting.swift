@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ public protocol InvocationReporting {
     var logger: Logger { get }
     var internalRequestId: String { get }
     var span: Span? { get }
-    
+
     func recordErrorForInvocation(_ error: Swift.Error)
 }
 
@@ -35,9 +35,9 @@ public extension InvocationReporting {
     var span: Span? {
         return nil
     }
-    
+
     // Retain backwards-compatibility
-    func recordErrorForInvocation(_ error: Swift.Error) {
+    func recordErrorForInvocation(_: Swift.Error) {
         // be default do nothing
     }
 }

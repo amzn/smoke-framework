@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ import SmokeOperations
  */
 public protocol HTTP1ResponseHandler {
     associatedtype InvocationContext
-    
+
     /**
      Function used to provide a response to a HTTP request.
- 
+
      - Parameters:
         - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
@@ -36,10 +36,10 @@ public protocol HTTP1ResponseHandler {
      */
     func complete(invocationContext: InvocationContext, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents)
-    
+
     /**
      Function used to provide a response to a HTTP request on the server event loop.
-     
+
      - Parameters:
         - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
@@ -47,11 +47,11 @@ public protocol HTTP1ResponseHandler {
      */
     func completeInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents)
-    
+
     /**
      Function used to provide a response to a HTTP request. The response will not be
      reported at standard logging levels.
- 
+
      - Parameters:
         - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
@@ -59,11 +59,11 @@ public protocol HTTP1ResponseHandler {
      */
     func completeSilently(invocationContext: InvocationContext, status: HTTPResponseStatus,
                           responseComponents: HTTP1ServerResponseComponents)
-    
+
     /**
      Function used to provide a response to a HTTP request on the server event loop. The
      response will not be reported at standard logging levels.
-     
+
      - Parameters:
         - invocationContext: the context for the current invocation.
         - status: the status to provide in the response.
@@ -71,15 +71,15 @@ public protocol HTTP1ResponseHandler {
      */
     func completeSilentlyInEventLoop(invocationContext: InvocationContext, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents)
-    
+
     /**
      Execute the provided closure in the event loop corresponding to the response.
- 
+
      - Parameters:
         - invocationContext: the context for the current invocation.
         - execute: the closure to execute.
      */
-    func executeInEventLoop(invocationContext: InvocationContext, execute: @escaping () -> ())
+    func executeInEventLoop(invocationContext: InvocationContext, execute: @escaping () -> Void)
 }
 
 public extension HTTP1ResponseHandler {

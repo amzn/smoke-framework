@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ public enum NoOutputOperationHandlerResult<ErrorType: ErrorIdentifiableByDescrip
  Possible results of an operation that has output.
  */
 public enum WithOutputOperationHandlerResult<OutputType: Validatable,
-        ErrorType: ErrorIdentifiableByDescription> {
+    ErrorType: ErrorIdentifiableByDescription> {
     case internalServerError(Swift.Error)
     case validationError(String)
     case smokeReturnableError(SmokeReturnableError, [(ErrorType, Int)])
@@ -42,50 +42,49 @@ public extension OperationHandler {
     /**
      Generates the operation failure for a returnable error if the error is
      specified in the allowed errors array. Otherwise nil is returned.
- 
+
      - Parameters:
         - error: The error to potentially encode as a response.
         - allowedErrors: the allowed errors to be encoded as a response. Each
           entry is a tuple specifying the error shape and the response code to use for
           returning that error.
      */
-    static func fromSmokeReturnableError<ShapeType>(
-        error: SmokeReturnableError,
-        allowedErrors: [(ShapeType, Int)])
-        -> OperationFailure? where ShapeType: ErrorIdentifiableByDescription {
-            let requiredIdentity: String
-            if let identifiableError = error as? Identifiable {
-                requiredIdentity = identifiableError.identity
+    static func fromSmokeReturnableError<ShapeType>(error: SmokeReturnableError,
+                                                    allowedErrors: [(ShapeType, Int)])
+    -> OperationFailure? where ShapeType: ErrorIdentifiableByDescription {
+        let requiredIdentity: String
+        if let identifiableError = error as? Identifiable {
+            requiredIdentity = identifiableError.identity
+        } else {
+            requiredIdentity = error.description
+        }
+
+        // get the code of the first entry in the allowedErrors array that has
+        // the required identity.
+        let code = allowedErrors.filter { entry in
+            let identity: String
+            if let identifiableError = entry.0 as? Identifiable {
+                identity = identifiableError.identity
             } else {
-                requiredIdentity = error.description
+                identity = entry.0.description
             }
-            
-            // get the code of the first entry in the allowedErrors array that has
-            // the required identity.
-            let code = allowedErrors.filter { entry in
-                let identity: String
-                if let identifiableError = entry.0 as? Identifiable {
-                    identity = identifiableError.identity
-                } else {
-                    identity = entry.0.description
-                }
-                
-                return identity == requiredIdentity
-            }.map { entry in entry.1 }
+
+            return identity == requiredIdentity
+        }.map { entry in entry.1 }
             .first
-            
-            if let code = code {
-                return OperationFailure(code: code,
-                                        error: error)
-            }
-            
-            return nil
+
+        if let code = code {
+            return OperationFailure(code: code,
+                                    error: error)
+        }
+
+        return nil
     }
-    
+
     /**
      Calls the provided response handler appropriately for the provided
      NoOutputOperationHandlerResult.
- 
+
      - Parameters:
         - handlerResult: the operation result indicating how the response handler
           should be called.
@@ -94,18 +93,18 @@ public extension OperationHandler {
         - responseHandler: the response handler to use.
         - invocationContext: the context for the current invocation.
      */
-    static func handleNoOutputOperationHandlerResult<ErrorType, OperationDelegateType: OperationDelegate>(
-        handlerResult: NoOutputOperationHandlerResult<ErrorType>,
-        operationDelegate: OperationDelegateType,
-        requestHead: OperationDelegateType.RequestHeadType,
-        responseHandler: OperationDelegateType.ResponseHandlerType,
-        invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-            let logger = invocationContext.invocationReporting.logger
-        
-            switch handlerResult {
+    static func handleNoOutputOperationHandlerResult<ErrorType,
+        OperationDelegateType: OperationDelegate>(handlerResult: NoOutputOperationHandlerResult<ErrorType>,
+                                                  operationDelegate: OperationDelegateType,
+                                                  requestHead: OperationDelegateType.RequestHeadType,
+                                                  responseHandler: OperationDelegateType.ResponseHandlerType,
+                                                  invocationContext: SmokeInvocationContext<InvocationReportingType>)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        let logger = invocationContext.invocationReporting.logger
+
+        switch handlerResult {
             case .internalServerError(let error):
                 logger.error("Unexpected failure.",
                              metadata: ["cause": "\(String(describing: error))"])
@@ -119,11 +118,11 @@ public extension OperationHandler {
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
-                        operationDelegate.handleResponseForOperationFailure(
-                            requestHead: requestHead,
-                            operationFailure: operationFailure,
-                            responseHandler: responseHandler,
-                            invocationContext: invocationContext)
+                    operationDelegate.handleResponseForOperationFailure(
+                        requestHead: requestHead,
+                        operationFailure: operationFailure,
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 } else {
                     logger.error("Unexpected error type returned.",
                                  metadata: ["cause": "\(String(describing: error))"])
@@ -145,13 +144,13 @@ public extension OperationHandler {
                     message: reason,
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
-            }
+        }
     }
-    
+
     /**
      Calls the provided response handler appropriately for the provided
      WithOutputOperationHandlerResult.
- 
+
      - Parameters:
         - handlerResult: the operation result indicating how the response handler
           should be called.
@@ -160,19 +159,24 @@ public extension OperationHandler {
         - responseHandler: the response handler to use.
         - invocationContext: the context for the current invocation.
      */
-    static func handleWithOutputOperationHandlerResult<OutputType, ErrorType, OperationDelegateType: OperationDelegate>(
-        handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
-        operationDelegate: OperationDelegateType,
-        requestHead: RequestHeadType,
-        responseHandler: ResponseHandlerType,
-        outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
-        invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-            let logger = invocationContext.invocationReporting.logger
-        
-            switch handlerResult {
+    static func handleWithOutputOperationHandlerResult<OutputType, ErrorType,
+        OperationDelegateType: OperationDelegate>(handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>,
+                                                  operationDelegate: OperationDelegateType,
+                                                  requestHead: RequestHeadType,
+                                                  responseHandler: ResponseHandlerType,
+                                                  outputHandler: @escaping (
+                                                      (RequestHeadType, OutputType, ResponseHandlerType,
+                                                       SmokeInvocationContext<InvocationReportingType>)
+                                                          -> Void),
+                                                  invocationContext: SmokeInvocationContext<
+                                                      InvocationReportingType
+                                                  >)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        let logger = invocationContext.invocationReporting.logger
+
+        switch handlerResult {
             case .internalServerError(let error):
                 logger.error("Unexpected failure.",
                              metadata: ["cause": "\(String(describing: error))"])
@@ -186,11 +190,11 @@ public extension OperationHandler {
                 if let operationFailure =
                     OperationHandler.fromSmokeReturnableError(error: error,
                                                               allowedErrors: allowedErrors) {
-                        operationDelegate.handleResponseForOperationFailure(
-                            requestHead: requestHead,
-                            operationFailure: operationFailure,
-                            responseHandler: responseHandler,
-                            invocationContext: invocationContext)
+                    operationDelegate.handleResponseForOperationFailure(
+                        requestHead: requestHead,
+                        operationFailure: operationFailure,
+                        responseHandler: responseHandler,
+                        invocationContext: invocationContext)
                 } else {
                     logger.error("Unexpected error type returned.",
                                  metadata: ["cause": "\(String(describing: error))"])
@@ -202,13 +206,13 @@ public extension OperationHandler {
             case .success(let output):
                 do {
                     try output.validate()
-                    
+
                     outputHandler(requestHead, output, responseHandler, invocationContext)
                 } catch {
                     invocationContext.invocationReporting.recordErrorForInvocation(error)
                     logger.error("Serialization error: unable to get response.",
                                  metadata: ["cause": "\(String(describing: error))"])
-                    
+
                     operationDelegate.handleResponseForInternalServerError(
                         requestHead: requestHead,
                         responseHandler: responseHandler,
@@ -222,6 +226,6 @@ public extension OperationHandler {
                     message: reason,
                     responseHandler: responseHandler,
                     invocationContext: invocationContext)
-            }
+        }
     }
 }

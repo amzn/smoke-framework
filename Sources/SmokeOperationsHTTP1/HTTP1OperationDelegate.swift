@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
      if an instance of InputType cannot be constructed from the request.
      */
     func getInputForOperation<InputType: OperationHTTP1InputProtocol>(requestHead: RequestHeadType, body: Data?) throws -> InputType
-    
+
     /**
      Function to retrieve an instance of the InputType from the request. Will throw an error
      if an instance of InputType cannot be constructed from the request.
@@ -48,10 +48,10 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
     func getInputForOperation<InputType: Decodable>(requestHead: RequestHeadType,
                                                     body: Data?,
                                                     location: OperationInputHTTPLocation) throws -> InputType
-    
+
     /**
      Function to handle a successful response from an operation.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -59,15 +59,14 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
         - responseHander: typically a response handler specific to the transport protocol being used.
         - invocationContext: the context for the current invocation.
      */
-    func handleResponseForOperation<OutputType: OperationHTTP1OutputProtocol>(
-        requestHead: RequestHeadType,
-        output: OutputType,
-        responseHandler: ResponseHandlerType,
-        invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+    func handleResponseForOperation<OutputType: OperationHTTP1OutputProtocol>(requestHead: RequestHeadType,
+                                                                              output: OutputType,
+                                                                              responseHandler: ResponseHandlerType,
+                                                                              invocationContext: SmokeInvocationContext<InvocationReportingType>)
+
     /**
      Function to handle a successful response from an operation.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
