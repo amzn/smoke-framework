@@ -15,8 +15,6 @@
 // SmokeOperationsHTTP1
 //
 
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-
 import Foundation
 import SmokeOperations
 import NIOHTTP1
@@ -163,5 +161,3 @@ public extension SmokeHTTP1HandlerSelector {
         addHandlerForOperation(operationIdentifer, httpMethod: httpMethod, handler: handler)
     }
 }
-
-#endif

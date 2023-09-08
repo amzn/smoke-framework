@@ -15,8 +15,6 @@
 // SmokeOperations
 //
 
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-
 import Foundation
 import Logging
 import Tracing
@@ -90,5 +88,3 @@ public extension OperationHandler {
                   ignoreInvocationStrategy: true)
     }
 }
-
-#endif

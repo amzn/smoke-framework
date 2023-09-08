@@ -51,8 +51,4 @@ class ErrorWithTypeTests: XCTestCase {
         
         XCTAssertEqual(expected, recovered)
     }
-
-    static var allTests = [
-        ("testEncoding", testEncoding),
-    ]
 }

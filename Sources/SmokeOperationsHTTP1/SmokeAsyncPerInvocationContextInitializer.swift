@@ -20,8 +20,6 @@ import SmokeInvocation
 import SmokeOperations
 import Logging
 
-#if (os(Linux) && compiler(>=5.5)) || (!os(Linux) && compiler(>=5.5.2)) && canImport(_Concurrency)
-
 /**
   A protocol for initialization SmokeFramework-based applications that require a per-invocation context.
  
@@ -63,4 +61,3 @@ public extension SmokeAsyncPerInvocationContextInitializer {
         return SmokeReportingConfiguration()
     }
 }
-#endif
