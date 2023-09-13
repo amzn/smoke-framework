@@ -108,6 +108,7 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
 
                 var attributes: SpanAttributes = [:]
 
+                attributes["aws.operation"] = operationName
                 attributes["http.method"] = requestHead.method.rawValue
                 attributes["http.url"] = "http://127.0.0.1\(requestHead.uri)"
                 attributes["http.flavor"] = "\(requestHead.version.major).\(requestHead.version.minor)"
@@ -116,9 +117,9 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
 
                 parentSpan.attributes = attributes
 
-                self.parentSpan = parentSpan
-
-                self.span = InstrumentationSystem.tracer.startSpan(operationName, context: parentSpan.context)
+                // disable using both spans until performance investigation is complete
+                self.parentSpan = nil
+                self.span = parentSpan
             } else {
                 self.parentSpan = nil
                 self.span = nil
