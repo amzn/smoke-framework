@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/amzn/smoke-http.git",
       "state" : {
-        "revision" : "0176ddefd733d27a4b98e5249b1a4ef236107eb5",
-        "version" : "2.22.0"
+        "revision" : "971e77e1aedb8d5780e2c49a7dcb3d9d30076e10",
+        "version" : "2.22.1"
       }
     },
     {
