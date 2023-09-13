@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 //
 
 import Foundation
-import SmokeOperations
 import Logging
 import NIO
 import SmokeHTTPClient
+import SmokeOperations
 import Tracing
 
 public protocol InvocationReportingWithTraceContext: InvocationReporting {
     associatedtype TraceContextType: OperationTraceContext
-    
+
     var traceContext: TraceContextType { get }
 }
 
@@ -32,21 +32,21 @@ public protocol InvocationReportingWithTraceContext: InvocationReporting {
  A context related to reporting on the invocation of the SmokeFramework.
  */
 public struct SmokeServerInvocationReporting<TraceContextType: OperationTraceContext>: InvocationReportingWithTraceContext,
-                                                                                       HTTPClientInvocationAttributes {
+HTTPClientInvocationAttributes {
     public let logger: Logger
     public let eventLoop: EventLoop?
     public let outwardsRequestAggregator: OutwardsRequestAggregator?
     public let internalRequestId: String
     public let traceContext: TraceContextType
-    
+
     public var span: Span? {
         return self.traceContext.span
     }
-    
+
     public func recordErrorForInvocation(_ error: Swift.Error) {
         self.traceContext.recordErrorForInvocation(error)
     }
-    
+
     public init(logger: Logger, internalRequestId: String, traceContext: TraceContextType,
                 eventLoop: EventLoop? = nil, outwardsRequestAggregator: OutwardsRequestAggregator? = nil) {
         self.logger = logger

@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import Tracing
 
 public struct RequestSpanParameters {
     public let operationName: String
-    
+
     public init(operationName: String) {
         self.operationName = operationName
     }
@@ -41,7 +41,7 @@ public enum CreateRequestSpan {
 
 public struct OperationTraceContextOptions {
     public let createRequestSpan: CreateRequestSpan
-   
+
     public init(createRequestSpan: CreateRequestSpan) {
         self.createRequestSpan = createRequestSpan
     }
@@ -51,34 +51,34 @@ public protocol OperationTraceContext {
     associatedtype RequestHeadType
     associatedtype ResponseHeadersType
     associatedtype ResponseStatusType
-    
+
     var span: Span? { get }
-    
+
     init(requestHead: RequestHeadType, bodyData: Data?)
-    
+
     init(requestHead: RequestHeadType, bodyData: Data?, options: OperationTraceContextOptions?)
-    
+
     func handleInwardsRequestStart(requestHead: RequestHeadType, bodyData: Data?, logger: inout Logger, internalRequestId: String)
-    
+
     func handleInwardsRequestComplete(httpHeaders: inout ResponseHeadersType, status: ResponseStatusType, body: (contentType: String, data: Data)?,
                                       logger: Logger, internalRequestId: String)
-    
+
     func recordErrorForInvocation(_ error: Swift.Error)
 }
 
 public extension OperationTraceContext {
     // Add options accepting initializer while remaining backwards compatible
-    init(requestHead: RequestHeadType, bodyData: Data?, options: OperationTraceContextOptions?) {
+    init(requestHead: RequestHeadType, bodyData: Data?, options _: OperationTraceContextOptions?) {
         self.init(requestHead: requestHead, bodyData: bodyData)
     }
-    
+
     // Add span property while remaining backwards compatible
     var span: Span? {
         return nil
     }
-    
+
     // Retain backwards-compatibility
-    func recordErrorForInvocation(_ error: Swift.Error) {
+    func recordErrorForInvocation(_: Swift.Error) {
         // do nothing by default
     }
 }

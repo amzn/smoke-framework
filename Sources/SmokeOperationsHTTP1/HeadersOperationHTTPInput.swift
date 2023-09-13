@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -27,19 +27,19 @@ public struct HeadersOperationHTTPInput<HeadersType: Decodable>: OperationHTTP1I
     public typealias QueryType = String
     public typealias BodyType = String
     public typealias PathType = String
-    
+
     public let headers: HeadersType
-    
+
     public init(headers: HeadersType) {
         self.headers = headers
     }
-    
-    public static func compose(queryDecodableProvider: () throws -> String,
-                               pathDecodableProvider: () throws -> String,
-                               bodyDecodableProvider: () throws -> String,
+
+    public static func compose(queryDecodableProvider _: () throws -> String,
+                               pathDecodableProvider _: () throws -> String,
+                               bodyDecodableProvider _: () throws -> String,
                                headersDecodableProvider: () throws -> HeadersType) throws -> HeadersOperationHTTPInput {
         let headers = try headersDecodableProvider()
-        
+
         return .init(headers: headers)
     }
 }

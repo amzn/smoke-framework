@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 //
 
 import Foundation
-import SmokeOperations
-import NIOHTTP1
-import HTTPPathCoding
 import HTTPHeadersCoding
-import QueryCoding
+import HTTPPathCoding
 import Logging
+import NIOHTTP1
+import QueryCoding
+import SmokeOperations
 
-internal struct MimeTypes {
+internal enum MimeTypes {
     static let json = "application/json"
 }
 
@@ -35,7 +35,7 @@ internal struct JSONErrorEncoder: ErrorEncoder {
         } else {
             reason = input.description
         }
-        
+
         return JSONEncoder.encodePayload(payload: input, logger: logger,
                                          reason: reason)
     }
@@ -52,31 +52,30 @@ public enum ResponseExecutor {
  request and response payloads.
  */
 public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP1ResponseHandler,
-                                                       InvocationReportingType: InvocationReporting>: HTTP1OperationDelegate
-        where ResponseHandlerType.InvocationContext == SmokeInvocationContext<InvocationReportingType> {
+    InvocationReportingType: InvocationReporting>: HTTP1OperationDelegate
+where ResponseHandlerType.InvocationContext == SmokeInvocationContext<InvocationReportingType> {
     internal let responseExecutor: ResponseExecutor
-    
+
     public init(responseExecutor: ResponseExecutor = .eventLoop) {
         self.responseExecutor = responseExecutor
     }
-    
-    public func decorateLoggerForAnonymousRequest(requestLogger: inout Logger) {
+
+    public func decorateLoggerForAnonymousRequest(requestLogger _: inout Logger) {
         // nothing to do
     }
-    
+
     public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(requestHead: SmokeHTTP1RequestHead,
                                                                              body: Data?) throws -> InputType {
-        
         func queryDecodableProvider() throws -> InputType.QueryType {
             return try QueryDecoder().decode(InputType.QueryType.self,
                                              from: requestHead.query)
         }
-        
+
         func pathDecodableProvider() throws -> InputType.PathType {
             return try HTTPPathDecoder().decode(InputType.PathType.self,
                                                 fromShape: requestHead.pathShape)
         }
-        
+
         func bodyDecodableProvider() throws -> InputType.BodyType {
             if let body = body {
                 return try JSONDecoder.getFrameworkDecoder().decode(InputType.BodyType.self, from: body)
@@ -84,68 +83,66 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
                 throw SmokeOperationsError.validationError(reason: "Input body expected; none found.")
             }
         }
-        
+
         func headersDecodableProvider() throws -> InputType.HeadersType {
             let headers: [(String, String?)] =
                 requestHead.httpRequestHead.headers.map { header in
-                    return (header.name, header.value)
-            }
+                    (header.name, header.value)
+                }
             return try HTTPHeadersDecoder().decode(InputType.HeadersType.self,
                                                    from: headers)
         }
-        
+
         return try InputType.compose(queryDecodableProvider: queryDecodableProvider,
                                      pathDecodableProvider: pathDecodableProvider,
                                      bodyDecodableProvider: bodyDecodableProvider,
                                      headersDecodableProvider: headersDecodableProvider)
     }
-    
+
     public func getInputForOperation<InputType>(requestHead: SmokeHTTP1RequestHead,
                                                 body: Data?,
                                                 location: OperationInputHTTPLocation) throws
-        -> InputType where InputType: Decodable {
-        
-            switch location {
+    -> InputType where InputType: Decodable {
+        switch location {
             case .body:
                 let wrappedInput: BodyOperationHTTPInput<InputType> =
                     try getInputForOperation(requestHead: requestHead, body: body)
-                
+
                 return wrappedInput.body
             case .query:
                 let wrappedInput: QueryOperationHTTPInput<InputType> =
                     try getInputForOperation(requestHead: requestHead, body: body)
-                
+
                 return wrappedInput.query
             case .path:
                 let wrappedInput: PathOperationHTTPInput<InputType> =
                     try getInputForOperation(requestHead: requestHead, body: body)
-                
+
                 return wrappedInput.path
             case .headers:
                 let wrappedInput: HeadersOperationHTTPInput<InputType> =
                     try getInputForOperation(requestHead: requestHead, body: body)
-                
+
                 return wrappedInput.headers
-            }
+        }
     }
-    
-    public func handleResponseForOperation<OutputType>(
-            requestHead: SmokeHTTP1RequestHead, output: OutputType,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>)
+
+    public func handleResponseForOperation<OutputType>(requestHead: SmokeHTTP1RequestHead, output: OutputType,
+                                                       responseHandler: ResponseHandlerType,
+                                                       invocationContext: SmokeInvocationContext<InvocationReportingType>)
     where OutputType: OperationHTTP1OutputProtocol {
-        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
+        self.handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
             self.handleResponseForOperationOnDesiredThreadPool(requestHead: requestHead, output: output, responseHandler: responseHandler,
                                                                invocationContext: invocationContext)
         }
     }
-        
-    private func handleResponseForOperationOnDesiredThreadPool<OutputType>(
-            requestHead: SmokeHTTP1RequestHead, output: OutputType,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: OperationHTTP1OutputProtocol {
+
+    private func handleResponseForOperationOnDesiredThreadPool<OutputType>(requestHead: SmokeHTTP1RequestHead, output: OutputType,
+                                                                           responseHandler: ResponseHandlerType,
+                                                                           invocationContext: SmokeInvocationContext<InvocationReportingType>)
+    where OutputType: OperationHTTP1OutputProtocol {
         let body: (contentType: String, data: Data)?
-        
+
         if let bodyEncodable = output.bodyEncodable {
             let encodedOutput: Data
             do {
@@ -153,16 +150,16 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             } catch {
                 invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response.",
                                                                    metadata: ["cause": "\(String(describing: error))"])
-                
-                handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
+
+                self.handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
                 return
             }
-            
+
             body = (contentType: MimeTypes.json, data: encodedOutput)
         } else {
             body = nil
         }
-        
+
         let additionalHeaders: [(String, String)]
         if let additionalHeadersEncodable = output.additionalHeadersEncodable {
             let headers: [(String, String?)]
@@ -171,94 +168,91 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             } catch {
                 invocationContext.invocationReporting.logger.error("Serialization error: unable to encode response.",
                                                                    metadata: ["cause": "\(String(describing: error))"])
-                
-                handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
+
+                self.handleResponseForInternalServerError(requestHead: requestHead, responseHandler: responseHandler, invocationContext: invocationContext)
                 return
             }
-            
+
             additionalHeaders = headers.compactMap { header in
                 guard let value = header.1 else {
                     return nil
                 }
-                
+
                 return (header.0, value)
             }
         } else {
             additionalHeaders = []
         }
-        
+
         let responseComponents = HTTP1ServerResponseComponents(
             additionalHeaders: additionalHeaders,
             body: body)
-        
+
         responseHandler.complete(invocationContext: invocationContext, status: .ok, responseComponents: responseComponents)
     }
-    
-    public func handleResponseForOperation<OutputType>(
-            requestHead: SmokeHTTP1RequestHead,
-            location: OperationOutputHTTPLocation,
-            output: OutputType,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: Encodable {
+
+    public func handleResponseForOperation<OutputType>(requestHead: SmokeHTTP1RequestHead,
+                                                       location: OperationOutputHTTPLocation,
+                                                       output: OutputType,
+                                                       responseHandler: ResponseHandlerType,
+                                                       invocationContext: SmokeInvocationContext<InvocationReportingType>) where OutputType: Encodable {
         switch location {
-        case .body:
-            let wrappedOutput = BodyOperationHTTPOutput<OutputType>(
-                bodyEncodable: output)
-            
-            handleResponseForOperation(requestHead: requestHead,
-                                       output: wrappedOutput,
-                                       responseHandler: responseHandler,
-                                       invocationContext: invocationContext)
-        case .headers:
-            let wrappedOutput = AdditionalHeadersOperationHTTPOutput<OutputType>(
-                additionalHeadersEncodable: output)
-            
-            handleResponseForOperation(requestHead: requestHead,
-                                       output: wrappedOutput,
-                                       responseHandler: responseHandler,
-                                       invocationContext: invocationContext)
+            case .body:
+                let wrappedOutput = BodyOperationHTTPOutput<OutputType>(
+                    bodyEncodable: output)
+
+                self.handleResponseForOperation(requestHead: requestHead,
+                                                output: wrappedOutput,
+                                                responseHandler: responseHandler,
+                                                invocationContext: invocationContext)
+            case .headers:
+                let wrappedOutput = AdditionalHeadersOperationHTTPOutput<OutputType>(
+                    additionalHeadersEncodable: output)
+
+                self.handleResponseForOperation(requestHead: requestHead,
+                                                output: wrappedOutput,
+                                                responseHandler: responseHandler,
+                                                invocationContext: invocationContext)
         }
     }
-    
-    public func handleResponseForOperationWithNoOutput(requestHead: SmokeHTTP1RequestHead,
+
+    public func handleResponseForOperationWithNoOutput(requestHead _: SmokeHTTP1RequestHead,
                                                        responseHandler: ResponseHandlerType,
                                                        invocationContext: SmokeInvocationContext<InvocationReportingType>) {
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: nil)
         responseHandler.completeInEventLoop(invocationContext: invocationContext, status: .ok, responseComponents: responseComponents)
     }
-    
-    public func handleResponseForOperationFailure(
-            requestHead: SmokeHTTP1RequestHead,
-            operationFailure: OperationFailure,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
+
+    public func handleResponseForOperationFailure(requestHead: SmokeHTTP1RequestHead,
+                                                  operationFailure: OperationFailure,
+                                                  responseHandler: ResponseHandlerType,
+                                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+        self.handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
             self.handleResponseForOperationFailureOnDesiredThreadPool(requestHead: requestHead,
                                                                       operationFailure: operationFailure,
                                                                       responseHandler: responseHandler,
                                                                       invocationContext: invocationContext)
         }
     }
-    
-    private func handleResponseForOperationFailureOnDesiredThreadPool(
-            requestHead: SmokeHTTP1RequestHead,
-            operationFailure: OperationFailure,
-            responseHandler: ResponseHandlerType,
-            invocationContext: SmokeInvocationContext<InvocationReportingType>) {
+
+    private func handleResponseForOperationFailureOnDesiredThreadPool(requestHead: SmokeHTTP1RequestHead,
+                                                                      operationFailure: OperationFailure,
+                                                                      responseHandler: ResponseHandlerType,
+                                                                      invocationContext: SmokeInvocationContext<InvocationReportingType>) {
         let encodedOutput: Data
         let logger = invocationContext.invocationReporting.logger
-        
+
         do {
             encodedOutput = try operationFailure.error.encode(errorEncoder: JSONErrorEncoder(), logger: logger)
         } catch {
             logger.error("Serialization error: unable to encode response.",
                          metadata: ["cause": "\(String(describing: error))"])
-            
-            handleResponseForInternalServerError(requestHead: requestHead,
-                                                 responseHandler: responseHandler, invocationContext: invocationContext)
+
+            self.handleResponseForInternalServerError(requestHead: requestHead,
+                                                      responseHandler: responseHandler, invocationContext: invocationContext)
             return
         }
-        
+
         let body = (contentType: MimeTypes.json, data: encodedOutput)
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
@@ -270,50 +264,50 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
             status = .custom(code: UInt(operationFailure.code),
                              reasonPhrase: operationFailure.error.description)
         }
-                
+
         responseHandler.complete(invocationContext: invocationContext, status: status,
                                  responseComponents: responseComponents)
     }
-    
-    public func handleResponseForInternalServerError(requestHead: SmokeHTTP1RequestHead,
+
+    public func handleResponseForInternalServerError(requestHead _: SmokeHTTP1RequestHead,
                                                      responseHandler: ResponseHandlerType,
                                                      invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleError(code: 500, reason: "InternalError", message: nil,
-                    responseHandler: responseHandler, invocationContext: invocationContext)
+        self.handleError(code: 500, reason: "InternalError", message: nil,
+                         responseHandler: responseHandler, invocationContext: invocationContext)
     }
-    
-    public func handleResponseForInvalidOperation(requestHead: SmokeHTTP1RequestHead,
+
+    public func handleResponseForInvalidOperation(requestHead _: SmokeHTTP1RequestHead,
                                                   message: String, responseHandler: ResponseHandlerType,
                                                   invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleError(code: 400, reason: "InvalidOperation", message: message,
-                    responseHandler: responseHandler, invocationContext: invocationContext)
+        self.handleError(code: 400, reason: "InvalidOperation", message: message,
+                         responseHandler: responseHandler, invocationContext: invocationContext)
     }
-    
-    public func handleResponseForDecodingError(requestHead: SmokeHTTP1RequestHead,
+
+    public func handleResponseForDecodingError(requestHead _: SmokeHTTP1RequestHead,
                                                message: String, responseHandler: ResponseHandlerType,
                                                invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleError(code: 400, reason: "DecodingError", message: message,
-                    responseHandler: responseHandler, invocationContext: invocationContext)
+        self.handleError(code: 400, reason: "DecodingError", message: message,
+                         responseHandler: responseHandler, invocationContext: invocationContext)
     }
-    
-    public func handleResponseForValidationError(requestHead: SmokeHTTP1RequestHead,
+
+    public func handleResponseForValidationError(requestHead _: SmokeHTTP1RequestHead,
                                                  message: String?, responseHandler: ResponseHandlerType,
                                                  invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleError(code: 400, reason: "ValidationError", message: message,
-                    responseHandler: responseHandler, invocationContext: invocationContext)
+        self.handleError(code: 400, reason: "ValidationError", message: message,
+                         responseHandler: responseHandler, invocationContext: invocationContext)
     }
-    
+
     internal func handleError(code: Int,
                               reason: String,
                               message: String?,
                               responseHandler: ResponseHandlerType,
                               invocationContext: SmokeInvocationContext<InvocationReportingType>) {
-        handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
+        self.handleUsingDesiredThreadPool(responseHandler: responseHandler, invocationContext: invocationContext) {
             self.handleErrorOnDesiredThreadPool(code: code, reason: reason, message: message,
                                                 responseHandler: responseHandler, invocationContext: invocationContext)
         }
     }
-    
+
     internal func handleErrorOnDesiredThreadPool(code: Int,
                                                  reason: String,
                                                  message: String?,
@@ -322,30 +316,30 @@ public struct GenericJSONPayloadHTTP1OperationDelegate<ResponseHandlerType: HTTP
         let errorResult = SmokeOperationsErrorPayload(errorMessage: message)
         let encodedError = JSONEncoder.encodePayload(payload: errorResult, logger: invocationContext.invocationReporting.logger,
                                                      reason: reason)
-        
+
         let body = (contentType: MimeTypes.json, data: encodedError)
         let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [], body: body)
 
         responseHandler.complete(invocationContext: invocationContext, status: .custom(code: UInt(code), reasonPhrase: reason),
                                  responseComponents: responseComponents)
     }
-    
+
     internal func handleUsingDesiredThreadPool(responseHandler: ResponseHandlerType,
                                                invocationContext: SmokeInvocationContext<InvocationReportingType>,
-                                               body: @escaping () -> ()) {
+                                               body: @escaping () -> Void) {
         switch self.responseExecutor {
-        case .existingThread:
-            body()
-        case .dispatchQueue:
-            DispatchQueue.global().async {
+            case .existingThread:
                 body()
-            }
-        case .eventLoop:
-            // encode the response within the event loop of the server to limit the number of response
-            // `Data` objects that exist at single time to the number of threads in the event loop
-            responseHandler.executeInEventLoop(invocationContext: invocationContext) {
-                body()
-            }
+            case .dispatchQueue:
+                DispatchQueue.global().async {
+                    body()
+                }
+            case .eventLoop:
+                // encode the response within the event loop of the server to limit the number of response
+                // `Data` objects that exist at single time to the number of threads in the event loop
+                responseHandler.executeInEventLoop(invocationContext: invocationContext) {
+                    body()
+                }
         }
     }
 }

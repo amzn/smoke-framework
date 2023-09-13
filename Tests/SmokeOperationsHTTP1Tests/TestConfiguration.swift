@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -15,34 +15,33 @@
 // SmokeOperationsTests
 //
 import Foundation
-import SmokeOperations
-import NIOHTTP1
 import Logging
-import SmokeInvocation
 import NIO
+import NIOHTTP1
+import SmokeInvocation
+import SmokeOperations
 @testable import SmokeOperationsHTTP1
 import XCTest
 
-struct ExampleContext {
-}
+struct ExampleContext {}
 
 let serializedInput = """
-    {
-      "theID" : "123456789012"
-    }
-    """
+{
+  "theID" : "123456789012"
+}
+"""
 
 let serializedAlternateInput = """
-    {
-      "theID" : "888888888888"
-    }
-    """
+{
+  "theID" : "888888888888"
+}
+"""
 
 let serializedInvalidInput = """
-    {
-      "theID" : "1789012"
-    }
-    """
+{
+  "theID" : "1789012"
+}
+"""
 
 struct OperationResponse {
     let status: HTTPResponseStatus
@@ -50,42 +49,40 @@ struct OperationResponse {
 }
 
 struct TestInvocationReporting: InvocationReporting {
-    var logger: Logger = Logger(label: "test")
-    
+    var logger: Logger = .init(label: "test")
+
     var internalRequestId: String = "internalRequestId"
 }
 
 class TestHttpResponseHandler: HTTP1ResponseHandler {
     var response: OperationResponse?
-    
-    init() {
-        
-    }
-    
-    func complete(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
+
+    init() {}
+
+    func complete(invocationContext _: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                   responseComponents: HTTP1ServerResponseComponents) {
-        response = OperationResponse(status: status,
-                                     responseComponents: responseComponents)
+        self.response = OperationResponse(status: status,
+                                          responseComponents: responseComponents)
     }
-    
+
     func completeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                              responseComponents: HTTP1ServerResponseComponents) {
-        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
+        self.complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
-    
+
     func completeSilentlyInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, status: HTTPResponseStatus,
                                      responseComponents: HTTP1ServerResponseComponents) {
-        complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
+        self.complete(invocationContext: invocationContext, status: status, responseComponents: responseComponents)
     }
-    
-    func executeInEventLoop(invocationContext: SmokeInvocationContext<TestInvocationReporting>, execute: @escaping () -> ()) {
+
+    func executeInEventLoop(invocationContext _: SmokeInvocationContext<TestInvocationReporting>, execute: @escaping () -> Void) {
         execute()
     }
 }
 
 public enum MyError: Swift.Error {
     case theError(reason: String)
-    
+
     enum CodingKeys: String, CodingKey {
         case reason = "Reason"
     }
@@ -94,10 +91,10 @@ public enum MyError: Swift.Error {
 extension MyError: Encodable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
-        case .theError(reason: let reason):
-            try container.encode(reason, forKey: .reason)
+            case .theError(reason: let reason):
+                try container.encode(reason, forKey: .reason)
         }
     }
 }
@@ -113,7 +110,7 @@ let allowedErrors = [(MyError.theError(reason: "MyError"), 400)]
 struct ErrorResponse: Codable {
     let type: String
     let reason: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case type = "__type"
         case reason = "Reason"
@@ -122,9 +119,9 @@ struct ErrorResponse: Codable {
 
 struct ExampleInput: Codable, Validatable, Equatable {
     let theID: String
-    
+
     func validate() throws {
-        if theID.count != 12 {
+        if self.theID.count != 12 {
             throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
         }
     }
@@ -151,23 +148,22 @@ struct ExampleHTTP1Input: OperationHTTP1InputProtocol, Validatable, Equatable {
     typealias PathType = ExamplePathInput
     typealias BodyType = ExampleBodyInput
     typealias HeadersType = ExampleHeaderInput
-    
+
     let theID: String
     let theToken: String
     let theParameter: String
     let theHeader: String
-    
+
     func validate() throws {
-        if theID.count != 12 {
+        if self.theID.count != 12 {
             throw SmokeOperationsError.validationError(reason: "ID not the correct length.")
         }
     }
-    
-    static func compose(
-            queryDecodableProvider: () throws -> ExampleQueryInput,
-            pathDecodableProvider: () throws -> ExamplePathInput,
-            bodyDecodableProvider: () throws -> ExampleBodyInput,
-            headersDecodableProvider: () throws -> ExampleHeaderInput) throws -> ExampleHTTP1Input {
+
+    static func compose(queryDecodableProvider: () throws -> ExampleQueryInput,
+                        pathDecodableProvider: () throws -> ExamplePathInput,
+                        bodyDecodableProvider: () throws -> ExampleBodyInput,
+                        headersDecodableProvider: () throws -> ExampleHeaderInput) throws -> ExampleHTTP1Input {
         return ExampleHTTP1Input(theID: try bodyDecodableProvider().theID,
                                  theToken: try pathDecodableProvider().theToken,
                                  theParameter: try queryDecodableProvider().theParameter,
@@ -177,9 +173,9 @@ struct ExampleHTTP1Input: OperationHTTP1InputProtocol, Validatable, Equatable {
 
 extension ExampleHTTP1Input {
     func validateForTest() {
-        XCTAssertEqual("headerValue", theHeader)
-        XCTAssertEqual("muchParameter", theParameter)
-        XCTAssertEqual("suchToken", theToken)
+        XCTAssertEqual("headerValue", self.theHeader)
+        XCTAssertEqual("muchParameter", self.theParameter)
+        XCTAssertEqual("suchToken", self.theToken)
     }
 }
 
@@ -189,7 +185,7 @@ enum BodyColor: String, Codable {
 }
 
 struct TestInvocationStrategy: InvocationStrategy {
-    func invoke(handler: @escaping () -> ()) {
+    func invoke(handler: @escaping () -> Void) {
         handler()
     }
 }
@@ -197,9 +193,9 @@ struct TestInvocationStrategy: InvocationStrategy {
 struct OutputAttributes: Codable, Validatable, Equatable {
     let bodyColor: BodyColor
     let isGreat: Bool
-    
+
     func validate() throws {
-        if case .yellow = bodyColor {
+        if case .yellow = self.bodyColor {
             throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
         }
     }
@@ -217,21 +213,21 @@ struct OutputHeaderAttributes: Codable {
 struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatable {
     typealias BodyType = OutputBodyAttributes
     typealias AdditionalHeadersType = OutputHeaderAttributes
-    
+
     let bodyColor: BodyColor
     let isGreat: Bool
     let theHeader: String
-    
+
     var bodyEncodable: OutputBodyAttributes? {
-        return OutputBodyAttributes(bodyColor: bodyColor, isGreat: isGreat)
+        return OutputBodyAttributes(bodyColor: self.bodyColor, isGreat: self.isGreat)
     }
-    
+
     var additionalHeadersEncodable: OutputHeaderAttributes? {
-        return OutputHeaderAttributes(theHeader: theHeader)
+        return OutputHeaderAttributes(theHeader: self.theHeader)
     }
-    
+
     func validate() throws {
-        if case .yellow = bodyColor {
+        if case .yellow = self.bodyColor {
             throw SmokeOperationsError.validationError(reason: "The body color is yellow.")
         }
     }
@@ -240,7 +236,7 @@ struct OutputHTTP1Attributes: OperationHTTP1OutputProtocol, Validatable, Equatab
 func verifyPathOutput<SelectorType>(uri: String, body: Data,
                                     handlerSelector: SelectorType,
                                     additionalHeaders: [(String, String)] = []) -> OperationResponse
-where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
+    where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
     SelectorType.DefaultOperationDelegateType.ResponseHandlerType == TestHttpResponseHandler,
@@ -248,33 +244,33 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
     let handler = StandardHTTP1OperationRequestHandler<SelectorType>(
         handlerSelector: handlerSelector,
         context: ExampleContext(), serverName: "Server", reportingConfiguration: SmokeReportingConfiguration<TestOperations>())
-    
+
     var httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .POST,
                                           uri: uri)
     additionalHeaders.forEach { header in
         httpRequestHead.headers.add(name: header.0, value: header.1)
     }
-    
+
     let responseHandler = TestHttpResponseHandler()
-        
-    func invocationReportingProvider(logger: Logger) -> TestInvocationReporting {
+
+    func invocationReportingProvider(logger _: Logger) -> TestInvocationReporting {
         return TestInvocationReporting()
     }
-    
+
     handler.handle(requestHead: httpRequestHead, body: body,
                    responseHandler: responseHandler,
                    invocationStrategy: TestInvocationStrategy(), requestLogger: Logger(label: "Test"),
                    internalRequestId: "internalRequestId",
                    invocationReportingProvider: invocationReportingProvider)
-    
+
     return responseHandler.response!
 }
 
 func verifyErrorResponse<SelectorType>(uri: String,
                                        handlerSelector: SelectorType,
                                        additionalHeaders: [(String, String)] = []) throws
-where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
+    where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ExampleContext,
     SmokeHTTP1RequestHead == SelectorType.DefaultOperationDelegateType.RequestHeadType,
     TestHttpResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType,
     TestInvocationReporting == SelectorType.DefaultOperationDelegateType.InvocationReportingType,
@@ -283,12 +279,11 @@ where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == Examp
                                     body: serializedAlternateInput.data(using: .utf8)!,
                                     handlerSelector: handlerSelector,
                                     additionalHeaders: additionalHeaders)
-    
-    
+
     XCTAssertEqual(response.status.code, 400)
     let body = response.responseComponents.body!
     let output = try JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
                                                               from: body.data)
-    
+
     XCTAssertEqual("TheError", output.type)
 }

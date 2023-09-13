@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -15,25 +15,25 @@
 // SmokeOperationsHTTP1
 //
 
+import Logging
 import NIO
 import SmokeInvocation
 import SmokeOperations
-import Logging
 
 /**
  A protocol for initialization SmokeFramework-based applications that require a static context.
-*/
+ */
 public protocol SmokeStaticContextInitializer {
     associatedtype SelectorType: SmokeHTTP1HandlerSelector
-    
+
     var handlerSelector: SelectorType { get }
     var serverName: String { get }
     var invocationStrategy: InvocationStrategy { get }
     var defaultLogger: Logger { get }
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> { get }
-        
+
     func getInvocationContext() -> SelectorType.ContextType
-    
+
     func onShutdown() throws
 }
 
@@ -41,15 +41,15 @@ public extension SmokeStaticContextInitializer {
     var serverName: String {
         return "Server"
     }
-    
+
     var invocationStrategy: InvocationStrategy {
         return GlobalDispatchQueueAsyncInvocationStrategy()
     }
-    
+
     var defaultLogger: Logger {
         return Logger(label: "application.initialization")
     }
-    
+
     var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> {
         return SmokeReportingConfiguration()
     }

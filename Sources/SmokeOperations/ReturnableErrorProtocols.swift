@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ public protocol ErrorEncoder {
     func encode<InputType: SmokeReturnableError>(_ input: InputType, logger: Logger) throws -> Data
 }
 
-extension Encodable where Self: SmokeReturnableError {
-    public func encode(errorEncoder: ErrorEncoder, logger: Logger) throws -> Data {
+public extension Encodable where Self: SmokeReturnableError {
+    func encode(errorEncoder: ErrorEncoder, logger: Logger) throws -> Data {
         return try errorEncoder.encode(self, logger: logger)
     }
 }

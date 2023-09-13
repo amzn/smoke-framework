@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ public protocol OperationHTTP1InputProtocol {
     associatedtype PathType: Decodable
     associatedtype BodyType: Decodable
     associatedtype HeadersType: Decodable
-    
+
     /**
      Composes an instance from its constituent Decodable parts.
      May return one of its constituent parts if of a compatible type.
- 
+
      - Parameters:
         - queryDecodableProvider: provider for the decoded query for this instance.
         - pathDecodableProvider: provider for the decoded http path for this instance.

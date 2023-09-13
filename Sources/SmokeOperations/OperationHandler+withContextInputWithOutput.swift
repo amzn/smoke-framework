@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public extension OperationHandler {
     /**
       Initializer for async operation handler that has input returns
       a result body.
-     
+
      - Parameters:
         - inputProvider: function that obtains the input from the request.
         - operation: the handler method for the operation.
@@ -34,17 +34,17 @@ public extension OperationHandler {
           handling the operation.
      */
     init<InputType: Validatable, OutputType: Validatable, ErrorType: ErrorIdentifiableByDescription,
-        OperationDelegateType: OperationDelegate>(
-            serverName: String, operationIdentifer: OperationIdentifer, reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
-            inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
-            operation: @escaping (InputType, ContextType, InvocationReportingType) async throws -> OutputType,
-            outputHandler: @escaping ((RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
-            allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType)
-    where RequestHeadType == OperationDelegateType.RequestHeadType,
-    InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
-        
+        OperationDelegateType: OperationDelegate>(serverName: String, operationIdentifer: OperationIdentifer,
+                                                  reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>,
+                                                  inputProvider: @escaping (RequestHeadType, Data?) throws -> InputType,
+                                                  operation: @escaping (InputType, ContextType, InvocationReportingType) async throws -> OutputType,
+                                                  outputHandler: @escaping (
+                                                      (RequestHeadType, OutputType, ResponseHandlerType, SmokeInvocationContext<InvocationReportingType>) -> Void),
+                                                  allowedErrors: [(ErrorType, Int)],
+                                                  operationDelegate: OperationDelegateType)
+        where RequestHeadType == OperationDelegateType.RequestHeadType,
+        InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         /**
          * The wrapped input handler takes the provided operation handler and wraps it so that if it
          * returns, the responseHandler is called with the result. If the provided operation
@@ -58,7 +58,7 @@ public extension OperationHandler {
                     let handlerResult: WithOutputOperationHandlerResult<OutputType, ErrorType>
                     do {
                         let output = try await operation(input, context, invocationContext.invocationReporting)
-                        
+
                         handlerResult = .success(output)
                     } catch let smokeReturnableError as SmokeReturnableError {
                         handlerResult = .smokeReturnableError(smokeReturnableError, allowedErrors)
@@ -67,7 +67,7 @@ public extension OperationHandler {
                     } catch {
                         handlerResult = .internalServerError(error)
                     }
-                    
+
                     OperationHandler.handleWithOutputOperationHandlerResult(
                         handlerResult: handlerResult,
                         operationDelegate: operationDelegate,
@@ -78,7 +78,7 @@ public extension OperationHandler {
                 }
             }
         }
-        
+
         self.init(serverName: serverName, operationIdentifer: operationIdentifer, reportingConfiguration: reportingConfiguration,
                   inputHandler: wrappedInputHandler,
                   inputProvider: inputProvider,

@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -21,12 +21,11 @@ import Foundation
  A strategy protocol that manages how to invocate a handler.
  */
 public protocol InvocationStrategy {
-    
     /**
      Function to handle the invocation of the handler.
- 
+
      - Parameters:
         - handler: The handler to invocate.
      */
-    func invoke(handler: @escaping () -> ())
+    func invoke(handler: @escaping () -> Void)
 }

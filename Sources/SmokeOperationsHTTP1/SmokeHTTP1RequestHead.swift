@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ public struct SmokeHTTP1RequestHead {
     public let httpRequestHead: HTTPRequestHead
     public let query: String
     public let pathShape: Shape
-    
+
     public init(httpRequestHead: HTTPRequestHead,
                 query: String,
                 pathShape: Shape) {

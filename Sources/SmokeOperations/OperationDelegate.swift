@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -29,13 +29,13 @@ public protocol OperationDelegate {
     associatedtype InvocationReportingType: InvocationReporting
     /// The type of response handler used with this delegate.
     associatedtype ResponseHandlerType
-    
-     /// The `Logging.Logger` to use for logging for this invocation.
+
+    /// The `Logging.Logger` to use for logging for this invocation.
     func decorateLoggerForAnonymousRequest(requestLogger: inout Logger)
-    
+
     /**
      Function to handle a successful operation with no response.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -44,10 +44,10 @@ public protocol OperationDelegate {
      */
     func handleResponseForOperationWithNoOutput(requestHead: RequestHeadType, responseHandler: ResponseHandlerType,
                                                 invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+
     /**
      Function to handle an operation failure.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -57,10 +57,10 @@ public protocol OperationDelegate {
      */
     func handleResponseForOperationFailure(requestHead: RequestHeadType, operationFailure: OperationFailure,
                                            responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+
     /**
      Function to handle an internal server error.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -69,10 +69,10 @@ public protocol OperationDelegate {
      */
     func handleResponseForInternalServerError(requestHead: RequestHeadType, responseHandler: ResponseHandlerType,
                                               invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+
     /**
      Function to handle an invalid operation being requested.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -82,10 +82,10 @@ public protocol OperationDelegate {
      */
     func handleResponseForInvalidOperation(requestHead: RequestHeadType, message: String,
                                            responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+
     /**
      Function to handle a decoding error.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).
@@ -95,10 +95,10 @@ public protocol OperationDelegate {
      */
     func handleResponseForDecodingError(requestHead: RequestHeadType, message: String,
                                         responseHandler: ResponseHandlerType, invocationContext: SmokeInvocationContext<InvocationReportingType>)
-    
+
     /**
      Function to handle a validation error.
- 
+
      - Parameters:
         - requestHead: The original request head corresponding to the operation. Can be used to determine how to
           handle the response (such as requested response type).

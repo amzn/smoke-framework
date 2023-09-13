@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -23,13 +23,11 @@ import Foundation
  */
 public struct GlobalDispatchQueueAsyncInvocationStrategy: InvocationStrategy {
     let queue = DispatchQueue.global()
-    
-    public init() {
-        
-    }
-    
-    public func invoke(handler: @escaping () -> ()) {
-        queue.async {
+
+    public init() {}
+
+    public func invoke(handler: @escaping () -> Void) {
+        self.queue.async {
             handler()
         }
     }

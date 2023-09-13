@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 //
 
 import Foundation
-import SmokeOperations
-import NIOHTTP1
 import Logging
+import NIOHTTP1
+import SmokeOperations
 
 public extension SmokeHTTP1HandlerSelector {
     /**
      Adds a handler for the specified uri and http method.
- 
+
      - Parameters:
         - operationIdentifer: The identifer for the handler being added.
         - httpMethod: The HTTP method this handler will respond to.
@@ -34,19 +34,18 @@ public extension SmokeHTTP1HandlerSelector {
         - outputLocation: the location in the outgoing http response to place the encoded output.
      */
     mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, OutputType: ValidatableCodable,
-            ErrorType: ErrorIdentifiableByDescription>(
-            _ operationIdentifer: OperationIdentifer,
-            httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
-                                                             (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
-            allowedErrors: [(ErrorType, Int)],
-            inputLocation: OperationInputHTTPLocation,
-            outputLocation: OperationOutputHTTPLocation) {
+        ErrorType: ErrorIdentifiableByDescription>(_ operationIdentifer: OperationIdentifer,
+                                                   httpMethod: HTTPMethod,
+                                                   operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
+                                                       (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
+                                                   allowedErrors: [(ErrorType, Int)],
+                                                   inputLocation: OperationInputHTTPLocation,
+                                                   outputLocation: OperationOutputHTTPLocation) {
         func operation(input: InputType, context: ContextType, completion: @escaping (Result<OutputType, Swift.Error>) -> Void) throws {
             let innerOperation = operationProvider(context)
             try innerOperation(input, completion)
         }
-        
+
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
@@ -54,10 +53,10 @@ public extension SmokeHTTP1HandlerSelector {
                                inputLocation: inputLocation,
                                outputLocation: outputLocation)
     }
-    
+
     /**
      Adds a handler for the specified uri and http method.
- 
+
      - Parameters:
         - operationIdentifer: The identifer for the handler being added.
         - httpMethod: The HTTP method this handler will respond to.
@@ -70,23 +69,23 @@ public extension SmokeHTTP1HandlerSelector {
           handling the operation.
      */
     mutating func addHandlerForOperationProvider<InputType: ValidatableCodable, OutputType: ValidatableCodable,
-            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
-            _ operationIdentifer: OperationIdentifer,
-            httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
-                                                             (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
-            allowedErrors: [(ErrorType, Int)],
-            inputLocation: OperationInputHTTPLocation,
-            outputLocation: OperationOutputHTTPLocation,
-            operationDelegate: OperationDelegateType)
-    where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-    DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: HTTP1OperationDelegate>(_ operationIdentifer: OperationIdentifer,
+                                                       httpMethod: HTTPMethod,
+                                                       operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
+                                                           (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
+                                                       allowedErrors: [(ErrorType, Int)],
+                                                       inputLocation: OperationInputHTTPLocation,
+                                                       outputLocation: OperationOutputHTTPLocation,
+                                                       operationDelegate: OperationDelegateType)
+        where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+        DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         func operation(input: InputType, context: ContextType, completion: @escaping (Result<OutputType, Swift.Error>) -> Void) throws {
             let innerOperation = operationProvider(context)
             try innerOperation(input, completion)
         }
-            
+
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
@@ -95,10 +94,10 @@ public extension SmokeHTTP1HandlerSelector {
                                outputLocation: outputLocation,
                                operationDelegate: operationDelegate)
     }
-    
+
     /**
      Adds a handler for the specified uri and http method.
- 
+
      - Parameters:
         - operationIdentifer: The identifer for the handler being added.
         - httpMethod: The HTTP method this handler will respond to.
@@ -107,26 +106,25 @@ public extension SmokeHTTP1HandlerSelector {
           from the operation and their error codes.
      */
     mutating func addHandlerForOperationProvider<InputType: ValidatableOperationHTTP1InputProtocol, OutputType: ValidatableOperationHTTP1OutputProtocol,
-            ErrorType: ErrorIdentifiableByDescription>(
-            _ operationIdentifer: OperationIdentifer,
-            httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
-                                                             (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
-            allowedErrors: [(ErrorType, Int)]) {
+        ErrorType: ErrorIdentifiableByDescription>(_ operationIdentifer: OperationIdentifer,
+                                                   httpMethod: HTTPMethod,
+                                                   operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
+                                                       (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
+                                                   allowedErrors: [(ErrorType, Int)]) {
         func operation(input: InputType, context: ContextType, completion: @escaping (Result<OutputType, Swift.Error>) -> Void) throws {
             let innerOperation = operationProvider(context)
             try innerOperation(input, completion)
         }
-        
+
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,
                                allowedErrors: allowedErrors)
     }
-    
+
     /**
      Adds a handler for the specified uri and http method.
- 
+
      - Parameters:
         - operationIdentifer: The identifer for the handler being added.
         - httpMethod: The HTTP method this handler will respond to.
@@ -137,21 +135,21 @@ public extension SmokeHTTP1HandlerSelector {
           handling the operation.
      */
     mutating func addHandlerForOperationProvider<InputType: ValidatableOperationHTTP1InputProtocol, OutputType: ValidatableOperationHTTP1OutputProtocol,
-            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
-            _ operationIdentifer: OperationIdentifer,
-            httpMethod: HTTPMethod,
-            operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
-                                                             (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
-            allowedErrors: [(ErrorType, Int)],
-            operationDelegate: OperationDelegateType)
-    where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
-    DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
-    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: HTTP1OperationDelegate>(_ operationIdentifer: OperationIdentifer,
+                                                       httpMethod: HTTPMethod,
+                                                       operationProvider: @escaping ((ContextType) -> ((InputType, @escaping
+                                                           (Result<OutputType, Swift.Error>) -> Void) throws -> Void)),
+                                                       allowedErrors: [(ErrorType, Int)],
+                                                       operationDelegate: OperationDelegateType)
+        where DefaultOperationDelegateType.RequestHeadType == OperationDelegateType.RequestHeadType,
+        DefaultOperationDelegateType.InvocationReportingType == OperationDelegateType.InvocationReportingType,
+        DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         func operation(input: InputType, context: ContextType, completion: @escaping (Result<OutputType, Swift.Error>) -> Void) throws {
             let innerOperation = operationProvider(context)
             try innerOperation(input, completion)
         }
-        
+
         addHandlerForOperation(operationIdentifer,
                                httpMethod: httpMethod,
                                operation: operation,

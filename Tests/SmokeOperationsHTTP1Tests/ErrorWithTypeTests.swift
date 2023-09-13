@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License").
 // You may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 // SmokeOperations
 //
 
-import XCTest
 @testable import SmokeOperations
+import XCTest
 
 struct ExampleErrorShape: Encodable {
     let message: String
@@ -25,7 +25,7 @@ struct ExampleErrorShape: Encodable {
 struct ExpectedShape: Codable {
     let message: String
     let type: String
-    
+
     enum CodingKeys: String, CodingKey {
         case message
         case type = "__type"
@@ -33,22 +33,21 @@ struct ExpectedShape: Codable {
 }
 
 extension ExpectedShape: Equatable {
-    static func ==(lhs: ExpectedShape, rhs: ExpectedShape) -> Bool {
+    static func == (lhs: ExpectedShape, rhs: ExpectedShape) -> Bool {
         return lhs.message == rhs.message && lhs.type == rhs.type
     }
 }
 
 class ErrorWithTypeTests: XCTestCase {
-
     func testEncoding() {
         let errorShape = ExampleErrorShape(message: "The message")
         let errorWithType = ErrorWithType(type: "BadError", payload: errorShape)
-        
+
         let encodedData = try! JSONEncoder.getFrameworkEncoder().encode(errorWithType)
         let recovered = try! JSONDecoder.getFrameworkDecoder().decode(ExpectedShape.self, from: encodedData)
-        
+
         let expected = ExpectedShape(message: "The message", type: "BadError")
-        
+
         XCTAssertEqual(expected, recovered)
     }
 }
