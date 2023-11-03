@@ -20,11 +20,11 @@ import Foundation
 import Logging
 import NIO
 import NIOHTTP1
+import ServiceLifecycle
 import SmokeHTTP1
 import SmokeInvocation
 import SmokeOperations
 import SmokeOperationsHTTP1
-import ServiceLifecycle
 import UnixSignals
 
 public extension SmokeHTTP1Server {
@@ -446,7 +446,7 @@ public extension SmokeHTTP1Server {
             logger.error("Operations Server lifecycle error: '\(error)'")
         }
     }
-    
+
     static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializerV2, TraceContextType>(
         _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
         where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
@@ -498,9 +498,9 @@ public extension SmokeHTTP1Server {
                                         port: initalizer.port,
                                         defaultLogger: initalizer.defaultLogger,
                                         eventLoopProvider: eventLoopProvider)
-            
+
         let services = initalizer.getServices(smokeService: server)
-            
+
         let serviceGroup = ServiceGroup(
             services: services,
             gracefulShutdownSignals: initalizer.shutdownOnSignals.compactMap { $0.asUnixSignal() },
@@ -568,14 +568,14 @@ public extension SmokeHTTP1Server {
                                         port: initalizer.port,
                                         defaultLogger: initalizer.defaultLogger,
                                         eventLoopProvider: eventLoopProvider)
-            
+
         let services = initalizer.getServices(smokeService: server)
-            
+
         let serviceGroup = ServiceGroup(
             services: services,
             gracefulShutdownSignals: initalizer.shutdownOnSignals.compactMap { $0.asUnixSignal() },
             logger: initalizer.defaultLogger)
-            
+
         do {
             try await serviceGroup.run()
 
@@ -591,12 +591,12 @@ public extension SmokeHTTP1Server {
 extension SmokeHTTP1Server.ShutdownOnSignal {
     func asUnixSignal() -> UnixSignal? {
         switch self {
-        case .none:
-            return nil
-        case .sigint:
-            return .sigint
-        case .sigterm:
-            return .sigterm
+            case .none:
+                return nil
+            case .sigint:
+                return .sigint
+            case .sigterm:
+                return .sigterm
         }
     }
 }

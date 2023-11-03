@@ -16,9 +16,9 @@
 //
 
 import Foundation
+import ServiceLifecycle
 import SmokeHTTP1
 import SmokeOperationsHTTP1
-import ServiceLifecycle
 
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     var port: Int { get }

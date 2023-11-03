@@ -21,9 +21,9 @@ import Logging
 import NIO
 import NIOExtras
 import NIOHTTP1
+import ServiceLifecycle
 import SmokeHTTP1
 import SmokeInvocation
-import ServiceLifecycle
 
 /**
  A basic non-blocking HTTP server that handles a request with an
@@ -87,63 +87,61 @@ internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: Service
             group: self.eventLoopGroup,
             configuration: .init(address: .hostname(ServerDefaults.defaultHost, port: port)))
     }
-    
+
     private enum LifecycleCommand {
         case shutdown
     }
-    
+
     func run() async throws {
         let (lifecycleEventStream, lifecycleEventContinuation) = AsyncStream.makeStream(of: LifecycleCommand.self)
-        
+
         try await withGracefulShutdownHandler {
             self.defaultLogger.info("SmokeHTTP1Server (hummingbird-core) starting.",
                                     metadata: ["port": "\(self.port)"])
-            
+
             try await self.server.start(responder: self.responder).get()
             self.serverState = .running
             self.defaultLogger.info("SmokeHTTP1Server (hummingbird-core) started.",
                                     metadata: ["port": "\(self.port)"])
-            
+
             // suspend until the request to shutdown
             await suspendUntilShutdown(lifecycleEventStream: lifecycleEventStream)
-            
+
             self.serverState = .shuttingDown
             try await self.server.stop().get()
 
             if self.ownEventLoopGroup {
                 try await self.eventLoopGroup.shutdownGracefully()
             }
-            
+
             self.serverState = .shutDown
             self.defaultLogger.info("SmokeHTTP1Server (hummingbird-core) shutdown.")
         } onGracefulShutdown: {
             lifecycleEventContinuation.yield(.shutdown)
         }
-
     }
-    
+
     private func suspendUntilShutdown(lifecycleEventStream: AsyncStream<LifecycleCommand>) async {
         // suspend until the request to shutdown
         for await lifecycleEvent in lifecycleEventStream {
             switch lifecycleEvent {
-            case .shutdown:
-                // begin the shutdown process
-                return
+                case .shutdown:
+                    // begin the shutdown process
+                    return
             }
         }
     }
 }
 
 #if swift(<5.9.0)
-// This extension is provided with Swift 5.9 and greater
-extension AsyncStream {
-    fileprivate static func makeStream(
-        of elementType: Element.Type = Element.self,
-        bufferingPolicy limit: Continuation.BufferingPolicy = .unbounded
-    ) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
-        var continuation: AsyncStream<Element>.Continuation!
-        let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
-        return (stream: stream, continuation: continuation!)
+    // This extension is provided with Swift 5.9 and greater
+    fileprivate extension AsyncStream {
+        static func makeStream(of _: Element.Type = Element.self,
+                               bufferingPolicy limit: Continuation
+                                   .BufferingPolicy = .unbounded) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
+            var continuation: AsyncStream<Element>.Continuation!
+            let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
+            return (stream: stream, continuation: continuation!)
+        }
     }
-}
 #endif

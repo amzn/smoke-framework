@@ -143,15 +143,6 @@
         "revision" : "d673fdc912f09ad83f34dd00ef823d2d80fbd3a7",
         "version" : "2.3.0"
       }
-    },
-    {
-      "identity" : "swiftformatplugin",
-      "kind" : "remoteSourceControl",
-      "location" : "ssh://git.amazon.com:2222/pkg/SwiftFormatPlugin",
-      "state" : {
-        "revision" : "766465db48e9e323e5dc46621119fc5de2e4207d",
-        "version" : "1.1.0"
-      }
     }
   ],
   "version" : 2

@@ -58,7 +58,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0"),
         .package(url: "https://github.com/hummingbird-project/hummingbird-core.git", from: "1.3.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle", from: "2.0.0"),
-        .package(url: "ssh://git.amazon.com:2222/pkg/SwiftFormatPlugin", from: "1.1.0"),
     ],
     targets: [
         .target(
