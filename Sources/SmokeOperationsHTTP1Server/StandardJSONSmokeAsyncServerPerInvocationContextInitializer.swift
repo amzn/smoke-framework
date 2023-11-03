@@ -21,7 +21,7 @@ import SmokeOperations
 import SmokeOperationsHTTP1
 
 /**
-  A protocol that is derived from `SmokeAsyncServerPerInvocationContextInitializerV3` that uses the `StandardSmokeHTTP1HandlerSelector`
+  A protocol that is derived from `SmokeAsyncServerPerInvocationContextInitializer` that uses the `StandardSmokeHTTP1HandlerSelector`
   type as the `SelectorType` and `JSONPayloadHTTP1OperationDelegate` as the `DefaultOperationDelegateType`.
 
   This reduces the configuration required for applications that use these standard components.
@@ -50,5 +50,38 @@ public extension StandardJSONSmokeAsyncServerPerInvocationContextInitializer {
 
     var defaultOperationDelegate: SelectorType.DefaultOperationDelegateType {
         return JSONPayloadHTTP1OperationDelegate()
+    }
+}
+
+/**
+  A protocol that is derived from `SmokeAsyncServerPerInvocationContextInitializerV3` that uses the `StandardSmokeHTTP1HandlerSelector`
+  type as the `SelectorType` and `JSONPayloadHTTP1OperationDelegate` as the `DefaultOperationDelegateType`.
+
+  This reduces the configuration required for applications that use these standard components.
+ */
+public protocol StandardJSONSmokeAsyncServerPerInvocationContextInitializerV3: SmokeAsyncServerPerInvocationContextInitializerV3
+    where SelectorType ==
+    StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1HBOperationDelegate<SmokeInvocationTraceContext>,
+        OperationIdentifer> {
+    associatedtype ContextType
+    associatedtype OperationIdentifer
+
+    typealias OperationsInitializerType =
+        (inout StandardSmokeHTTP1HandlerSelector<ContextType, JSONPayloadHTTP1HBOperationDelegate<SmokeInvocationTraceContext>, OperationIdentifer>) -> Void
+}
+
+public extension StandardJSONSmokeAsyncServerPerInvocationContextInitializerV3 {
+    var handlerSelectorProvider: (SmokeReportingConfiguration<SelectorType.OperationIdentifer>) -> SelectorType {
+        func provider(reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>) -> SelectorType {
+            return SelectorType(defaultOperationDelegate: self.defaultOperationDelegate,
+                                serverName: self.serverName,
+                                reportingConfiguration: reportingConfiguration)
+        }
+
+        return provider
+    }
+
+    var defaultOperationDelegate: SelectorType.DefaultOperationDelegateType {
+        return JSONPayloadHTTP1HBOperationDelegate(responseExecutor: .existingThread)
     }
 }

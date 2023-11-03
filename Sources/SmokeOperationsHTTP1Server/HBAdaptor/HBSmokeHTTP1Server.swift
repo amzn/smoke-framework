@@ -26,10 +26,11 @@ import SmokeHTTP1
 import SmokeInvocation
 
 /**
- A basic non-blocking HTTP server that handles a request with an
- optional body and returns a response with an optional body.
+ Wraps a `HummingbirdCore.HBHTTPServer` as a `ServiceLifecycle.Service`
  */
-internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: ServiceLifecycle.Service {
+internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: ServiceLifecycle.Service, CustomStringConvertible {
+    let description = "HBSmokeHTTP1Server"
+    
     let server: HBHTTPServer
     let port: Int
     let responder: HBHTTPResponderType
@@ -44,9 +45,6 @@ internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: Service
 
     private var serverState: State = .initialized
 
-    let eventLoopGroup: EventLoopGroup
-    let ownEventLoopGroup: Bool
-
     /**
      Initializer.
 
@@ -55,36 +53,20 @@ internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: Service
         - port: Optionally the localhost port for the server to listen on.
                 If not specified, defaults to 8080.
         - defaultLogger: The logger to use for server events.
-        - shutdownCompletionHandlerInvocationStrategy: Optionally the invocation strategy for shutdown completion handlers.
-                                                       If not specified, the shutdown completion handlers will
-                                                       be invoked on DispatchQueue.global() synchronously so that callers
-                                                       to `waitUntilShutdown*` will not unblock until all completion handlers
-                                                       have finished.
-        - eventLoopProvider: Provides the event loop to be used by the server.
-                             If not specified, the server will create a new multi-threaded event loop
-                             with the number of threads specified by `System.coreCount`.
+        - eventLoopGroup: The EventLoopGroup to use for the server
         - shutdownOnSignals: Specifies if the server should be shutdown when one of the given signals is received.
                             If not specified, the server will be shutdown if a SIGINT is received.
      */
     internal init(responder: HBHTTPResponderType,
                   port: Int = ServerDefaults.defaultPort,
                   defaultLogger: Logger = Logger(label: "com.amazon.SmokeFramework.SmokeHTTP1.HBSmokeHTTP1Server"),
-                  eventLoopProvider: SmokeHTTP1Server.EventLoopProvider = .spawnNewThreads) {
+                  eventLoopGroup: EventLoopGroup) {
         self.port = port
         self.responder = responder
         self.defaultLogger = defaultLogger
 
-        switch eventLoopProvider {
-            case .spawnNewThreads:
-                self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-                self.ownEventLoopGroup = true
-            case .use(let existingEventLoopGroup):
-                self.eventLoopGroup = existingEventLoopGroup
-                self.ownEventLoopGroup = false
-        }
-
         self.server = HBHTTPServer(
-            group: self.eventLoopGroup,
+            group: eventLoopGroup,
             configuration: .init(address: .hostname(ServerDefaults.defaultHost, port: port)))
     }
 
@@ -109,10 +91,6 @@ internal actor HBSmokeHTTP1Server<HBHTTPResponderType: HBHTTPResponder>: Service
 
             self.serverState = .shuttingDown
             try await self.server.stop().get()
-
-            if self.ownEventLoopGroup {
-                try await self.eventLoopGroup.shutdownGracefully()
-            }
 
             self.serverState = .shutDown
             self.defaultLogger.info("SmokeHTTP1Server (hummingbird-core) shutdown.")

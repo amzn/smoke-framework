@@ -48,6 +48,53 @@ the related Smoke* repositories in action.
 The Smoke Framework provides a [code generator](https://github.com/amzn/smoke-framework-application-generate) that will
 generate a complete Swift Package Manager repository for a SmokeFramework-based service from a Swagger 2.0 specification file.
 
+Using this code generator is the simplest way to get started with smoke-framework. The code generator will provide sub-functions for each
+operation in the swagger file.
+
+```swift
+extension ExampleOperationsContext {
+    func handleExampleOperation(input _: ExampleModel.ExampleOperationInput) async throws 
+    -> ExampleModel.ExampleOperationOutput {
+        ...
+    }
+}
+```
+
+The code generator also provides an initializer type that can be used to easily initialize global instances required by the application.
+
+```swift
+@main
+struct ExamplePerInvocationContextInitializer: ExamplePerInvocationContextInitializerProtocol {
+    // TODO: Add properties to be accessed by the operation handlers
+
+    /**
+     On application startup.
+     */
+    init(configuration: inout SmokeServerConfiguration) async throws {
+        CloudwatchStandardErrorLogger.enableLogging()
+
+        // TODO: Add additional application initialization
+    }
+
+    /**
+     On invocation.
+     */
+    public func getInvocationContext(invocationReporting: SmokeServerInvocationReporting<SmokeInvocationTraceContext>)
+    -> ExampleOperationsContext {
+        return ExampleOperationsContext(logger: invocationReporting.logger)
+    }
+
+    /**
+     Provide an ordered list of any other services to be run along side the main service.
+     */
+    func getServices(smokeService: any ServiceLifecycle.Service) -> [any ServiceLifecycle.Service] {
+        return [...,
+                smokeService,
+                ...]
+    }
+}
+```
+
 See the instructions in the code generator repository on how to get started.
 
 # Getting Started without Code Generation
@@ -205,7 +252,7 @@ import AsyncHTTPClient
 import NIO
 import SmokeHTTP1
 
-struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializerV2 {
     typealias ContextType = MyApplicationContext
     typealias OperationIdentifer = MyOperations
     
@@ -216,7 +263,7 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
     /**
      On application startup.
      */
-    init(eventLoopGroup: EventLoopGroup) throws {
+    init(configuration: inout SmokeServerConfiguration) async throws {
         // set up any of the application-wide context
     }
 
@@ -254,11 +301,10 @@ emitted, a `swift-metrics` backend - such as [CloudWatchMetricsFactory](https://
 ```swift
 ...
 
-struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
+struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializerV2 {
     typealias ContextType = MyApplicationContext
     typealias OperationIdentifer = MyOperations
     
-    let reportingConfiguration: SmokeReportingConfiguration<OperationIdentifer>
     let serverName = "MyService"
     // specify the operations initializer
     let operationsInitializer: OperationsInitializerType = MyOperations.addToSmokeServer
@@ -266,13 +312,13 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
     /**
      On application startup.
      */
-    init(eventLoopGroup: EventLoopGroup) throws {
+    init(configuration: inout SmokeServerConfiguration) async throws {
         // set up any of the application-wide context
         
         // for the server, only report the latency metrics
         // only report 5XX error counts for TheOperation (even if additional operations are added in the future)
         // only report 4XX error counts for operations other than TheOperation (as they are added in the future)
-        self.reportingConfiguration = SmokeReportingConfiguration(
+        configuration.reportingConfiguration = SmokeReportingConfiguration(
             successCounterMatchingRequests: .none,
             failure5XXCounterMatchingRequests: .onlyForOperations([.theOperation]),
             failure4XXCounterMatchingRequests: .exceptForOperations([.theOperation]),
@@ -289,18 +335,9 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
 SmokeHTTP1Server.runAsOperationServer(MyPerInvocationContextInitializer.init)
 ```
 
-# Enabling Distributed Tracing (Swift 5.7 and greater)
+# Enabling Distributed Tracing
 
-To have your application participate in distributed traces, add a property `enableTracingWithSwiftConcurrency` 
-with a value of true to your application initializer.
-
-```swift
-struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationContextInitializer {
-    let enableTracingWithSwiftConcurrency = true
-
-    ...
-}
-```
+Initializers using `StandardJSONSmokeServerPerInvocationContextInitializer` will participate in distributed traces by default
 
 This will enable tracing for any operation handlers that use Swift Concurrency (async/await). You will also 
 need to setup an Instrumentation backend by following the instructions [here](https://swiftpackageindex.com/apple/swift-distributed-tracing/1.0.0/documentation/tracing/traceyourapplication).

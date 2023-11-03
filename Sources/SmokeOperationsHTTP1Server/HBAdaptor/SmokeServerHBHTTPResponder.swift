@@ -36,37 +36,30 @@ internal struct SmokeServerHBHTTPResponder<SelectorType, TraceContextType: Opera
     typealias TraceContextType = InvocationReportingType.TraceContextType
 
     let operationRequestHandler: StandardHTTP1OperationRequestHandler<SelectorType>
-    let invocationStrategy: InvocationStrategy
 
     init(handlerSelector: SelectorType, context: SelectorType.ContextType, serverName: String,
          reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
-         requestExecutor: RequestExecutor = .originalEventLoop,
          enableTracingWithSwiftConcurrency: Bool = false) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             context: context,
             serverName: serverName,
             reportingConfiguration: reportingConfiguration,
-            requestExecutor: requestExecutor,
+            requestExecutor: .cooperativeTaskGroup,
             enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
-        self.invocationStrategy = invocationStrategy
     }
 
     init(handlerSelector: SelectorType,
          contextProvider: @escaping (InvocationReportingType) -> SelectorType.ContextType,
          serverName: String, reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>,
-         invocationStrategy: InvocationStrategy = GlobalDispatchQueueAsyncInvocationStrategy(),
-         requestExecutor: RequestExecutor = .originalEventLoop,
          enableTracingWithSwiftConcurrency: Bool = false) {
         self.operationRequestHandler = StandardHTTP1OperationRequestHandler(
             handlerSelector: handlerSelector,
             contextProvider: contextProvider,
             serverName: serverName,
             reportingConfiguration: reportingConfiguration,
-            requestExecutor: requestExecutor,
+            requestExecutor: .cooperativeTaskGroup,
             enableTracingWithSwiftConcurrency: enableTracingWithSwiftConcurrency)
-        self.invocationStrategy = invocationStrategy
     }
 
     internal func respond(to request: HummingbirdCore.HBHTTPRequest, context: NIOCore.ChannelHandlerContext,
@@ -134,7 +127,8 @@ internal struct SmokeServerHBHTTPResponder<SelectorType, TraceContextType: Opera
             self.operationRequestHandler.handle(requestHead: request.head,
                                                 body: body,
                                                 responseHandler: responseHandler,
-                                                invocationStrategy: self.invocationStrategy,
+                                                // this has no impact for async operation handlers
+                                                invocationStrategy: GlobalDispatchQueueAsyncInvocationStrategy(),
                                                 requestLogger: requestLogger,
                                                 internalRequestId: internalRequestId,
                                                 actionsProvider: actionsProvider)

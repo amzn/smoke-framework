@@ -19,6 +19,7 @@ import Foundation
 import ServiceLifecycle
 import SmokeHTTP1
 import SmokeOperationsHTTP1
+import UnixSignals
 
 public protocol SmokeAsyncServerStaticContextInitializer: SmokeAsyncStaticContextInitializer {
     var port: Int { get }
@@ -50,7 +51,9 @@ public extension SmokeAsyncServerStaticContextInitializer {
     }
 }
 
-public protocol SmokeAsyncServerStaticContextInitializerV2: SmokeAsyncServerStaticContextInitializer {
+public protocol SmokeAsyncServerStaticContextInitializerV3: SmokeAsyncStaticContextInitializerV3 {
+    typealias SmokeServerConfiguration = GenericSmokeServerConfiguration<SelectorType>
+    
     /**
      Returns the ordered list of services to be started with the
      runtime and shutdown when the runtime is shutdown.
@@ -61,7 +64,7 @@ public protocol SmokeAsyncServerStaticContextInitializerV2: SmokeAsyncServerStat
     func getServices(smokeService: any Service) -> [any Service]
 }
 
-public extension SmokeAsyncServerStaticContextInitializerV2 {
+public extension SmokeAsyncServerStaticContextInitializerV3 {
     func getServices(smokeService: any Service) -> [any Service] {
         return [smokeService]
     }

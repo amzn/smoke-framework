@@ -59,3 +59,23 @@ public extension SmokeAsyncStaticContextInitializer {
         return SmokeReportingConfiguration()
     }
 }
+
+public protocol SmokeAsyncStaticContextInitializerV3 {
+    associatedtype SelectorType: SmokeHTTP1HandlerSelector
+
+    var handlerSelectorProvider: (SmokeReportingConfiguration<SelectorType.OperationIdentifer>) -> SelectorType { get }
+    var operationsInitializer: (inout SelectorType) -> Void { get }
+
+    var defaultOperationDelegate: SelectorType.DefaultOperationDelegateType { get }
+    var serverName: String { get }
+
+    func getInvocationContext() -> SelectorType.ContextType
+
+    func onShutdown() async throws
+}
+
+public extension SmokeAsyncStaticContextInitializerV3 {
+    var serverName: String {
+        return "Server"
+    }
+}

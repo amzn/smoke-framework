@@ -18,7 +18,11 @@
 import Foundation
 import ServiceLifecycle
 import SmokeHTTP1
+import SmokeOperations
 import SmokeOperationsHTTP1
+import UnixSignals
+import NIOCore
+import NIOPosix
 
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     var port: Int { get }
@@ -50,7 +54,29 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
     }
 }
 
-public protocol SmokeAsyncServerPerInvocationContextInitializerV2: SmokeAsyncServerPerInvocationContextInitializer {
+public struct GenericSmokeServerConfiguration<SelectorType: SmokeHTTP1HandlerSelector> {
+    public var port: Int
+    public var shutdownOnSignals: [UnixSignal]
+    public var eventLoopGroup: EventLoopGroup
+    public var enableTracingWithSwiftConcurrency: Bool
+    public var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>
+        
+    public init(port: Int = ServerDefaults.defaultPort,
+                shutdownOnSignals: [UnixSignal] = [.sigint, .sigterm],
+                eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup.singleton,
+                enableTracingWithSwiftConcurrency: Bool = true,
+                reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = .init()) {
+        self.port = port
+        self.shutdownOnSignals = shutdownOnSignals
+        self.eventLoopGroup = eventLoopGroup
+        self.enableTracingWithSwiftConcurrency = enableTracingWithSwiftConcurrency
+        self.reportingConfiguration = reportingConfiguration
+    }
+}
+
+public protocol SmokeAsyncServerPerInvocationContextInitializerV3: SmokeAsyncPerInvocationContextInitializerV3 {
+    typealias SmokeServerConfiguration = GenericSmokeServerConfiguration<SelectorType>
+    
     /**
      Returns the ordered list of services to be started with the
      runtime and shutdown when the runtime is shutdown.
@@ -61,7 +87,7 @@ public protocol SmokeAsyncServerPerInvocationContextInitializerV2: SmokeAsyncSer
     func getServices(smokeService: any Service) -> [any Service]
 }
 
-public extension SmokeAsyncServerPerInvocationContextInitializerV2 {
+public extension SmokeAsyncServerPerInvocationContextInitializerV3 {
     func getServices(smokeService: any Service) -> [any Service] {
         return [smokeService]
     }
