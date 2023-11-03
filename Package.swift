@@ -1,4 +1,4 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.7
 //
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
@@ -56,6 +56,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
         .package(url: "https://github.com/amzn/smoke-http.git", from: "2.14.0"),
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.0.0"),
+        .package(url: "https://github.com/hummingbird-project/hummingbird-core.git", from: "1.3.0"),
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle", from: "2.0.0"),
+        .package(url: "ssh://git.amazon.com:2222/pkg/SwiftFormatPlugin", from: "1.1.0"),
     ],
     targets: [
         .target(
@@ -100,6 +103,8 @@ let package = Package(
             name: "SmokeOperationsHTTP1Server", dependencies: [
                 .target(name: "SmokeOperationsHTTP1"),
                 .target(name: "SmokeHTTP1"),
+                .product(name: "HummingbirdCore", package: "hummingbird-core"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             ]),
         .target(
             name: "SmokeAsync", dependencies: [

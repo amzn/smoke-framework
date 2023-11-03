@@ -34,24 +34,24 @@ public extension SmokeInwardsRequestContext {
     }
 }
 
-internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, OutwardsRequestAggregator {
-    let headReceiveDate: Date?
-    let requestStart: Date
-    private(set) var retriableOutputRequestRecords: [RetriableOutputRequestRecord]
-    private(set) var retryAttemptRecords: [RetryAttemptRecord]
+public class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, OutwardsRequestAggregator {
+    public let headReceiveDate: Date?
+    public let requestStart: Date
+    public private(set) var retriableOutputRequestRecords: [RetriableOutputRequestRecord]
+    public private(set) var retryAttemptRecords: [RetryAttemptRecord]
 
     internal let accessQueue = DispatchQueue(
         label: "com.amazon.SmokeFramework.StandardSmokeInwardsRequestContext.accessQueue",
         target: DispatchQueue.global())
 
-    init(headReceiveDate: Date?, requestStart: Date) {
+    public init(headReceiveDate: Date?, requestStart: Date) {
         self.headReceiveDate = headReceiveDate
         self.requestStart = requestStart
         self.retriableOutputRequestRecords = []
         self.retryAttemptRecords = []
     }
 
-    func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord, onCompletion: @escaping () -> Void) {
+    public func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
 
@@ -61,7 +61,7 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
         }
     }
 
-    func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord, onCompletion: @escaping () -> Void) {
+    public func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             self.retryAttemptRecords.append(retryAttemptRecord)
 
@@ -69,7 +69,7 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
         }
     }
 
-    func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord, onCompletion: @escaping () -> Void) {
+    public func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord, onCompletion: @escaping () -> Void) {
         self.accessQueue.async {
             self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
 
@@ -78,19 +78,19 @@ internal class StandardSmokeInwardsRequestContext: SmokeInwardsRequestContext, O
     }
 
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
-    func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord) {
+    public func recordOutwardsRequest(outputRequestRecord: OutputRequestRecord) {
         let retriableOutwardsRequest = SmokeRetriableOutputRequestRecord(outputRequests: [outputRequestRecord])
 
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
     }
 
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
-    func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord) {
+    public func recordRetryAttempt(retryAttemptRecord: RetryAttemptRecord) {
         self.retryAttemptRecords.append(retryAttemptRecord)
     }
 
     @available(swift, deprecated: 2.0, message: "Not thread-safe")
-    func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord) {
+    public func recordRetriableOutwardsRequest(retriableOutwardsRequest: RetriableOutputRequestRecord) {
         self.retriableOutputRequestRecords.append(retriableOutwardsRequest)
     }
 }

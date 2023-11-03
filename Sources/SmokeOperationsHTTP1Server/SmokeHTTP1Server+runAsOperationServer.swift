@@ -24,6 +24,8 @@ import SmokeHTTP1
 import SmokeInvocation
 import SmokeOperations
 import SmokeOperationsHTTP1
+import ServiceLifecycle
+import UnixSignals
 
 public extension SmokeHTTP1Server {
     @available(swift, deprecated: 3.0, message: "Provide an initializer that accepts an EventLoopGroup instance.")
@@ -442,6 +444,159 @@ public extension SmokeHTTP1Server {
             try await eventLoopGroup.shutdownGracefully()
         } catch {
             logger.error("Operations Server lifecycle error: '\(error)'")
+        }
+    }
+    
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerStaticContextInitializerV2, TraceContextType>(
+        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
+        where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
+        InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+        InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+        HBHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        let eventLoopGroup =
+            MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+
+        let initalizer: InitializerType
+        do {
+            initalizer = try await factory(eventLoopGroup)
+        } catch {
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
+
+            logger.error("Unable to initialize application from factory.",
+                         metadata: ["cause": "\(String(describing: error))"])
+
+            return
+        }
+
+        // initialize the logger after instatiating the initializer
+        let logger = Logger(label: "application.initialization")
+
+        let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+        // if the initializer is indicating to create new threads for the server
+        // just use the created eventLoopGroup
+        if case .spawnNewThreads = initalizer.eventLoopProvider {
+            eventLoopProvider = .use(eventLoopGroup)
+        } else {
+            // use what the initializer says
+            eventLoopProvider = initalizer.eventLoopProvider
+        }
+
+        var handlerSelector = initalizer.handlerSelectorProvider()
+        initalizer.operationsInitializer(&handlerSelector)
+
+        let responser = SmokeServerHBHTTPResponder(
+            handlerSelector: handlerSelector,
+            context: initalizer.getInvocationContext(),
+            serverName: initalizer.serverName,
+            reportingConfiguration: initalizer.reportingConfiguration,
+            invocationStrategy: initalizer.invocationStrategy,
+            requestExecutor: initalizer.requestExecutor,
+            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
+        let server = HBSmokeHTTP1Server(responder: responser,
+                                        port: initalizer.port,
+                                        defaultLogger: initalizer.defaultLogger,
+                                        eventLoopProvider: eventLoopProvider)
+            
+        let services = initalizer.getServices(smokeService: server)
+            
+        let serviceGroup = ServiceGroup(
+            services: services,
+            gracefulShutdownSignals: initalizer.shutdownOnSignals.compactMap { $0.asUnixSignal() },
+            logger: initalizer.defaultLogger)
+
+        do {
+            try await serviceGroup.run()
+
+            try await initalizer.onShutdown()
+
+            try await eventLoopGroup.shutdownGracefully()
+        } catch {
+            logger.error("Operations Server lifecycle error: '\(error)'")
+        }
+    }
+
+    static func runAsOperationServer<InitializerType: SmokeAsyncServerPerInvocationContextInitializerV2, TraceContextType>(
+        _ factory: @escaping (EventLoopGroup) async throws -> InitializerType) async
+        where InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType == SmokeServerInvocationReporting<TraceContextType>,
+        InitializerType.SelectorType.DefaultOperationDelegateType.RequestHeadType == SmokeHTTP1RequestHead,
+        InitializerType.SelectorType.DefaultOperationDelegateType.ResponseHandlerType ==
+        HBHTTP1ResponseHandler<SmokeInvocationContext<InitializerType.SelectorType.DefaultOperationDelegateType.InvocationReportingType>> {
+        let eventLoopGroup =
+            MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+
+        let initalizer: InitializerType
+        do {
+            initalizer = try await factory(eventLoopGroup)
+        } catch {
+            // create a logger that will, regardless of what logging backend was bootstrapped, will log immediately
+            // to standard out
+            let logger = Logger(label: "application.initialization") { StreamLogHandler.standardOutput(label: $0) }
+
+            logger.error("Unable to initialize application from factory.",
+                         metadata: ["cause": "\(String(describing: error))"])
+
+            return
+        }
+
+        // initialize the logger after instatiating the initializer
+        let logger = Logger(label: "application.initialization")
+
+        let eventLoopProvider: SmokeHTTP1Server.EventLoopProvider
+        // if the initializer is indicating to create new threads for the server
+        // just use the created eventLoopGroup
+        if case .spawnNewThreads = initalizer.eventLoopProvider {
+            eventLoopProvider = .use(eventLoopGroup)
+        } else {
+            // use what the initializer says
+            eventLoopProvider = initalizer.eventLoopProvider
+        }
+
+        var handlerSelector = initalizer.handlerSelectorProvider()
+        initalizer.operationsInitializer(&handlerSelector)
+
+        let responser = SmokeServerHBHTTPResponder(
+            handlerSelector: handlerSelector,
+            contextProvider: initalizer.getInvocationContext,
+            serverName: initalizer.serverName,
+            reportingConfiguration: initalizer.reportingConfiguration,
+            invocationStrategy: initalizer.invocationStrategy,
+            requestExecutor: initalizer.requestExecutor,
+            enableTracingWithSwiftConcurrency: initalizer.enableTracingWithSwiftConcurrency)
+        let server = HBSmokeHTTP1Server(responder: responser,
+                                        port: initalizer.port,
+                                        defaultLogger: initalizer.defaultLogger,
+                                        eventLoopProvider: eventLoopProvider)
+            
+        let services = initalizer.getServices(smokeService: server)
+            
+        let serviceGroup = ServiceGroup(
+            services: services,
+            gracefulShutdownSignals: initalizer.shutdownOnSignals.compactMap { $0.asUnixSignal() },
+            logger: initalizer.defaultLogger)
+            
+        do {
+            try await serviceGroup.run()
+
+            try await initalizer.onShutdown()
+
+            try await eventLoopGroup.shutdownGracefully()
+        } catch {
+            logger.error("Operations Server lifecycle error: '\(error)'")
+        }
+    }
+}
+
+extension SmokeHTTP1Server.ShutdownOnSignal {
+    func asUnixSignal() -> UnixSignal? {
+        switch self {
+        case .none:
+            return nil
+        case .sigint:
+            return .sigint
+        case .sigterm:
+            return .sigterm
         }
     }
 }

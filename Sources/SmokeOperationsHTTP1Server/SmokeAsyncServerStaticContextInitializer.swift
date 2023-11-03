@@ -18,6 +18,7 @@
 import Foundation
 import SmokeHTTP1
 import SmokeOperationsHTTP1
+import ServiceLifecycle
 
 public protocol SmokeAsyncServerStaticContextInitializer: SmokeAsyncStaticContextInitializer {
     var port: Int { get }
@@ -46,5 +47,22 @@ public extension SmokeAsyncServerStaticContextInitializer {
 
     var enableTracingWithSwiftConcurrency: Bool {
         return false
+    }
+}
+
+public protocol SmokeAsyncServerStaticContextInitializerV2: SmokeAsyncServerStaticContextInitializer {
+    /**
+     Returns the ordered list of services to be started with the
+     runtime and shutdown when the runtime is shutdown.
+     The order returned will determine the order the services are started in.
+     The provided `smokeService` represents the application being started by the framework, allowing other services
+     to be started before or after based on the order of the returned list.
+     */
+    func getServices(smokeService: any Service) -> [any Service]
+}
+
+public extension SmokeAsyncServerStaticContextInitializerV2 {
+    func getServices(smokeService: any Service) -> [any Service] {
+        return [smokeService]
     }
 }
