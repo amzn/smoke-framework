@@ -21,9 +21,11 @@ import Tracing
 
 public struct RequestSpanParameters {
     public let operationName: String
+    public let internalRequestId: String
 
-    public init(operationName: String) {
+    public init(operationName: String, internalRequestId: String) {
         self.operationName = operationName
+        self.internalRequestId = internalRequestId
     }
 }
 

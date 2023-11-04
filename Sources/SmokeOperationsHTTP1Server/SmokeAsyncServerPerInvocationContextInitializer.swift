@@ -15,14 +15,9 @@
 // SmokeOperationsHTTP1Server
 //
 
-import Foundation
 import ServiceLifecycle
 import SmokeHTTP1
-import SmokeOperations
 import SmokeOperationsHTTP1
-import UnixSignals
-import NIOCore
-import NIOPosix
 
 public protocol SmokeAsyncServerPerInvocationContextInitializer: SmokeAsyncPerInvocationContextInitializer {
     var port: Int { get }
@@ -51,26 +46,6 @@ public extension SmokeAsyncServerPerInvocationContextInitializer {
 
     var enableTracingWithSwiftConcurrency: Bool {
         return false
-    }
-}
-
-public struct GenericSmokeServerConfiguration<SelectorType: SmokeHTTP1HandlerSelector> {
-    public var port: Int
-    public var shutdownOnSignals: [UnixSignal]
-    public var eventLoopGroup: EventLoopGroup
-    public var enableTracingWithSwiftConcurrency: Bool
-    public var reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer>
-        
-    public init(port: Int = ServerDefaults.defaultPort,
-                shutdownOnSignals: [UnixSignal] = [.sigint, .sigterm],
-                eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup.singleton,
-                enableTracingWithSwiftConcurrency: Bool = true,
-                reportingConfiguration: SmokeReportingConfiguration<SelectorType.OperationIdentifer> = .init()) {
-        self.port = port
-        self.shutdownOnSignals = shutdownOnSignals
-        self.eventLoopGroup = eventLoopGroup
-        self.enableTracingWithSwiftConcurrency = enableTracingWithSwiftConcurrency
-        self.reportingConfiguration = reportingConfiguration
     }
 }
 
