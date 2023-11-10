@@ -305,6 +305,25 @@ struct MyPerInvocationContextInitializer: StandardJSONSmokeServerPerInvocationCo
 This will enable tracing for any operation handlers that use Swift Concurrency (async/await). You will also 
 need to setup an Instrumentation backend by following the instructions [here](https://swiftpackageindex.com/apple/swift-distributed-tracing/1.0.0/documentation/tracing/traceyourapplication).
 
+# Logging
+
+The Smoke Framework provides a Metadata Provider that can be used to decorate any logs emitted from the structured concurrency tree
+rooted at the operation handlers. What this means is that metadata such as the `internalRequestId` and `incomingOperation` will be
+added to logs emitted from libraries called from operation handlers even if an explicit logger instance isn't passed into the library
+function.
+
+```swift
+import Logging
+import SmokeOperations
+
+...
+
+    let metadataProvider = Logging.MetadataProvider.smokeframework
+    let factory = <provided by your logging backend>
+
+    LoggingSystem.bootstrap(factory, metadataProvider: metadataProvider)
+```
+
 # Further Concepts
 
 ## The Application Context

@@ -49,5 +49,5 @@ extension InvocationContext: CustomStringConvertible {
 private enum InvocationContextKey: ServiceContextKey {
     typealias Value = InvocationContext
 
-    static var nameOverride: String? = "smoke-framewrk-invocation-context"
+    static var nameOverride: String? = "smoke-framework-invocation-context"
 }

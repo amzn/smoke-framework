@@ -45,6 +45,6 @@ extension Logger.MetadataProvider {
         }
     }
 
-    /// A metadata provider exposing the attributes of the current invocation with the default key names..
+    /// A metadata provider exposing the attributes of the current invocation with the default key names.
     public static let smokeFramework = Logger.MetadataProvider.smokeFramework()
 }
