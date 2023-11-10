@@ -103,6 +103,11 @@ extension SmokeInvocationTraceContext: OperationTraceContext {
                 var serviceContext = ServiceContext.current ?? .topLevel
                 let operationName = parameters.operationName
                 InstrumentationSystem.instrument.extract(requestHead.headers, into: &serviceContext, using: HTTPHeadersExtractor())
+                
+                let invocationContext = InvocationContext(internalRequestId: parameters.internalRequestId,
+                                                          incomingOperation: parameters.operationName,
+                                                          externalRequestId: self.externalRequestId)
+                serviceContext.invocationContext = invocationContext
 
                 let parentSpan = InstrumentationSystem.tracer.startSpan("ServerRequest", context: serviceContext, ofKind: .server)
 
