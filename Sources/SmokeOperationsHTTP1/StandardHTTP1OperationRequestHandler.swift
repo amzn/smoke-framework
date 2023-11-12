@@ -226,7 +226,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                               query: query,
                                                               pathShape: .null)
 
-            let tracingOptions = getTracingOptions(for: "InvalidOperation")
+            let tracingOptions = getTracingOptions(for: "InvalidOperation", internalRequestId: internalRequestId)
             let actions = actionsProvider(tracingOptions)
             let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
 
@@ -241,7 +241,7 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                 invocationContext: invocationContext)
             return
         } catch {
-            let tracingOptions = self.getTracingOptions(for: "FailedHandlerSelection")
+            let tracingOptions = self.getTracingOptions(for: "FailedHandlerSelection", internalRequestId: internalRequestId)
             let actions = actionsProvider(tracingOptions)
             let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
 
@@ -266,7 +266,8 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                                                           query: query,
                                                           pathShape: shape)
 
-        let tracingOptions = self.getTracingOptions(for: handler.operationIdentifer.description)
+        let tracingOptions = self.getTracingOptions(for: handler.operationIdentifer.description, 
+                                                    internalRequestId: internalRequestId)
         let actions = actionsProvider(tracingOptions)
         let requestLogger = actions.requestStartTraceAction?() ?? originalLogger
 
@@ -277,11 +278,11 @@ public struct StandardHTTP1OperationRequestHandler<SelectorType>: HTTP1Operation
                        invocationReportingProvider: actions.invocationReportingProvider)
     }
 
-    private func getTracingOptions(for operationName: String)
+    private func getTracingOptions(for operationName: String, internalRequestId: String)
     -> OperationTraceContextOptions {
         let createRequestSpan: CreateRequestSpan
         if self.enableTracingWithSwiftConcurrency {
-            let parameters = RequestSpanParameters(operationName: operationName)
+            let parameters = RequestSpanParameters(operationName: operationName, internalRequestId: internalRequestId)
             createRequestSpan = .ifRequired(parameters)
         } else {
             createRequestSpan = .never

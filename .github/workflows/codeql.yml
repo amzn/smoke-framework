@@ -10,6 +10,7 @@ jobs:
   run-codeql-linux:
     name: Run CodeQL on Linux
     runs-on: ubuntu-latest
+    container: swift:5.8
     permissions:
       security-events: write
 
