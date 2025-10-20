@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ smoke-framework-2.x ]
       
+
+permissions:
+  contents: read
+
 jobs:
   LatestVersionBuild:
     name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
